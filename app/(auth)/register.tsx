@@ -5,26 +5,21 @@ import { useRouter } from 'expo-router';
 
 export default function RegisterScreen() {
   const router = useRouter();
-
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  const isFormValid =
+    username.trim() !== '' &&
+    email.trim() !== '' &&
+    password.trim() !== '' &&
+    confirmPassword.trim() !== '' &&
+    password === confirmPassword;
+
   const handleRegister = () => {
-    if (!username || !email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields.');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match.');
-      return;
-    }
-
-    // For now, just show success
-    Alert.alert('Success', 'Account created successfully!');
-    router.push('/(auth)/login');
+    Alert.alert('Success', `Welcome aboard, ${username}!`);
+    router.replace('/(auth)/login');
   };
 
   return (
@@ -41,7 +36,6 @@ export default function RegisterScreen() {
       <TextInput
         style={styles.input}
         placeholder="Email"
-        keyboardType="email-address"
         value={email}
         onChangeText={setEmail}
       />
@@ -62,9 +56,11 @@ export default function RegisterScreen() {
         onChangeText={setConfirmPassword}
       />
 
-      <TouchableOpacity style={styles.button} onPress={handleRegister}>
-        <Text style={styles.buttonText}>Register</Text>
-      </TouchableOpacity>
+      {isFormValid && (
+        <TouchableOpacity style={styles.button} onPress={handleRegister}>
+          <Text style={styles.buttonText}>Register</Text>
+        </TouchableOpacity>
+      )}
 
       <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
         <Text style={styles.link}>Already have an account? Login</Text>

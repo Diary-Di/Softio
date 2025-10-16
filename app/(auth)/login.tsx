@@ -9,13 +9,12 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
 
   const handleLogin = () => {
-    if (!username || !password) {
-      Alert.alert('Error', 'Please fill in both fields.');
-      return;
-    }
     Alert.alert('Welcome', `Hello ${username}!`);
     router.push('/dashboard');
   };
+
+  // ✅ Only show button if both fields filled
+  const isFormValid = username.trim() !== '' && password.trim() !== '';
 
   return (
     <View style={styles.container}>
@@ -36,9 +35,11 @@ export default function LoginScreen() {
         onChangeText={setPassword}
       />
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Login</Text>
-      </TouchableOpacity>
+      {isFormValid && (
+        <TouchableOpacity style={styles.button} onPress={handleLogin}>
+          <Text style={styles.buttonText}>Login</Text>
+        </TouchableOpacity>
+      )}
 
       <TouchableOpacity onPress={() => Alert.alert('Forgot Password')}>
         <Text style={styles.link}>Forgot Password?</Text>
