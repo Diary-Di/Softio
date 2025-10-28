@@ -42,4 +42,28 @@ export default StyleSheet.create({
     marginTop: 15,
     fontSize: 15,
   },
+
+  message: {
+    color: 'red',
+    marginTop: 10,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+
+  error: {
+    color: 'red',
+    marginTop: 10,
+    fontSize: 14,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  
+  success: {
+    color: 'green',
+    marginTop: 10,
+    fontSize: 14,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  
 });
