@@ -1,34 +1,33 @@
-import { StyleSheet, Dimensions, Platform, PixelRatio } from "react-native";
+import { StyleSheet, Dimensions, Platform } from "react-native";
 
 const { width, height } = Dimensions.get("window");
 
-// 📱 Function to scale font sizes
-const scaleFont = (size: number) => size * (width / 375); // 375 = base iPhone width
-
 export const styles = StyleSheet.create({
+  // Main container that adapts to any screen
   container: {
     flex: 1,
     backgroundColor: "#f8f9fb",
-    justifyContent: "center",
-    alignItems: "center",
   },
 
+  // Scroll content centered and responsive
   scrollContainer: {
     flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: height * 0.05,
-    paddingHorizontal: width * 0.05,
+    paddingVertical: 40,
+    paddingHorizontal: 20,
   },
 
+  // Title at top
   title: {
-    fontSize: scaleFont(26),
+    fontSize: 28,
     fontWeight: "700",
     color: "#222",
-    marginBottom: height * 0.05,
+    marginBottom: 40,
     textAlign: "center",
   },
 
+  // Each input field container with icon
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -36,36 +35,39 @@ export const styles = StyleSheet.create({
     borderColor: "#ddd",
     borderRadius: 12,
     backgroundColor: "#fff",
-    paddingHorizontal: width * 0.03,
-    paddingVertical: Platform.OS === "ios" ? height * 0.018 : height * 0.014,
-    marginBottom: height * 0.02,
-    width: width * 0.9,
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === "ios" ? 14 : 10,
+    marginBottom: 15,
+    width: width * 0.9, // 90% of screen width
     shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 5,
-    elevation: 2,
+    elevation: 2, // for Android shadow
   },
 
+  // The icon inside the input
   icon: {
-    marginRight: width * 0.03,
+    marginRight: 10,
   },
 
+  // Input text
   input: {
     flex: 1,
-    fontSize: scaleFont(16),
+    fontSize: 16,
     color: "#333",
-    paddingVertical: Platform.OS === "ios" ? height * 0.012 : height * 0.008,
+    paddingVertical: 8,
   },
 
+  // Login button
   button: {
     backgroundColor: "#007bff",
     borderRadius: 12,
-    paddingVertical: height * 0.02,
+    paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
     width: width * 0.9,
-    marginTop: height * 0.015,
+    marginTop: 10,
     shadowColor: "#007bff",
     shadowOpacity: 0.2,
     shadowOffset: { width: 0, height: 3 },
@@ -75,13 +77,14 @@ export const styles = StyleSheet.create({
 
   buttonText: {
     color: "#fff",
-    fontSize: scaleFont(17),
+    fontSize: 18,
     fontWeight: "600",
   },
 
+  // Message section
   message: {
-    marginTop: height * 0.02,
-    fontSize: scaleFont(14),
+    marginTop: 15,
+    fontSize: 15,
     textAlign: "center",
   },
 

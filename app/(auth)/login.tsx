@@ -1,131 +1,108 @@
-// app/(auth)/login.tsx
 import React, { useState } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from "react-native";
-import { useRouter } from "expo-router";
-import styles from "./../styles/loginStyles";
-import { loginUser, setAuthToken } from "./../services/api";
+import { styles } from "./../styles/loginStyles";
+import Icon from "react-native-vector-icons/Ionicons";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-export default function LoginScreen() {
-  const router = useRouter();
+// Define your navigation type
+type RootStackParamList = {
+  Home: undefined;
+  Login: undefined;
+};
 
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
-  const [loading, setLoading] = useState(false);
+type LoginScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "Login"
+>;
+
+const LoginScreen = () => {
+  const navigation = useNavigation<LoginScreenNavigationProp>();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<"error" | "success" | "">("");
 
-  const handleChange = (name: string, value: string) => {
-    setFormData({ ...formData, [name]: value });
-  };
+  const handleLogin = () => {
+    if (!email || !password) {
+      setMessageType("error");
+      setMessage("Please enter both email and password.");
+      return;
+    }
 
-  const handleSubmit = async () => {
-    setLoading(true);
-    setMessage("");
-
-    try {
-      const credentials = {
-        email: formData.email,
-        password: formData.password,
-      };
-
-      const res = await loginUser(credentials);
-      const token = res.data.token;
-
-      // Save token locally (you can use SecureStore for better security)
-      setAuthToken(token);
-
-      setMessage("Connexion réussie ✅");
-      Alert.alert("Succès", "Connexion réussie ✅");
-
+    if (email === "admin@gmail.com" && password === "123456") {
+      setMessageType("success");
+      setMessage("Login successful!");
       setTimeout(() => {
-        router.replace("/dashboard"); // ✅ Redirect to dashboard after login
+        navigation.navigate("Home");
       }, 1000);
-    } catch (err: any) {
-      console.error("Erreur détaillée:", err.response);
-
-      let errorMessage = "Impossible de se connecter";
-      if (err.response?.status === 500 && err.response?.data?.message?.includes("Unknown column")) {
-        errorMessage = "Erreur serveur : problème de configuration de la base de données.";
-      } else if (err.response?.data?.errors) {
-        const validationErrors = Object.values(err.response.data.errors).flat().join(", ");
-        errorMessage = `Erreur de validation : ${validationErrors}`;
-      } else {
-        errorMessage = err.response?.data?.message || err.response?.data?.error || errorMessage;
-      }
-
-      setMessage("Erreur : " + errorMessage);
-      Alert.alert("Erreur", errorMessage);
-    } finally {
-      setLoading(false);
+    } else {
+      setMessageType("error");
+      setMessage("Invalid credentials. Try again.");
     }
   };
 
-  const isFormValid = formData.email.trim() !== "" && formData.password.trim() !== "";
-
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Connexion</Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={styles.container}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <Text style={styles.title}>Welcome Back 👋</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={formData.email}
-        onChangeText={(text) => handleChange("email", text)}
-        editable={!loading}
-      />
+        {/* Email Input */}
+        <View style={styles.inputContainer}>
+          <Icon name="mail-outline" size={22} color="#888" style={styles.icon} />
+          <TextInput
+            placeholder="Email"
+            style={styles.input}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Mot de passe"
-        secureTextEntry
-        value={formData.password}
-        onChangeText={(text) => handleChange("password", text)}
-        editable={!loading}
-      />
+        {/* Password Input */}
+        <View style={styles.inputContainer}>
+          <Icon name="lock-closed-outline" size={22} color="#888" style={styles.icon} />
+          <TextInput
+            placeholder="Password"
+            style={styles.input}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+        </View>
 
-      <View style={{ height: 10 }} />
+        {/* Login Button */}
+        <TouchableOpacity style={styles.button} onPress={handleLogin}>
+          <Text style={styles.buttonText}>Login</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[
-          styles.button,
-          (!isFormValid || loading) && { backgroundColor: "#ccc" },
-        ]}
-        onPress={handleSubmit}
-        disabled={!isFormValid || loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Se connecter →</Text>
-        )}
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={() => Alert.alert("Mot de passe oublié")}>
-        <Text style={styles.link}>Mot de passe oublié ?</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
-        <Text style={styles.link}>Créer un compte</Text>
-      </TouchableOpacity>
-
-      {message !== "" && (
-        <Text
-          style={[
-            styles.message,
-            message.includes("Erreur") ? styles.error : styles.success,
-          ]}
-        >
-          {message}
-        </Text>
-      )}
-    </View>
+        {/* Message Display */}
+        {message ? (
+          <Text
+            style={[
+              styles.message,
+              messageType === "error" ? styles.error : styles.success,
+            ]}
+          >
+            {message}
+          </Text>
+        ) : null}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
-}
+};
+
+export default LoginScreen;
