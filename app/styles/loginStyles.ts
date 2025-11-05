@@ -1,31 +1,37 @@
-import { StyleSheet, Dimensions, Platform, PixelRatio } from "react-native";
+import { StyleSheet, Dimensions, Platform } from "react-native";
 
 const { width, height } = Dimensions.get("window");
 
-// 📱 Function to scale font sizes
-const scaleFont = (size: number) => size * (width / 375); // 375 = base iPhone width
+// Better scaling function that doesn't make things too big
+const scaleSize = (size: number) => {
+  const scaleFactor = width / 375; // 375 is base iPhone width
+  // Use moderate scaling - less aggressive
+  return size + (scaleFactor - 1) * size * 0.5;
+};
+
+// Or use this even simpler approach:
+const responsiveSize = (size: number) => {
+  return Math.min(size * (width / 375), size * 1.3); // Max 30% larger than base
+};
 
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8f9fb",
-    justifyContent: "center",
-    alignItems: "center",
   },
 
   scrollContainer: {
     flexGrow: 1,
     justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: height * 0.05,
-    paddingHorizontal: width * 0.05,
+    paddingHorizontal: 24, // Use fixed values instead of scaled
+    paddingVertical: 40,
   },
 
   title: {
-    fontSize: scaleFont(26),
+    fontSize: 28, // Fixed size
     fontWeight: "700",
     color: "#222",
-    marginBottom: height * 0.05,
+    marginBottom: 40,
     textAlign: "center",
   },
 
@@ -36,36 +42,39 @@ export const styles = StyleSheet.create({
     borderColor: "#ddd",
     borderRadius: 12,
     backgroundColor: "#fff",
-    paddingHorizontal: width * 0.03,
-    paddingVertical: Platform.OS === "ios" ? height * 0.018 : height * 0.014,
-    marginBottom: height * 0.02,
-    width: width * 0.9,
+    paddingHorizontal: 16,
+    paddingVertical: Platform.OS === "ios" ? 16 : 12,
+    marginBottom: 16,
+    width: "100%", // This will naturally be responsive
     shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 5,
+    shadowRadius: 4,
     elevation: 2,
   },
 
   icon: {
-    marginRight: width * 0.03,
+    width: 22, // Fixed size
+    height: 22,
+    marginRight: 12,
+    tintColor: "#888",
   },
 
   input: {
     flex: 1,
-    fontSize: scaleFont(16),
+    fontSize: 16, // Fixed size
     color: "#333",
-    paddingVertical: Platform.OS === "ios" ? height * 0.012 : height * 0.008,
+    paddingVertical: 0,
   },
 
   button: {
     backgroundColor: "#007bff",
     borderRadius: 12,
-    paddingVertical: height * 0.02,
+    paddingVertical: 16,
     alignItems: "center",
     justifyContent: "center",
-    width: width * 0.9,
-    marginTop: height * 0.015,
+    width: "100%",
+    marginTop: 8,
     shadowColor: "#007bff",
     shadowOpacity: 0.2,
     shadowOffset: { width: 0, height: 3 },
@@ -75,14 +84,15 @@ export const styles = StyleSheet.create({
 
   buttonText: {
     color: "#fff",
-    fontSize: scaleFont(17),
+    fontSize: 17, // Fixed size
     fontWeight: "600",
   },
 
   message: {
-    marginTop: height * 0.02,
-    fontSize: scaleFont(14),
+    marginTop: 20,
+    fontSize: 14, // Fixed size
     textAlign: "center",
+    paddingHorizontal: 20,
   },
 
   error: {

@@ -4,17 +4,15 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from "react-native";
 import { styles } from "./../styles/loginStyles";
-import Icon from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-// Define your navigation type
 type RootStackParamList = {
   Home: undefined;
   Login: undefined;
@@ -53,39 +51,60 @@ const LoginScreen = () => {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text style={styles.title}>Welcome Back 👋</Text>
 
         {/* Email Input */}
         <View style={styles.inputContainer}>
-          <Icon name="mail-outline" size={22} color="#888" style={styles.icon} />
+          <Image 
+            source={require('../../assets/icons/mail.png')} 
+            style={styles.icon}
+            resizeMode="contain"
+          />
           <TextInput
             placeholder="Email"
+            placeholderTextColor="#888"
             style={styles.input}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
+            autoComplete="email"
           />
         </View>
 
         {/* Password Input */}
         <View style={styles.inputContainer}>
-          <Icon name="lock-closed-outline" size={22} color="#888" style={styles.icon} />
+          <Image 
+            source={require('../../assets/icons/lock.png')} 
+            style={styles.icon}
+            resizeMode="contain"
+          />
           <TextInput
             placeholder="Password"
+            placeholderTextColor="#888"
             style={styles.input}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            autoComplete="password"
           />
         </View>
 
         {/* Login Button */}
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={handleLogin}
+          activeOpacity={0.8}
+        >
           <Text style={styles.buttonText}>Login</Text>
         </TouchableOpacity>
 

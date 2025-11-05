@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
-import styles from '../styles/registerStyles';
+import styles from './../styles/registerStyles';
 import { useRouter } from 'expo-router';
 
 export default function RegisterScreen() {
