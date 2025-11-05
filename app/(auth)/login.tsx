@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Platform,
   ScrollView,
   Image,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { styles } from "./../styles/loginStyles";
 import { useNavigation } from "@react-navigation/native";
@@ -29,6 +30,12 @@ const LoginScreen = () => {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"error" | "success" | "">("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+
+  const emailInputRef = useRef<TextInput>(null);
+  const passwordInputRef = useRef<TextInput>(null);
 
   const handleLogin = () => {
     if (!email || !password) {
@@ -49,6 +56,18 @@ const LoginScreen = () => {
     }
   };
 
+  const toggleShowPassword = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const focusEmailInput = () => {
+    emailInputRef.current?.focus();
+  };
+
+  const focusPasswordInput = () => {
+    passwordInputRef.current?.focus();
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -62,42 +81,80 @@ const LoginScreen = () => {
       >
         <Text style={styles.title}>Welcome Back 👋</Text>
 
-        {/* Email Input */}
-        <View style={styles.inputContainer}>
-          <Image 
-            source={require('../../assets/icons/mail.png')} 
-            style={styles.icon}
-            resizeMode="contain"
-          />
-          <TextInput
-            placeholder="Email"
-            placeholderTextColor="#888"
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-          />
-        </View>
+        {/* Email Input Container */}
+        <TouchableWithoutFeedback onPress={focusEmailInput}>
+          <View style={[
+            styles.inputContainer,
+            emailFocused && styles.inputContainerFocused
+          ]}>
+            <Image 
+              source={require('../../assets/icons/mail.png')} 
+              style={styles.icon}
+              resizeMode="contain"
+            />
+            <TextInput
+              ref={emailInputRef}
+              placeholder="Email"
+              placeholderTextColor="#888"
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              onFocus={() => setEmailFocused(true)}
+              onBlur={() => setEmailFocused(false)}
+              // Additional props to remove focus outline
+              selectionColor="#007bff" // Change cursor color instead of outline
+              cursorColor="#007bff" // Alternative for cursor color
+            />
+          </View>
+        </TouchableWithoutFeedback>
 
-        {/* Password Input */}
-        <View style={styles.inputContainer}>
-          <Image 
-            source={require('../../assets/icons/lock.png')} 
-            style={styles.icon}
-            resizeMode="contain"
-          />
-          <TextInput
-            placeholder="Password"
-            placeholderTextColor="#888"
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoComplete="password"
-          />
-        </View>
+        {/* Password Input Container */}
+        <TouchableWithoutFeedback onPress={focusPasswordInput}>
+          <View style={[
+            styles.inputContainer,
+            passwordFocused && styles.inputContainerFocused
+          ]}>
+            <Image 
+              source={require('../../assets/icons/lock.png')} 
+              style={styles.icon}
+              resizeMode="contain"
+            />
+            <TextInput
+              ref={passwordInputRef}
+              placeholder="Password"
+              placeholderTextColor="#888"
+              style={styles.input}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoComplete="password"
+              onFocus={() => setPasswordFocused(true)}
+              onBlur={() => setPasswordFocused(false)}
+              // Additional props to remove focus outline
+              selectionColor="#007bff"
+              cursorColor="#007bff"
+            />
+            {/* Show/Hide Password Button */}
+            <TouchableOpacity 
+              onPress={toggleShowPassword}
+              style={styles.eyeButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Image 
+                source={
+                  showPassword 
+                    ? require('../../assets/icons/eye-open.png') 
+                    : require('../../assets/icons/eye-closed.png')
+                } 
+                style={styles.eyeIcon}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </View>
+        </TouchableWithoutFeedback>
 
         {/* Login Button */}
         <TouchableOpacity 

@@ -1,18 +1,4 @@
-import { StyleSheet, Dimensions, Platform } from "react-native";
-
-const { width, height } = Dimensions.get("window");
-
-// Better scaling function that doesn't make things too big
-const scaleSize = (size: number) => {
-  const scaleFactor = width / 375; // 375 is base iPhone width
-  // Use moderate scaling - less aggressive
-  return size + (scaleFactor - 1) * size * 0.5;
-};
-
-// Or use this even simpler approach:
-const responsiveSize = (size: number) => {
-  return Math.min(size * (width / 375), size * 1.3); // Max 30% larger than base
-};
+import { StyleSheet, Platform } from "react-native";
 
 export const styles = StyleSheet.create({
   container: {
@@ -23,12 +9,12 @@ export const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     justifyContent: "center",
-    paddingHorizontal: 24, // Use fixed values instead of scaled
+    paddingHorizontal: 24,
     paddingVertical: 40,
   },
 
   title: {
-    fontSize: 28, // Fixed size
+    fontSize: 28,
     fontWeight: "700",
     color: "#222",
     marginBottom: 40,
@@ -45,7 +31,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: Platform.OS === "ios" ? 16 : 12,
     marginBottom: 16,
-    width: "100%", // This will naturally be responsive
+    width: "100%",
     shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowOffset: { width: 0, height: 2 },
@@ -53,8 +39,18 @@ export const styles = StyleSheet.create({
     elevation: 2,
   },
 
+  inputContainerFocused: {
+    borderColor: "#007bff",
+    borderWidth: 2,
+    shadowColor: "#007bff",
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 8,
+    elevation: 4,
+  },
+
   icon: {
-    width: 22, // Fixed size
+    width: 22,
     height: 22,
     marginRight: 12,
     tintColor: "#888",
@@ -62,9 +58,35 @@ export const styles = StyleSheet.create({
 
   input: {
     flex: 1,
-    fontSize: 16, // Fixed size
+    fontSize: 16,
     color: "#333",
     paddingVertical: 0,
+    paddingRight: 8,
+    // Remove all focus outlines
+    borderWidth: 0,
+    outlineWidth: 0, // For web if using React Native Web
+    ...Platform.select({
+      android: {
+        underlineColorAndroid: 'transparent',
+        // Additional Android-specific focus removal
+        includeFontPadding: false,
+        textAlignVertical: 'center',
+      },
+      ios: {
+        // iOS doesn't typically show focus outlines
+      },
+    }),
+  },
+
+  eyeButton: {
+    padding: 4,
+    marginLeft: 8,
+  },
+
+  eyeIcon: {
+    width: 20,
+    height: 20,
+    tintColor: "#888",
   },
 
   button: {
@@ -75,22 +97,17 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     width: "100%",
     marginTop: 8,
-    shadowColor: "#007bff",
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 5,
-    elevation: 3,
   },
 
   buttonText: {
     color: "#fff",
-    fontSize: 17, // Fixed size
+    fontSize: 17,
     fontWeight: "600",
   },
 
   message: {
     marginTop: 20,
-    fontSize: 14, // Fixed size
+    fontSize: 14,
     textAlign: "center",
     paddingHorizontal: 20,
   },
