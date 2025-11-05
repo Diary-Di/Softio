@@ -37,8 +37,11 @@ const LoginScreen = () => {
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
 
+  // Check if all fields are filled
+  const isFormValid = email.trim().length > 0 && password.trim().length > 0;
+
   const handleLogin = () => {
-    if (!email || !password) {
+    if (!isFormValid) {
       setMessageType("error");
       setMessage("Please enter both email and password.");
       return;
@@ -104,9 +107,8 @@ const LoginScreen = () => {
               autoComplete="email"
               onFocus={() => setEmailFocused(true)}
               onBlur={() => setEmailFocused(false)}
-              // Additional props to remove focus outline
-              selectionColor="#007bff" // Change cursor color instead of outline
-              cursorColor="#007bff" // Alternative for cursor color
+              selectionColor="#007bff"
+              cursorColor="#007bff"
             />
           </View>
         </TouchableWithoutFeedback>
@@ -133,7 +135,6 @@ const LoginScreen = () => {
               autoComplete="password"
               onFocus={() => setPasswordFocused(true)}
               onBlur={() => setPasswordFocused(false)}
-              // Additional props to remove focus outline
               selectionColor="#007bff"
               cursorColor="#007bff"
             />
@@ -158,11 +159,20 @@ const LoginScreen = () => {
 
         {/* Login Button */}
         <TouchableOpacity 
-          style={styles.button} 
+          style={[
+            styles.button,
+            !isFormValid && styles.buttonDisabled  // Apply disabled style when form is invalid
+          ]} 
           onPress={handleLogin}
-          activeOpacity={0.8}
+          activeOpacity={isFormValid ? 0.8 : 1}  // No opacity change when disabled
+          disabled={!isFormValid}  // Actually disable the button
         >
-          <Text style={styles.buttonText}>Login</Text>
+          <Text style={[
+            styles.buttonText,
+            !isFormValid && styles.buttonTextDisabled  // Apply disabled text style
+          ]}>
+            Login
+          </Text>
         </TouchableOpacity>
 
         {/* Message Display */}

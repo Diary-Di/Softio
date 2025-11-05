@@ -62,18 +62,13 @@ export const styles = StyleSheet.create({
     color: "#333",
     paddingVertical: 0,
     paddingRight: 8,
-    // Remove all focus outlines
     borderWidth: 0,
-    outlineWidth: 0, // For web if using React Native Web
+    outlineWidth: 0,
     ...Platform.select({
       android: {
         underlineColorAndroid: 'transparent',
-        // Additional Android-specific focus removal
         includeFontPadding: false,
         textAlignVertical: 'center',
-      },
-      ios: {
-        // iOS doesn't typically show focus outlines
       },
     }),
   },
@@ -99,10 +94,20 @@ export const styles = StyleSheet.create({
     marginTop: 8,
   },
 
+  buttonDisabled: {
+    backgroundColor: "#cccccc", // Gray background when disabled
+    shadowOpacity: 0, // Remove shadow when disabled
+    elevation: 0, // Remove elevation when disabled
+  },
+
   buttonText: {
     color: "#fff",
     fontSize: 17,
     fontWeight: "600",
+  },
+
+  buttonTextDisabled: {
+    color: "#888888", // Gray text when disabled
   },
 
   message: {
