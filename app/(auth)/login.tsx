@@ -17,6 +17,8 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 type RootStackParamList = {
   Home: undefined;
   Login: undefined;
+  Register: undefined;
+  ForgotPassword: undefined;
 };
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<
@@ -57,6 +59,19 @@ const LoginScreen = () => {
       setMessageType("error");
       setMessage("Identifiants invalides. Veuillez réessayer.");
     }
+  };
+
+  const handleGoogleLogin = () => {
+    setMessageType("success");
+    setMessage("Connexion Google sélectionnée");
+  };
+
+  const handleCreateAccount = () => {
+    navigation.navigate("Register");
+  };
+
+  const handleForgotPassword = () => {
+    navigation.navigate("ForgotPassword");
   };
 
   const toggleShowPassword = () => {
@@ -171,6 +186,16 @@ const LoginScreen = () => {
             </View>
           </TouchableWithoutFeedback>
 
+          {/* Forgot Password Link - Left side after password field */}
+          <TouchableOpacity 
+            style={styles.forgotPasswordContainer}
+            onPress={handleForgotPassword}
+          >
+            <Text style={styles.forgotPasswordText}>
+              Mot de passe oublié ?
+            </Text>
+          </TouchableOpacity>
+
           {/* Login Button */}
           <TouchableOpacity 
             style={[
@@ -189,6 +214,29 @@ const LoginScreen = () => {
             </Text>
           </TouchableOpacity>
 
+          {/* Divider */}
+          <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>ou</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Google Sign-In Button */}
+          <TouchableOpacity 
+            style={styles.googleButton}
+            onPress={handleGoogleLogin}
+            activeOpacity={0.8}
+          >
+            <Image 
+              source={require('../../assets/icons/google-icon.png')} 
+              style={styles.googleIcon}
+              resizeMode="contain"
+            />
+            <Text style={styles.googleButtonText}>
+              Se connecter avec Google
+            </Text>
+          </TouchableOpacity>
+
           {/* Message Display */}
           {message ? (
             <Text
@@ -200,6 +248,16 @@ const LoginScreen = () => {
               {message}
             </Text>
           ) : null}
+
+          {/* Bottom Links - Inline layout */}
+          <View style={styles.bottomLinksContainer}>
+            <Text style={styles.bottomText}>
+              Vous n'avez pas de compte ?{" "}
+            </Text>
+            <TouchableOpacity onPress={handleCreateAccount}>
+              <Text style={styles.link}>Créer un compte</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
