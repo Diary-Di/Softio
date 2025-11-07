@@ -1,4 +1,6 @@
-import { StyleSheet, Platform } from "react-native";
+import { StyleSheet, Platform, Dimensions } from "react-native";
+
+const { height } = Dimensions.get("window");
 
 export const styles = StyleSheet.create({
   container: {
@@ -8,17 +10,39 @@ export const styles = StyleSheet.create({
 
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 40,
+    justifyContent: "space-between",
+    minHeight: height,
   },
 
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#222",
-    marginBottom: 40,
+  // Logo container at the top
+  logoContainer: {
+    alignItems: "center",
+    marginTop: 60,
+    paddingHorizontal: 24,
+  },
+
+  logo: {
+    width: 150,
+    height: 80,
+  },
+
+  // Form container in the center
+  formContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+  },
+
+  // Instruction text above inputs
+  instructionText: {
+    fontSize: 20,
+    color: "#666",
     textAlign: "center",
+    marginBottom: 30,
+    paddingHorizontal: 20,
+    lineHeight: 22,
   },
 
   inputContainer: {
@@ -32,6 +56,7 @@ export const styles = StyleSheet.create({
     paddingVertical: Platform.OS === "ios" ? 16 : 12,
     marginBottom: 16,
     width: "100%",
+    maxWidth: 400,
     shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowOffset: { width: 0, height: 2 },
@@ -92,12 +117,13 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     width: "100%",
     marginTop: 8,
+    maxWidth: 400,
   },
 
   buttonDisabled: {
-    backgroundColor: "#cccccc", // Gray background when disabled
-    shadowOpacity: 0, // Remove shadow when disabled
-    elevation: 0, // Remove elevation when disabled
+    backgroundColor: "#cccccc",
+    shadowOpacity: 0,
+    elevation: 0,
   },
 
   buttonText: {
@@ -107,7 +133,7 @@ export const styles = StyleSheet.create({
   },
 
   buttonTextDisabled: {
-    color: "#888888", // Gray text when disabled
+    color: "#888888",
   },
 
   message: {
@@ -115,6 +141,7 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
     paddingHorizontal: 20,
+    width: "100%",
   },
 
   error: {
