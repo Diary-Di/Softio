@@ -1,6 +1,6 @@
 import { StyleSheet, Platform, Dimensions } from "react-native";
 
-const { height } = Dimensions.get("window");
+const { height, width } = Dimensions.get("window");
 
 export const styles = StyleSheet.create({
   container: {
@@ -33,6 +33,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 24,
     paddingBottom: 40,
+    width: "100%", // Ensure form container takes full width
   },
 
   // Instruction text above inputs
@@ -43,6 +44,7 @@ export const styles = StyleSheet.create({
     marginBottom: 30,
     paddingHorizontal: 20,
     lineHeight: 22,
+    width: "100%", // Ensure text container takes full width
   },
 
   inputContainer: {
@@ -109,9 +111,10 @@ export const styles = StyleSheet.create({
     tintColor: "#888",
   },
 
-  // Forgot password link
+  // Forgot password link - Updated to align with input fields
   forgotPasswordContainer: {
-    alignSelf: "flex-start", // Changed to left side
+    width: "100%", // Take full width of parent
+    maxWidth: 400, // Match input container max width
     marginBottom: 20,
     marginTop: -5,
   },
@@ -120,6 +123,7 @@ export const styles = StyleSheet.create({
     color: "#007bff",
     fontSize: 14,
     fontWeight: "500",
+    textAlign: "left", // Ensure text is left aligned
   },
 
   button: {
@@ -198,14 +202,15 @@ export const styles = StyleSheet.create({
     marginHorizontal: 15,
   },
 
-  // Bottom links container - updated for inline layout
+  // Bottom links container
   bottomLinksContainer: {
     alignItems: "center",
     marginTop: 30,
     paddingHorizontal: 24,
-    flexDirection: "row", // Changed to row for inline layout
+    flexDirection: "row",
     justifyContent: "center",
     flexWrap: "wrap",
+    width: "100%", // Ensure full width
   },
 
   bottomText: {
@@ -219,7 +224,7 @@ export const styles = StyleSheet.create({
     color: "#007bff",
     fontSize: 14,
     fontWeight: "500",
-    marginLeft: 5, // Small space between text and link
+    marginLeft: 5,
   },
 
   message: {

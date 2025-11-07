@@ -11,23 +11,10 @@ import {
   TouchableWithoutFeedback,
 } from "react-native";
 import { styles } from "./../styles/loginStyles";
-import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-
-type RootStackParamList = {
-  Home: undefined;
-  Login: undefined;
-  Register: undefined;
-  ForgotPassword: undefined;
-};
-
-type LoginScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
-  "Login"
->;
+import { useRouter } from "expo-router"; // Change from react-navigation to expo-router
 
 const LoginScreen = () => {
-  const navigation = useNavigation<LoginScreenNavigationProp>();
+  const router = useRouter(); // Use Expo Router instead of react-navigation
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -53,7 +40,7 @@ const LoginScreen = () => {
       setMessageType("success");
       setMessage("Connexion réussie !");
       setTimeout(() => {
-        navigation.navigate("Home");
+        router.push("/"); // Navigate to home using Expo Router
       }, 1000);
     } else {
       setMessageType("error");
@@ -67,11 +54,11 @@ const LoginScreen = () => {
   };
 
   const handleCreateAccount = () => {
-    navigation.navigate("Register");
+    router.push("/register"); // Navigate to register using Expo Router
   };
 
   const handleForgotPassword = () => {
-    navigation.navigate("ForgotPassword");
+    router.push("/forgot-password"); // Navigate to forgot password using Expo Router
   };
 
   const toggleShowPassword = () => {
