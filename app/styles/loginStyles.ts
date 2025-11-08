@@ -33,20 +33,22 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 24,
     paddingBottom: 40,
-    width: "100%", // Ensure form container takes full width
+    width: "100%",
   },
 
-  // Instruction text above inputs
+  // Instruction text above inputs - Increased size
   instructionText: {
-    fontSize: 16,
-    color: "#666",
+    fontSize: 20, // Increased from 16 to 20
+    color: "#333", // Changed from #666 to #333 for better contrast
     textAlign: "center",
     marginBottom: 30,
     paddingHorizontal: 20,
-    lineHeight: 22,
-    width: "100%", // Ensure text container takes full width
+    lineHeight: 26, // Increased line height for better readability
+    width: "100%",
+    fontWeight: "600", // Added semi-bold for better visibility
   },
 
+  // ... rest of the styles remain the same
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -111,19 +113,20 @@ export const styles = StyleSheet.create({
     tintColor: "#888",
   },
 
-  // Forgot password link - Updated to align with input fields
+  // Forgot password link
   forgotPasswordContainer: {
-    width: "100%", // Take full width of parent
-    maxWidth: 400, // Match input container max width
+    width: "100%",
+    maxWidth: 400,
     marginBottom: 20,
     marginTop: -5,
+    alignItems: "flex-end",
   },
 
   forgotPasswordText: {
-    color: "#007bff",
+    color: "#e63946",
     fontSize: 14,
     fontWeight: "500",
-    textAlign: "left", // Ensure text is left aligned
+    textAlign: "right",
   },
 
   button: {
@@ -210,7 +213,7 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     flexWrap: "wrap",
-    width: "100%", // Ensure full width
+    width: "100%",
   },
 
   bottomText: {

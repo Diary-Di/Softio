@@ -33,18 +33,22 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 24,
     paddingBottom: 40,
+    width: "100%",
   },
 
-  // Instruction text above inputs
+  // Instruction text above inputs - Increased size
   instructionText: {
-    fontSize: 16,
-    color: "#666",
+    fontSize: 20, // Increased from 16 to 20
+    color: "#333", // Changed from #666 to #333 for better contrast
     textAlign: "center",
     marginBottom: 30,
     paddingHorizontal: 20,
-    lineHeight: 22,
+    lineHeight: 26, // Increased line height
+    width: "100%",
+    fontWeight: "600", // Added semi-bold
   },
 
+  // ... rest of the register styles remain the same
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -193,6 +197,7 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     flexWrap: "wrap",
+    width: "100%",
   },
 
   bottomText: {
