@@ -1,12 +1,13 @@
+import { Ionicons } from "@expo/vector-icons";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createDrawerNavigator } from "@react-navigation/drawer";
 import React from "react";
 import { TouchableOpacity } from "react-native";
-import { createDrawerNavigator } from "@react-navigation/drawer";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Ionicons } from "@expo/vector-icons";
 
+import CustomerScreen from "./screens/CustomerScreen";
 import HomeScreen from "./screens/HomeScreen";
-import ProfileScreen from "./screens/ProfileScreen";
-import SettingsScreen from "./screens/SettingsScreen";
+import ProductScreen from "./screens/ProductScreen";
+import SaleScreen from "./screens/SaleScreen";
 
 const Drawer = createDrawerNavigator();
 const Tab = createBottomTabNavigator();
@@ -25,12 +26,25 @@ function BottomTabs({ navigation }: any) {
             <Ionicons name="menu" size={28} color="#333" />
           </TouchableOpacity>
         ),
+        // 👇 Add user icon on top-right
+        headerRight: () => (
+          <TouchableOpacity
+            onPress={() => {
+              // Add your user icon press handler here
+              console.log("User icon pressed");
+            }}
+            style={{ marginRight: 15 }}
+          >
+            <Ionicons name="person-circle" size={28} color="#007AFF" />
+          </TouchableOpacity>
+        ),
         tabBarIcon: ({ color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = "home";
 
-          if (route.name === "Home") iconName = "home";
-          else if (route.name === "Profile") iconName = "person";
-          else if (route.name === "Settings") iconName = "settings";
+          if (route.name === "Accueil") iconName = "home";
+          else if (route.name === "Clients") iconName = "people";
+          else if (route.name === "Produits") iconName = "cube";
+          else if (route.name === "Ventes") iconName = "cart";
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -38,9 +52,10 @@ function BottomTabs({ navigation }: any) {
         tabBarInactiveTintColor: "gray",
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
-      <Tab.Screen name="Settings" component={SettingsScreen} />
+      <Tab.Screen name="Accueil" component={HomeScreen} />
+      <Tab.Screen name="Clients" component={CustomerScreen} />
+      <Tab.Screen name="Produits" component={ProductScreen} />
+      <Tab.Screen name="Ventes" component={SaleScreen} />
     </Tab.Navigator>
   );
 }
@@ -57,7 +72,7 @@ export default function Dashboard() {
       <Drawer.Screen
         name="MainTabs"
         component={BottomTabs}
-        options={{ title: "Dashboard" }}
+        options={{ title: "Tableau de Bord" }}
       />
     </Drawer.Navigator>
   );
