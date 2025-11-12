@@ -1,16 +1,13 @@
+/******************************************************************
+ *  productScreenStyles.ts  –  matches the Expo-Go ProductScreen
+ ******************************************************************/
 import { StyleSheet, Platform, Dimensions } from 'react-native';
-
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export const productScreenStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
+  /* ----------- global / helpers ----------- */
+  safeArea: { flex: 1, backgroundColor: '#f8f9fa' },
+
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -23,6 +20,8 @@ export const productScreenStyles = StyleSheet.create({
     color: '#666',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
+
+  /* ----------- header ----------- */
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -39,9 +38,7 @@ export const productScreenStyles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 2,
       },
-      android: {
-        elevation: 2,
-      },
+      android: { elevation: 2 },
     }),
   },
   title: {
@@ -50,34 +47,40 @@ export const productScreenStyles = StyleSheet.create({
     color: '#1a1a1a',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+
+  /* ----------- FAB ----------- */
+  fab: {
+    position: 'absolute',
+    right: 24,
+    bottom: 34,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#007AFF',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-    minHeight: 44,
-    minWidth: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.22,
+        shadowRadius: 6,
+      },
+      android: { elevation: 8 },
+    }),
   },
-  addButtonText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 15,
-    marginLeft: 6,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 16, // Extra padding for iOS home indicator
-  },
-  productCard: {
-    backgroundColor: 'white',
-    borderRadius: 14,
-    padding: 18,
+
+  /* ----------- list ----------- */
+  listContent: { padding: 16, paddingBottom: Platform.OS === 'ios' ? 34 : 20 },
+  listContentCenter: { flex: 1, justifyContent: 'center' },
+
+  /* ----------- card (image row) ----------- */
+  card: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#f1f3f4',
+    borderRadius: 12,
+    padding: 10,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -85,71 +88,39 @@ export const productScreenStyles = StyleSheet.create({
         shadowOpacity: 0.08,
         shadowRadius: 6,
       },
-      android: {
-        elevation: 3,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
+      android: { elevation: 3 },
     }),
   },
-  productHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 10,
+  cardImage: {
+    width: 88,
+    height: 88,
+    borderRadius: 10,
+    backgroundColor: '#f5f5f5',
   },
-  reference: {
-    fontSize: 13,
+  cardInfo: { flex: 1, marginLeft: 12, justifyContent: 'space-between' },
+  cardName: {
+    fontSize: 15,
     fontWeight: '600',
-    color: '#007AFF',
-    backgroundColor: '#f0f7ff',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    overflow: 'hidden',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    color: '#1a1a1a',
+    lineHeight: 20,
   },
-  price: {
+  metaRow: { flexDirection: 'row', marginTop: 4 },
+  metaLabel: {
+    fontSize: 13,
+    color: '#8e8e93',
+    fontWeight: '500',
+    width: 50,
+  },
+  metaValue: { fontSize: 13, color: '#424242', flex: 1 },
+  cardPrice: {
     fontSize: 17,
     fontWeight: '700',
     color: '#34c759',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    marginTop: 6,
     textAlign: 'right',
   },
-  designation: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 14,
-    lineHeight: 22,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-  productDetails: {
-    borderTopWidth: 1,
-    borderTopColor: '#f1f3f4',
-    paddingTop: 14,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    marginBottom: 6,
-    alignItems: 'center',
-  },
-  detailLabel: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-    width: 80,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-  detailValue: {
-    fontSize: 14,
-    color: '#1a1a1a',
-    fontWeight: '400',
-    flex: 1,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
+
+  /* ----------- empty ----------- */
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -172,31 +143,5 @@ export const productScreenStyles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-  refreshControl: {
-    backgroundColor: 'transparent',
-  },
-
-    fab: {
-    position: 'absolute',
-    right: 24,
-    bottom: 34,          // clears iOS home-indicator by default
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#007AFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.22,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
   },
 });

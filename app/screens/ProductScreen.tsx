@@ -1,3 +1,6 @@
+/******************************************************************
+ *  ProductScreen.tsx  –  Expo-Go friendly, image card + FAB
+ ******************************************************************/
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -7,13 +10,14 @@ import {
   TouchableOpacity,
   Alert,
   RefreshControl,
+  Image, // ← standard Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { productScreenStyles } from '../styles/productScreenStyles';
+import { productScreenStyles as styles } from '../styles/productScreenStyles';
 
-// Types for better TypeScript support
+/* --------------------  TYPES  -------------------- */
 type Product = {
   id: string;
   reference: string;
@@ -21,9 +25,10 @@ type Product = {
   marque: string;
   prix: number;
   categorie: string;
+  imageUrl: string;
 };
 
-// Mock data - replace with actual API calls
+/* --------------------  MOCK DATA  -------------------- */
 const MOCK_PRODUCTS: Product[] = [
   {
     id: '1',
@@ -32,6 +37,7 @@ const MOCK_PRODUCTS: Product[] = [
     marque: 'Dell',
     prix: 1299.99,
     categorie: 'Informatique',
+    imageUrl: 'https://picsum.photos/seed/dell/400/400',
   },
   {
     id: '2',
@@ -40,6 +46,7 @@ const MOCK_PRODUCTS: Product[] = [
     marque: 'Apple',
     prix: 1159.99,
     categorie: 'Téléphonie',
+    imageUrl: 'https://picsum.photos/seed/iphone/400/400',
   },
   {
     id: '3',
@@ -48,6 +55,7 @@ const MOCK_PRODUCTS: Product[] = [
     marque: 'Samsung',
     prix: 899.99,
     categorie: 'Téléphonie',
+    imageUrl: 'https://picsum.photos/seed/samsung/400/400',
   },
   {
     id: '4',
@@ -56,6 +64,7 @@ const MOCK_PRODUCTS: Product[] = [
     marque: 'Apple',
     prix: 1499.99,
     categorie: 'Informatique',
+    imageUrl: 'https://picsum.photos/seed/macbook/400/400',
   },
   {
     id: '5',
@@ -64,179 +73,154 @@ const MOCK_PRODUCTS: Product[] = [
     marque: 'Sony',
     prix: 499.99,
     categorie: 'Gaming',
+    imageUrl: 'https://picsum.photos/seed/ps5/400/400',
   },
 ];
 
+/* --------------------  COMPONENT  -------------------- */
 export default function ProductScreen() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Memoized fetch function
   const fetchProducts = useCallback(async (isRefreshing = false) => {
-    if (!isRefreshing) {
-      setLoading(true);
-    }
-    
+    if (!isRefreshing) setLoading(true);
     try {
-      // Simulate API call with delay
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      
-      // Replace with actual API call:
-      // const response = await api.get('/products');
-      // setProducts(response.data);
-      
+      await new Promise((r) => setTimeout(r, 1200)); // fake network delay
       setProducts(MOCK_PRODUCTS);
-      
-      // Haptic feedback on success
-      if (isRefreshing) {
+      if (isRefreshing)
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
-    } catch (error) {
-      console.error('Error fetching products:', error);
-      Alert.alert('Erreur', 'Impossible de charger les produits');
-      
-      // Haptic feedback on error
+    } catch {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Erreur', 'Impossible de charger les produits');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
-  // Pull to refresh
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchProducts(true);
   }, [fetchProducts]);
 
-  // Initial load
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
 
-  // Handle product press
-  const handleProductPress = useCallback((product: Product) => {
+  const handleProductPress = useCallback((p: Product) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // Navigate to product detail or show actions
-    Alert.alert(
-      product.designation,
-      `Référence: ${product.reference}\nPrix: ${product.prix} €`,
-      [{ text: 'OK', style: 'default' }]
-    );
+    Alert.alert(p.designation, `Référence: ${p.reference}\nPrix: ${p.prix} €`);
   }, []);
 
-  // Handle add product
   const handleAddProduct = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // Navigate to add product screen
     Alert.alert('Nouveau Produit', 'Fonctionnalité à implémenter');
   }, []);
 
-  // Render product item
-  const renderProductItem = useCallback(({ item }: { item: Product }) => (
-    <TouchableOpacity
-      style={productScreenStyles.productCard}
-      onPress={() => handleProductPress(item)}
-      activeOpacity={0.7}
-      delayPressIn={50}
-    >
-      <View style={productScreenStyles.productHeader}>
-        <Text style={productScreenStyles.reference} numberOfLines={1}>
-          {item.reference}
-        </Text>
-        <Text style={productScreenStyles.price}>
-          {item.prix.toFixed(2)} €
-        </Text>
-      </View>
-      
-      <Text style={productScreenStyles.designation} numberOfLines={2}>
-        {item.designation}
-      </Text>
-      
-      <View style={productScreenStyles.productDetails}>
-        <View style={productScreenStyles.detailRow}>
-          <Text style={productScreenStyles.detailLabel}>Marque:</Text>
-          <Text style={productScreenStyles.detailValue} numberOfLines={1}>
-            {item.marque}
-          </Text>
-        </View>
-        <View style={productScreenStyles.detailRow}>
-          <Text style={productScreenStyles.detailLabel}>Catégorie:</Text>
-          <Text style={productScreenStyles.detailValue} numberOfLines={1}>
-            {item.categorie}
-          </Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  ), [handleProductPress]);
-
-  // Render empty state
-  const renderEmptyList = useCallback(() => (
-    <View style={productScreenStyles.emptyContainer}>
-      <Ionicons name="cube-outline" size={72} color="#CCCCCC" />
-      <Text style={productScreenStyles.emptyText}>Aucun produit trouvé</Text>
-      <Text style={productScreenStyles.emptySubText}>
-        Appuyez sur le bouton "+" pour ajouter votre premier produit
-      </Text>
-    </View>
-  ), []);
-
-  // Render header
-  const renderHeader = useCallback(() => (
-    <View style={productScreenStyles.header}>
-      <Text style={productScreenStyles.title}>Produits</Text>
+  /* --------------------  RENDER ITEM  -------------------- */
+  const renderProductItem = useCallback(
+    ({ item }: { item: Product }) => (
       <TouchableOpacity
-        style={productScreenStyles.addButton}
-        onPress={handleAddProduct}
-        activeOpacity={0.8}
+        style={styles.card}
+        onPress={() => handleProductPress(item)}
+        activeOpacity={0.9}
       >
-        <Ionicons name="add" size={22} color="white" />
-        <Text style={productScreenStyles.addButtonText}>Nouveau</Text>
+        {/* -------  product image  ------- */}
+        <Image source={{ uri: item.imageUrl }} style={styles.cardImage} />
+
+        {/* -------  details  ------- */}
+        <View style={styles.cardInfo}>
+          <Text style={styles.cardName} numberOfLines={2}>
+            {item.designation}
+          </Text>
+
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>Ref:</Text>
+            <Text style={styles.metaValue}>{item.reference}</Text>
+          </View>
+
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>Marque:</Text>
+            <Text style={styles.metaValue}>{item.marque}</Text>
+          </View>
+
+          <Text style={styles.cardPrice}>{item.prix.toFixed(2)} €</Text>
+        </View>
       </TouchableOpacity>
-    </View>
-  ), [handleAddProduct]);
+    ),
+    [handleProductPress]
+  );
 
-  // Loading state
+  /* --------------------  EMPTY / HEADER  -------------------- */
+  const renderEmptyList = useCallback(
+    () => (
+      <View style={styles.emptyContainer}>
+        <Ionicons name="cube-outline" size={72} color="#ccc" />
+        <Text style={styles.emptyText}>Aucun produit trouvé</Text>
+        <Text style={styles.emptySubText}>
+          Appuyez sur le bouton "+" pour ajouter votre premier produit
+        </Text>
+      </View>
+    ),
+    []
+  );
+
+  const renderHeader = useCallback(
+    () => (
+      <View style={styles.header}>
+        <Text style={styles.title}>Produits</Text>
+      </View>
+    ),
+    []
+  );
+
+  /* --------------------  LOADING  -------------------- */
+  if (loading && !refreshing) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        {renderHeader()}
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>Chargement des produits...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  /* --------------------  LIST  -------------------- */
   return (
-  <SafeAreaView style={productScreenStyles.safeArea}>
-    {/* ----- HEADER WITHOUT THE OLD BUTTON ----- */}
-    <View style={productScreenStyles.header}>
-      <Text style={productScreenStyles.title}>Produits</Text>
-    </View>
+    <SafeAreaView style={styles.safeArea}>
+      {renderHeader()}
 
-    <FlatList
-      data={products}
-      renderItem={renderProductItem}
-      keyExtractor={(item) => item.id}
-      contentContainerStyle={productScreenStyles.listContent}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor="#007AFF"
-          colors={['#007AFF']}
-          style={productScreenStyles.refreshControl}
-        />
-      }
-      ListEmptyComponent={renderEmptyList}
-      initialNumToRender={8}
-      maxToRenderPerBatch={10}
-      updateCellsBatchingPeriod={50}
-      windowSize={7}
-      removeClippedSubviews
-      keyboardShouldPersistTaps="handled"
-    />
+      <FlatList
+        data={products}
+        renderItem={renderProductItem}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={
+          products.length ? styles.listContent : styles.listContentCenter
+        }
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#007AFF"
+            colors={['#007AFF']}
+          />
+        }
+        ListEmptyComponent={renderEmptyList}
+        initialNumToRender={8}
+        maxToRenderPerBatch={10}
+        windowSize={7}
+        removeClippedSubviews
+        keyboardShouldPersistTaps="handled"
+      />
 
-    {/* ----- FLOATING BUTTON ----- */}
-    <TouchableOpacity
-      style={productScreenStyles.fab}
-      onPress={handleAddProduct}
-      activeOpacity={0.85}
-    >
-      <Ionicons name="add" size={26} color="#fff" />
-    </TouchableOpacity>
-  </SafeAreaView>
-);
+      {/* --------------------  FAB  -------------------- */}
+      <TouchableOpacity style={styles.fab} onPress={handleAddProduct}>
+        <Ionicons name="add" size={26} color="#fff" />
+      </TouchableOpacity>
+    </SafeAreaView>
+  );
 }
