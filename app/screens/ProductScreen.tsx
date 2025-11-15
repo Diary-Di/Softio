@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   Alert,
   RefreshControl,
-  Image, // ← standard Image
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -78,7 +78,7 @@ const MOCK_PRODUCTS: Product[] = [
 ];
 
 /* --------------------  COMPONENT  -------------------- */
-export default function ProductScreen() {
+export default function ProductScreen({ navigation }: any) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -115,8 +115,8 @@ export default function ProductScreen() {
 
   const handleAddProduct = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert('Nouveau Produit', 'Fonctionnalité à implémenter');
-  }, []);
+    navigation.navigate('CreateProduct');
+  }, [navigation]);
 
   /* --------------------  RENDER ITEM  -------------------- */
   const renderProductItem = useCallback(
@@ -166,14 +166,7 @@ export default function ProductScreen() {
     []
   );
 
-  const renderHeader = useCallback(
-    () => (
-      <View style={styles.header}>
-        <Text style={styles.title}>Produits</Text>
-      </View>
-    ),
-    []
-  );
+  const renderHeader = useCallback(() => null, []);
 
   /* --------------------  LOADING  -------------------- */
   if (loading && !refreshing) {

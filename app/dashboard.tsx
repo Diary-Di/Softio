@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createDrawerNavigator } from "@react-navigation/drawer";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React from "react";
 import { TouchableOpacity } from "react-native";
 
@@ -8,16 +9,41 @@ import CustomerScreen from "./screens/CustomerScreen";
 import HomeScreen from "./screens/HomeScreen";
 import ProductScreen from "./screens/ProductScreen";
 import SaleScreen from "./screens/SaleScreen";
+import CreateProductScreen from "./screens/CreateProductScreen";
 
 const Drawer = createDrawerNavigator();
 const Tab = createBottomTabNavigator();
+const ProductStack = createNativeStackNavigator();
+
+// --- Product Stack Navigator ---
+function ProductStackNavigator() {
+  return (
+    <ProductStack.Navigator>
+      <ProductStack.Screen 
+        name="ProductList" 
+        component={ProductScreen}
+        options={{ 
+          title: "Produits",
+          // No custom header here - let the tab navigator handle it
+        }}
+      />
+      <ProductStack.Screen 
+        name="CreateProduct" 
+        component={CreateProductScreen}
+        options={{ 
+          headerShown: false // Hide default header for form screens
+        }}
+      />
+    </ProductStack.Navigator>
+  );
+}
 
 // --- Bottom Tabs ---
 function BottomTabs({ navigation }: any) {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        // 👇 Add menu icon on top-left
+        // Header configuration for all tabs
         headerLeft: () => (
           <TouchableOpacity
             onPress={() => navigation.openDrawer()}
@@ -26,18 +52,22 @@ function BottomTabs({ navigation }: any) {
             <Ionicons name="menu" size={28} color="#333" />
           </TouchableOpacity>
         ),
-        // 👇 Add user icon on top-right
         headerRight: () => (
           <TouchableOpacity
-            onPress={() => {
-              // Add your user icon press handler here
-              console.log("User icon pressed");
-            }}
+            onPress={() => console.log("User icon pressed")}
             style={{ marginRight: 15 }}
           >
             <Ionicons name="person-circle" size={28} color="#007AFF" />
           </TouchableOpacity>
         ),
+        headerTitleStyle: {
+          fontWeight: 'bold',
+          fontSize: 18,
+        },
+        headerStyle: {
+          backgroundColor: 'white',
+        },
+        // Tab bar icons
         tabBarIcon: ({ color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = "home";
 
@@ -52,10 +82,26 @@ function BottomTabs({ navigation }: any) {
         tabBarInactiveTintColor: "gray",
       })}
     >
-      <Tab.Screen name="Accueil" component={HomeScreen} />
-      <Tab.Screen name="Clients" component={CustomerScreen} />
-      <Tab.Screen name="Produits" component={ProductScreen} />
-      <Tab.Screen name="Ventes" component={SaleScreen} />
+      <Tab.Screen 
+        name="Accueil" 
+        component={HomeScreen}
+        options={{ title: "Accueil" }}
+      />
+      <Tab.Screen 
+        name="Clients" 
+        component={CustomerScreen}
+        options={{ title: "Clients" }}
+      />
+      <Tab.Screen 
+        name="Produits" 
+        component={ProductStackNavigator}
+        options={{ title: "Produits" }}
+      />
+      <Tab.Screen 
+        name="Ventes" 
+        component={SaleScreen}
+        options={{ title: "Ventes" }}
+      />
     </Tab.Navigator>
   );
 }
