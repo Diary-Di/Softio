@@ -1,5 +1,5 @@
 /******************************************************************
- *  ProductScreen.tsx  –  Expo-Go friendly, image card + FAB
+ *  ProductScreen.tsx  –  Expo-Go friendly, image card + FAB + Menu
  ******************************************************************/
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -118,6 +118,64 @@ export default function ProductScreen({ navigation }: any) {
     navigation.navigate('CreateProduct');
   }, [navigation]);
 
+  // Handle three-dot menu press
+  const handleMenuPress = useCallback((product: Product, event: any) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    event.stopPropagation(); // Prevent triggering the card press
+    
+    // Show action sheet with options
+    Alert.alert(
+      'Options du produit',
+      `Que voulez-vous faire avec "${product.designation}" ?`,
+      [
+        {
+          text: 'Modifier',
+          onPress: () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            Alert.alert('Modifier', `Modifier le produit: ${product.designation}`);
+          },
+        },
+        {
+          text: 'Supprimer',
+          onPress: () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+            Alert.alert(
+              'Supprimer',
+              `Êtes-vous sûr de vouloir supprimer "${product.designation}" ?`,
+              [
+                { text: 'Annuler', style: 'cancel' },
+                { 
+                  text: 'Supprimer', 
+                  style: 'destructive',
+                  onPress: () => {
+                    // Remove product from list
+                    setProducts(prev => prev.filter(p => p.id !== product.id));
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  }
+                },
+              ]
+            );
+          },
+          style: 'destructive',
+        },
+        {
+          text: 'Voir les détails',
+          onPress: () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            Alert.alert(
+              product.designation,
+              `Référence: ${product.reference}\nMarque: ${product.marque}\nPrix: ${product.prix} €\nCatégorie: ${product.categorie}`
+            );
+          },
+        },
+        {
+          text: 'Annuler',
+          style: 'cancel',
+        },
+      ]
+    );
+  }, []);
+
   /* --------------------  RENDER ITEM  -------------------- */
   const renderProductItem = useCallback(
     ({ item }: { item: Product }) => (
@@ -131,9 +189,19 @@ export default function ProductScreen({ navigation }: any) {
 
         {/* -------  details  ------- */}
         <View style={styles.cardInfo}>
-          <Text style={styles.cardName} numberOfLines={2}>
-            {item.designation}
-          </Text>
+          {/* Header with title and menu button */}
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardName} numberOfLines={2}>
+              {item.designation}
+            </Text>
+            <TouchableOpacity
+              style={styles.menuButton}
+              onPress={(e) => handleMenuPress(item, e)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="ellipsis-vertical" size={18} color="#666" />
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.metaRow}>
             <Text style={styles.metaLabel}>Ref:</Text>
@@ -149,7 +217,7 @@ export default function ProductScreen({ navigation }: any) {
         </View>
       </TouchableOpacity>
     ),
-    [handleProductPress]
+    [handleProductPress, handleMenuPress]
   );
 
   /* --------------------  EMPTY / HEADER  -------------------- */

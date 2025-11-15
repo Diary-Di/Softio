@@ -144,4 +144,18 @@ export const productScreenStyles = StyleSheet.create({
     lineHeight: 20,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
+
+  // Add these styles to your existing productScreenStyles.ts
+
+cardHeader: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'flex-start',
+  marginBottom: 8,
+},
+menuButton: {
+  padding: 4,
+  borderRadius: 6,
+  marginLeft: 8,
+},
 });
