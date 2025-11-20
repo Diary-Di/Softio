@@ -6,12 +6,12 @@ import React from "react";
 import { TouchableOpacity, View, StyleSheet, Platform } from "react-native";
 import { BlurView } from 'expo-blur';
 
-import CustomerScreen from "./screens/CustomerScreen";
-import HomeScreen from "./screens/HomeScreen";
-import ProductScreen from "./screens/ProductScreen";
-import SaleScreen from "./screens/SaleScreen";
-import CreateProductScreen from "./screens/CreateProductScreen";
-import ProfileScreen from "./screens/ProfileScreen";
+import CustomerScreen from "../screens/CustomerScreen";
+import HomeScreen from "../screens/HomeScreen";
+import ProductScreen from "../screens/ProductScreen";
+import SaleScreen from "../screens/SaleScreen";
+import CreateProductScreen from "../screens/CreateProductScreen";
+import ProfileScreen from "../screens/ProfileScreen";
 
 const Drawer = createDrawerNavigator();
 const Tab = createBottomTabNavigator();
@@ -171,7 +171,8 @@ function BottomTabs({ navigation }: any) {
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
-          marginTop: 4,
+          marginTop: 0,          // <- supprimé
+          marginBottom: 2,       // (optionnel) petit espacement vers le bas
         },
         tabBarIcon: ({ color, size, focused }) => {
           let iconName: keyof typeof Ionicons.glyphMap = "home";

@@ -10,7 +10,7 @@ import {
   Image,
   TouchableWithoutFeedback,
 } from "react-native";
-import { styles } from "./../styles/loginStyles";
+import { styles } from "../../styles/loginStyles";
 import { useRouter } from "expo-router"; // Change from react-navigation to expo-router
 
 const LoginScreen = () => {
