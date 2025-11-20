@@ -10,10 +10,12 @@ import HomeScreen from "./screens/HomeScreen";
 import ProductScreen from "./screens/ProductScreen";
 import SaleScreen from "./screens/SaleScreen";
 import CreateProductScreen from "./screens/CreateProductScreen";
+import ProfileScreen from "./screens/ProfileScreen";
 
 const Drawer = createDrawerNavigator();
 const Tab = createBottomTabNavigator();
 const ProductStack = createNativeStackNavigator();
+const MainStack = createNativeStackNavigator(); // Nouveau stack pour gérer la navigation vers le profil
 
 // --- Product Stack Navigator ---
 function ProductStackNavigator() {
@@ -24,17 +26,39 @@ function ProductStackNavigator() {
         component={ProductScreen}
         options={{ 
           title: "Produits",
-          // No custom header here - let the tab navigator handle it
         }}
       />
       <ProductStack.Screen 
         name="CreateProduct" 
         component={CreateProductScreen}
         options={{ 
-          headerShown: false // Hide default header for form screens
+          headerShown: false
         }}
       />
     </ProductStack.Navigator>
+  );
+}
+
+// --- Main Stack Navigator (pour gérer la navigation vers le profil) ---
+function MainStackNavigator({ navigation }: any) {
+  return (
+    <MainStack.Navigator>
+      <MainStack.Screen 
+        name="BottomTabs" 
+        component={BottomTabs}
+        options={{ 
+          headerShown: false 
+        }}
+      />
+      <MainStack.Screen 
+        name="Profile" 
+        component={ProfileScreen}
+        options={{ 
+          title: "Profil",
+          headerBackTitle: "Retour"
+        }}
+      />
+    </MainStack.Navigator>
   );
 }
 
@@ -54,7 +78,7 @@ function BottomTabs({ navigation }: any) {
         ),
         headerRight: () => (
           <TouchableOpacity
-            onPress={() => console.log("User icon pressed")}
+            onPress={() => navigation.navigate("Profile")} // Navigation vers Profile
             style={{ marginRight: 15 }}
           >
             <Ionicons name="person-circle" size={28} color="#007AFF" />
@@ -116,8 +140,8 @@ export default function Dashboard() {
       }}
     >
       <Drawer.Screen
-        name="MainTabs"
-        component={BottomTabs}
+        name="MainStack"
+        component={MainStackNavigator} // Utiliser MainStackNavigator au lieu de BottomTabs
         options={{ title: "Tableau de Bord" }}
       />
     </Drawer.Navigator>
