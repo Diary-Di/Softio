@@ -159,7 +159,7 @@ function BottomTabs({ navigation }: any) {
           backgroundColor: colors.surface,
           borderTopWidth: 1,
           borderTopColor: colors.border,
-          height: Platform.OS === 'ios' ? 88 : 65,
+          height: Platform.OS === 'ios' ? 88 : 72,
           paddingBottom: Platform.OS === 'ios' ? 28 : 8,
           paddingTop: 8,
           elevation: 8,
@@ -215,7 +215,7 @@ function BottomTabs({ navigation }: any) {
         component={ProductStackNavigator}
         options={{ 
           title: "Produits",
-          headerShown: false,
+          //headerShown: false,
         }}
       />
       <Tab.Screen 
