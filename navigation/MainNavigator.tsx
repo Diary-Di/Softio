@@ -1,11 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Pressable } from "react-native";
-import React from "react";
 
 import CustomerScreen from "../screens/CustomerScreen";
 import HomeScreen from "../screens/HomeScreen";
-import ProductScreen from "../screens/ProductScreen";
+import ProductStackNavigator from '../navigation/ProductStackNavigator';
 import SaleScreen from "../screens/SaleScreen";
 
 const Tab = createBottomTabNavigator();
@@ -13,7 +12,7 @@ const Tab = createBottomTabNavigator();
 export default function MainNavigator() {
   return (
     <Tab.Navigator
-      screenOptions={({ navigation, route }) => ({
+      screenOptions={({ route }) => ({
         tabBarIcon: ({ color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = "home";
 
@@ -46,7 +45,7 @@ export default function MainNavigator() {
     >
       <Tab.Screen name="Accueil" component={HomeScreen} />
       <Tab.Screen name="Clients" component={CustomerScreen} />
-      <Tab.Screen name="Produits" component={ProductScreen} />
+      <Tab.Screen name="Produits" component={ProductStackNavigator} />
       <Tab.Screen name="Ventes" component={SaleScreen} />
     </Tab.Navigator>
   );

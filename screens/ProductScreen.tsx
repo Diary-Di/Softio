@@ -1,4 +1,6 @@
-
+/******************************************************************
+ *  ProductScreen.tsx  –  Expo-Go friendly, image card + FAB + Menu
+ ******************************************************************/
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -13,7 +15,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { productScreenStyles as styles } from '../styles/productScreenStyles';
+import { router } from 'expo-router';
 
 /* --------------------  TYPES  -------------------- */
 type Product = {
@@ -24,6 +28,21 @@ type Product = {
   prix: number;
   categorie: string;
   imageUrl: string;
+};
+
+// Define navigation types
+export type ProductStackParamList = {
+  ProductList: undefined;
+  CreateProduct: undefined;
+};
+
+type ProductScreenNavigationProp = StackNavigationProp<
+  ProductStackParamList,
+  'ProductList'
+>;
+
+type Props = {
+  navigation: ProductScreenNavigationProp;
 };
 
 /* --------------------  MOCK DATA  -------------------- */
@@ -76,7 +95,7 @@ const MOCK_PRODUCTS: Product[] = [
 ];
 
 /* --------------------  COMPONENT  -------------------- */
-export default function ProductScreen({ navigation }: any) {
+export default function ProductScreen({ navigation }: Props) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -113,6 +132,8 @@ export default function ProductScreen({ navigation }: any) {
 
   const handleAddProduct = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    // Navigate to CreateProduct screen
     navigation.navigate('CreateProduct');
   }, [navigation]);
 
@@ -277,7 +298,11 @@ export default function ProductScreen({ navigation }: any) {
       />
 
       {/* --------------------  FAB  -------------------- */}
-      <TouchableOpacity style={styles.fab} onPress={handleAddProduct}>
+      <TouchableOpacity 
+        style={styles.fab} 
+        onPress={handleAddProduct}
+        activeOpacity={0.8}
+      >
         <Ionicons name="add" size={26} color="#fff" />
       </TouchableOpacity>
     </SafeAreaView>

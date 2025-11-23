@@ -14,6 +14,7 @@ import CustomerScreen from '../screens/CustomerScreen';
 import ProductScreen  from '../screens/ProductScreen';
 import SaleScreen     from '../screens/SaleScreen';
 import ProfileScreen  from '../screens/ProfileScreen';
+import ProductStackNavigator from '../navigation/ProductStackNavigator';
 
 // ---------- Palette ----------
 const colors = {
@@ -100,9 +101,12 @@ export default function Dashboard() {
           drawerIcon: ({ color, size }) => <Ionicons name="people-outline" size={size} color={color} />,
         }}
       />
+
+
+
       <Drawer.Screen
         name="Produits"
-        component={ProductScreen}
+        component={ProductStackNavigator}  // ← Utilisez le Stack Navigator ici
         options={{
           drawerIcon: ({ color, size }) => <Ionicons name="cube-outline" size={size} color={color} />,
         }}
