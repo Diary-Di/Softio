@@ -1,6 +1,4 @@
-/******************************************************************
- *  ProductScreen.tsx  –  Expo-Go friendly, image card + FAB + Menu
- ******************************************************************/
+
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
