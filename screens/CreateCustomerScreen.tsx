@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useState } from 'react';
 import {
@@ -80,7 +81,15 @@ export default function CreateCustomerScreen() {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Text style={styles.title}>Créer un client</Text>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} accessibilityLabel="Retour">
+              <Ionicons name="arrow-back" size={18} color="#374151" />
+            </TouchableOpacity>
+            <View style={styles.headerCenter}>
+              <Text style={styles.title}>Ajouter un client</Text>
+            </View>
+            <View style={styles.headerRight} />
+          </View>
 
           <View style={{ marginBottom: 8 }}>
             <Text style={styles.label}>Raison social</Text>
@@ -137,7 +146,7 @@ export default function CreateCustomerScreen() {
           {/* Editeur field removed */}
 
           <TouchableOpacity style={styles.button} onPress={handleSubmit} activeOpacity={0.9}>
-            <Text style={styles.buttonText}>Créer le client</Text>
+            <Text style={styles.buttonText}>Enregistrer</Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>

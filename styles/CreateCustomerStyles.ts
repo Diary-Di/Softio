@@ -4,6 +4,10 @@ export default StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   content: { padding: 16, paddingBottom: Platform.OS === 'ios' ? 40 : 24 },
   title: { fontSize: 20, fontWeight: '700', marginBottom: 16, color: '#111827' },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  backButton: { width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 8, backgroundColor: '#F3F4F6' },
+  headerCenter: { flex: 1, alignItems: 'center' },
+  headerRight: { width: 36 },
   label: { fontSize: 13, color: '#374151', marginBottom: 6, marginTop: 8, fontWeight: '600' },
   input: {
     height: 44,
