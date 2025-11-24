@@ -1,17 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  ActivityIndicator,
-  TouchableOpacity,
-  Alert,
-  RefreshControl,
-  Image,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  RefreshControl,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { productScreenStyles as styles } from '../styles/productScreenStyles'; // ré-utilisé
 
 type PriceItem = {
@@ -138,9 +138,7 @@ export default function PriceScreen({ onScroll }: Props) {
         ListEmptyComponent={renderEmpty}
       />
 
-      <TouchableOpacity style={styles.fab} onPress={() => Alert.alert('Ajouter prix')}>
-        <Ionicons name="add" size={26} color="#fff" />
-      </TouchableOpacity>
+      {/* Floating action button removed — Price creation is handled elsewhere */}
     </SafeAreaView>
   );
 }
