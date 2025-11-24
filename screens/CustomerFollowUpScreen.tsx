@@ -9,7 +9,6 @@ import {
     Pressable,
     SafeAreaView,
     Text,
-    TouchableOpacity,
     UIManager,
     View
 } from 'react-native';
@@ -131,10 +130,7 @@ export default function CustomerFollowUpScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F3F4F6' }}>
       <View style={{ padding: 16 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={stylesHeader.backButton}>
-          <Ionicons name="arrow-back" size={18} color="#374151" />
-        </TouchableOpacity>
-        <Text style={[stylesHeader.title, { marginTop: 8 }]}>Suivi des clients</Text>
+        <Text style={[stylesHeader.title, { marginTop: 8, textAlign: 'center' }]}>Suivi des clients</Text>
       </View>
 
       <FlatList
