@@ -52,21 +52,24 @@ export const productScreenStyles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 24,
-    bottom: 34,
+    bottom: 92, // placed above the floating bottom bar
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: 12, // rounded square
     backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 20,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.22,
-        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        // iOS uses zIndex for stacking
+        zIndex: 20,
       },
-      android: { elevation: 8 },
+      android: { elevation: 12 },
     }),
   },
 
