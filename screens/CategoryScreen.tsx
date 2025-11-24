@@ -1,17 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  FlatList,
   ActivityIndicator,
-  TouchableOpacity,
   Alert,
-  RefreshControl,
+  FlatList,
   Image,
+  RefreshControl,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { productScreenStyles as styles } from '../styles/productScreenStyles';
 
 type Category = {
@@ -31,6 +32,7 @@ const MOCK_CATEGORIES: Category[] = [
 type Props = { onScroll?: any };
 
 export default function CategoryScreen({ onScroll }: Props) {
+  const navigation: any = useNavigation();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -126,7 +128,7 @@ export default function CategoryScreen({ onScroll }: Props) {
         ListEmptyComponent={renderEmpty}
       />
 
-      <TouchableOpacity style={styles.fab} onPress={() => Alert.alert('Ajouter catégorie')}>
+      <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('CreateCategory')}>
         <Ionicons name="add" size={26} color="#fff" />
       </TouchableOpacity>
     </SafeAreaView>
