@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
 import { useState } from "react";
 import { Alert, FlatList, LayoutAnimation, Linking, Platform, Pressable, Text, TouchableOpacity, UIManager, View } from "react-native";
+import FloatingBottomBarCustomer from '../components/FloatingBottomBarCustomer';
 import styles from "../styles/CustomerScreenStyles";
 import { productScreenStyles as productStyles } from '../styles/productScreenStyles';
 
@@ -183,12 +184,14 @@ export default function CustomerScreen() {
       />
       {/* Reuse FAB from ProductScreen to open CreateCustomer */}
       <TouchableOpacity
-        style={[productStyles.fab, { bottom: 24 }]}
+        style={[productStyles.fab, { bottom: 92 }]}
         activeOpacity={0.85}
         onPress={() => navigation.navigate('CreateCustomer')}
       >
         <Ionicons name="add" size={26} color="#fff" />
       </TouchableOpacity>
+      {/* Customer-specific floating bottom bar */}
+      <FloatingBottomBarCustomer active="client" />
     </View>
   );
 }
