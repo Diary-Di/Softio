@@ -28,10 +28,15 @@ export default function withFadeBar<P>(
       (props as Partial<WithScrollProps>).onScroll?.(e);
     };
 
+    // Hide the floating bottom bar for specific screens (e.g. the CreateProduct screen)
+    const routeName = (props as any).route?.name as string | undefined;
+    const excludedScreens = ['CreateProduct'];
+    const shouldShowBar = !routeName || !excludedScreens.includes(routeName);
+
     return (
       <>
         <WrappedComponent {...props} onScroll={onScroll} />
-        <FloatingBottomBar visible={visible} active={activeTab} />
+        {shouldShowBar && <FloatingBottomBar visible={visible} active={activeTab} />}
       </>
     );
   };

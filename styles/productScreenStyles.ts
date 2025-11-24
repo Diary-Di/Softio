@@ -1,7 +1,7 @@
 /******************************************************************
  *  productScreenStyles.ts  –  matches the Expo-Go ProductScreen
  ******************************************************************/
-import { StyleSheet, Platform, Dimensions } from 'react-native';
+import { Dimensions, Platform, StyleSheet } from 'react-native';
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export const productScreenStyles = StyleSheet.create({
