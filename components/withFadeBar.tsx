@@ -28,9 +28,10 @@ export default function withFadeBar<P>(
       (props as Partial<WithScrollProps>).onScroll?.(e);
     };
 
-    // Hide the floating bottom bar for specific screens (e.g. the CreateProduct screen)
+    // Hide the floating bottom bar for specific screens (e.g. the CreateProduct or CreateCustomer screens)
     const routeName = (props as any).route?.name as string | undefined;
-    const excludedScreens = ['CreateProduct'];
+    // Exclude the CreateProduct, CreateCustomer screens and CustomerList so the bar does not appear on those screens
+    const excludedScreens = ['CreateProduct', 'CreateCustomer', 'CustomerList'];
     const shouldShowBar = !routeName || !excludedScreens.includes(routeName);
 
     return (

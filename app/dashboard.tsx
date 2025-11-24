@@ -1,20 +1,18 @@
-import React from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
   DrawerContentScrollView,
-  DrawerItemList,
   DrawerItem,
+  DrawerItemList,
   createDrawerNavigator,
 } from '@react-navigation/drawer';
-import { Ionicons } from '@expo/vector-icons';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 // ---------- Écrans ----------
-import HomeScreen     from '../screens/HomeScreen';
-import CustomerScreen from '../screens/CustomerScreen';
-import ProductScreen  from '../screens/ProductScreen';
-import SaleScreen     from '../screens/SaleScreen';
-import ProfileScreen  from '../screens/ProfileScreen';
+import CustomerStackNavigator from '../navigation/CustomerStackNavigator';
 import ProductStackNavigator from '../navigation/ProductStackNavigator';
+import HomeScreen from '../screens/HomeScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import SaleScreen from '../screens/SaleScreen';
 
 // ---------- Palette ----------
 const colors = {
@@ -96,7 +94,7 @@ export default function Dashboard() {
       />
       <Drawer.Screen
         name="Clients"
-        component={CustomerScreen}
+        component={CustomerStackNavigator}
         options={{
           drawerIcon: ({ color, size }) => <Ionicons name="people-outline" size={size} color={color} />,
         }}
