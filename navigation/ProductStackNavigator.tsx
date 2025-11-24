@@ -1,12 +1,11 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import ProductScreen    from '../screens/ProductScreen';
-import PriceScreen      from '../screens/PriceScreen';
-import CategoryScreen   from '../screens/CategoryScreen';
+import ProductScreen       from '../screens/ProductScreen';
+import PriceScreen         from '../screens/PriceScreen';
+import CategoryScreen      from '../screens/CategoryScreen';
 import CreateProductScreen from '../screens/CreateProductScreen';
-import withFadeBar      from '../components/withFadeBar';
+import withFadeBar         from '../components/withFadeBar';
 
-/* ---------- Types ---------- */
 export type ProductStackParamList = {
   ProductList   : undefined;
   CreateProduct : undefined;
@@ -17,14 +16,10 @@ export type ProductStackParamList = {
 const Stack = createNativeStackNavigator<ProductStackParamList>();
 
 export default function ProductStackNavigator() {
-  /* onglet actif du bottom-bar */
-  const [active, setActive] = React.useState<'produit' | 'prix' | 'categorie'>('produit');
-
-  /* on “wrap” chaque écran avec le HOC qui gère le fade */
-  const ProductList   = withFadeBar(ProductScreen,    'produit',   setActive);
-  const Price         = withFadeBar(PriceScreen,      'prix',      setActive);
-  const Category      = withFadeBar(CategoryScreen,   'categorie', setActive);
-  const CreateProduct = withFadeBar(CreateProductScreen, 'produit', setActive);
+  const ProductList   = withFadeBar(ProductScreen,    'produit');
+  const Price         = withFadeBar(PriceScreen,      'prix');
+  const Category      = withFadeBar(CategoryScreen,   'categorie');
+  const CreateProduct = withFadeBar(CreateProductScreen, 'produit');
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>

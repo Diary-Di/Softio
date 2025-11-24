@@ -1,17 +1,30 @@
 import React from 'react';
 import { Animated, View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { ProductStackParamList } from '../navigation/ProductStackNavigator';
+
+type NavProp = NativeStackNavigationProp<ProductStackParamList>;
+type Tab    = 'produit' | 'prix' | 'categorie';
 
 interface Props {
   visible: Animated.AnimatedAddition<string | number>;
-  onTab: (tab: 'produit' | 'prix' | 'categorie') => void;
-  active : 'produit' | 'prix' | 'categorie';
+  active : Tab;
 }
 
-export default function FloatingBottomBar({ visible, onTab, active }: Props) {
+export default function FloatingBottomBar({ visible, active }: Props) {
+  const nav = useNavigation<NavProp>();
+
+  const navigateTo = (key: Tab) => {
+    if (key === 'produit')   nav.navigate('ProductList');
+    else if (key === 'prix') nav.navigate('Price');
+    else if (key === 'categorie') nav.navigate('Category');
+  };
+
   const translateY = visible.interpolate({
     inputRange : [0, 1],
-    outputRange: [80, 0], // 80 = hauteur estimée du bar
+    outputRange: [80, 0],
   });
 
   const tabs = [
@@ -27,7 +40,7 @@ export default function FloatingBottomBar({ visible, onTab, active }: Props) {
           <TouchableOpacity
             key={key}
             style={styles.tab}
-            onPress={() => onTab(key)}
+            onPress={() => navigateTo(key)}
           >
             <Ionicons
               name={icon}

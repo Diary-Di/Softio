@@ -1,17 +1,19 @@
-import React, { useRef, useEffect } from 'react';
+// components/withFadeBar.tsx
+import React, { useRef } from 'react';
 import { Animated, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import FloatingBottomBar from './FloatingBottomBar';
 
-/* 1.  type unique */
 export type Tab = 'produit' | 'prix' | 'categorie';
 
-/* 2.  Pas de <Tab extends string> ici */
-export default function withFadeBar(
-  WrappedComponent: React.ComponentType<any>,
-  activeTab: Tab,
-  onTab: (t: Tab) => void
-) {
-  return (props: any) => {
+type WithScrollProps = {
+  onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+};
+
+export default function withFadeBar<P>(
+  WrappedComponent: React.ComponentType<P & Partial<WithScrollProps>>,
+  activeTab: Tab
+): React.FC<P> {
+  return (props: P) => {
     const lastY   = useRef(0);
     const visible = useRef(new Animated.Value(1)).current;
 
@@ -23,12 +25,13 @@ export default function withFadeBar(
       else if (diff < -2) Animated.timing(visible, { toValue: 1, duration: 200, useNativeDriver: true }).start();
 
       lastY.current = currentY;
+      (props as Partial<WithScrollProps>).onScroll?.(e);
     };
 
     return (
       <>
         <WrappedComponent {...props} onScroll={onScroll} />
-        <FloatingBottomBar visible={visible} active={activeTab} onTab={onTab} />
+        <FloatingBottomBar visible={visible} active={activeTab} />
       </>
     );
   };
