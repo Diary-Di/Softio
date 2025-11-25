@@ -2,477 +2,386 @@ import { Picker } from '@react-native-picker/picker';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { newSalesStyles } from '../styles/NewSalesStyles';
+import { cartSalesStyles } from '../styles/NewSalesStyles';
 
 // Types
-type SaleForm = {
-  customerName: string;
-  customerPhone: string;
-  productName: string;
-  quantity: string;
-  unitPrice: string;
-  date: string;
-  notes: string;
+type Product = {
+  id: string;
+  reference: string;
+  designation: string;
+  prixUnitaire: number;
+  quantiteDisponible: number;
 };
 
-type FormErrors = {
-  [key in keyof SaleForm]?: string;
+type CartItem = Product & {
+  quantiteAcheter: number;
+  montant: number;
 };
 
 // Mock data
-const MOCK_PRODUCTS = [
-  'Bouquet de Roses',
-  'Pain Complet',
-  'Laptop Dell XPS 13',
-  'iPhone 14 Pro',
-  'Samsung Galaxy S23',
-  'Autre',
+const MOCK_PRODUCTS: Product[] = [
+  {
+    id: '1',
+    reference: 'REF001',
+    designation: 'Bouquet de Roses',
+    prixUnitaire: 25.00,
+    quantiteDisponible: 50,
+  },
+  {
+    id: '2',
+    reference: 'REF002',
+    designation: 'Pain Complet',
+    prixUnitaire: 2.50,
+    quantiteDisponible: 100,
+  },
+  {
+    id: '3',
+    reference: 'REF003',
+    designation: 'Laptop Dell XPS 13',
+    prixUnitaire: 1299.99,
+    quantiteDisponible: 15,
+  },
+  {
+    id: '4',
+    reference: 'REF004',
+    designation: 'iPhone 14 Pro',
+    prixUnitaire: 1199.00,
+    quantiteDisponible: 25,
+  },
+  {
+    id: '5',
+    reference: 'REF005',
+    designation: 'Samsung Galaxy S23',
+    prixUnitaire: 899.00,
+    quantiteDisponible: 30,
+  },
 ];
 
-const MOCK_CUSTOMERS = [
-  'Marie Dupont',
-  'Paul Martin',
-  'Sophie Bernard',
-  'Jean Leclerc',
-  'Nouveau client',
-];
+export default function CartSalesScreen({ navigation }: any) {
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [quantityToAdd, setQuantityToAdd] = useState<string>('1');
 
-export default function NewSalesScreen({ navigation }: any) {
-  const [formData, setFormData] = useState<SaleForm>({
-    customerName: '',
-    customerPhone: '',
-    productName: '',
-    quantity: '1',
-    unitPrice: '',
-    date: new Date().toISOString().split('T')[0],
-    notes: '',
-  });
-
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [touched, setTouched] = useState<{ [key: string]: boolean }>({});
-
-  // Handle input changes
-  const handleInputChange = useCallback((field: keyof SaleForm, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
-    }
-  }, [errors]);
-
-  // Mark field as touched
-  const handleBlur = useCallback((field: keyof SaleForm) => {
-    setTouched(prev => ({ ...prev, [field]: true }));
-    validateField(field, formData[field]);
-  }, [formData]);
-
-  // Validate individual field
-  const validateField = useCallback((field: keyof SaleForm, value: any) => {
-    let error = '';
-
-    switch (field) {
-      case 'customerName':
-        if (!value.trim()) error = 'Le nom du client est obligatoire';
-        else if (value.trim().length < 2) error = 'Le nom doit contenir au moins 2 caractères';
-        break;
-
-      case 'customerPhone':
-        if (value && !value.trim().match(/^[\d\s\-\+()]+$/)) 
-          error = 'Numéro de téléphone invalide';
-        break;
-
-      case 'productName':
-        if (!value.trim()) error = 'Le produit est obligatoire';
-        break;
-
-      case 'quantity':
-        if (!value.trim()) error = 'La quantité est obligatoire';
-        else if (isNaN(parseInt(value)) || parseInt(value) <= 0) 
-          error = 'La quantité doit être un nombre positif';
-        break;
-
-      case 'unitPrice':
-        if (!value.trim()) error = 'Le prix unitaire est obligatoire';
-        else if (isNaN(parseFloat(value)) || parseFloat(value) <= 0) 
-          error = 'Le prix doit être un nombre positif';
-        break;
-
-      case 'date':
-        if (!value.trim()) error = 'La date est obligatoire';
-        break;
-    }
-
-    setErrors(prev => ({ ...prev, [field]: error }));
-    return !error;
-  }, []);
-
-  // Validate entire form
-  const validateForm = useCallback((): boolean => {
-    let isValid = true;
-
-    const requiredFields: (keyof SaleForm)[] = [
-      'customerName',
-      'productName',
-      'quantity',
-      'unitPrice',
-      'date',
-    ];
-
-    requiredFields.forEach(field => {
-      const fieldIsValid = validateField(field, formData[field]);
-      if (!fieldIsValid) isValid = false;
-    });
-
-    return isValid;
-  }, [formData, validateField]);
-
-  // Handle form submission
-  const handleSubmit = useCallback(async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    // Mark all fields as touched
-    const allTouched = Object.keys(formData).reduce((acc, key) => {
-      acc[key] = true;
-      return acc;
-    }, {} as { [key: string]: boolean });
-    setTouched(allTouched);
-
-    if (!validateForm()) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Erreur', 'Veuillez corriger les erreurs dans le formulaire');
+  // Ajouter un produit au panier
+  const addToCart = useCallback(() => {
+    if (!selectedProductId) {
+      Alert.alert('Erreur', 'Veuillez sélectionner un produit');
       return;
     }
 
-    setIsSubmitting(true);
+    const product = MOCK_PRODUCTS.find(p => p.id === selectedProductId);
+    if (!product) return;
 
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Replace with actual API call:
-      // const response = await api.post('/sales', {
-      //   ...formData,
-      //   quantity: parseInt(formData.quantity),
-      //   unitPrice: parseFloat(formData.unitPrice),
-      //   totalPrice: parseInt(formData.quantity) * parseFloat(formData.unitPrice)
-      // });
-
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-      Alert.alert(
-        'Succès',
-        'Vente enregistrée avec succès',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack()
-          }
-        ]
-      );
-    } catch (error) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Erreur', 'Impossible d\'enregistrer la vente');
-    } finally {
-      setIsSubmitting(false);
+    const qty = parseInt(quantityToAdd) || 1;
+    
+    if (qty <= 0) {
+      Alert.alert('Erreur', 'La quantité doit être supérieure à 0');
+      return;
     }
-  }, [formData, validateForm, navigation]);
 
-  // Handle cancel
-  const handleCancel = useCallback(() => {
+    if (qty > product.quantiteDisponible) {
+      Alert.alert('Erreur', `Seulement ${product.quantiteDisponible} unités disponibles`);
+      return;
+    }
+
+    // Vérifier si le produit existe déjà dans le panier
+    const existingItemIndex = cart.findIndex(item => item.id === product.id);
+    
+    if (existingItemIndex !== -1) {
+      const updatedCart = [...cart];
+      const newQty = updatedCart[existingItemIndex].quantiteAcheter + qty;
+      
+      if (newQty > product.quantiteDisponible) {
+        Alert.alert('Erreur', `Maximum ${product.quantiteDisponible} unités disponibles`);
+        return;
+      }
+      
+      updatedCart[existingItemIndex].quantiteAcheter = newQty;
+      updatedCart[existingItemIndex].montant = newQty * product.prixUnitaire;
+      setCart(updatedCart);
+    } else {
+      const cartItem: CartItem = {
+        ...product,
+        quantiteAcheter: qty,
+        montant: qty * product.prixUnitaire,
+      };
+      setCart([...cart, cartItem]);
+    }
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    navigation.goBack();
-  }, [navigation]);
+    setSelectedProductId('');
+    setQuantityToAdd('1');
+  }, [selectedProductId, quantityToAdd, cart]);
 
-  // Calculate total
-  const quantity = parseInt(formData.quantity) || 0;
-  const unitPrice = parseFloat(formData.unitPrice) || 0;
-  const total = quantity * unitPrice;
+  // Supprimer un article du panier
+  const removeFromCart = useCallback((productId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setCart(cart.filter(item => item.id !== productId));
+  }, [cart]);
 
-  const isFormValid =
-    formData.customerName.trim() &&
-    formData.productName.trim() &&
-    formData.quantity.trim() &&
-    formData.unitPrice.trim() &&
-    formData.date.trim() &&
-    !Object.values(errors).some(error => error);
+  // Modifier la quantité dans le panier
+  const updateCartQuantity = useCallback((productId: string, newQty: number) => {
+    const product = MOCK_PRODUCTS.find(p => p.id === productId);
+    if (!product) return;
+
+    if (newQty <= 0) {
+      removeFromCart(productId);
+      return;
+    }
+
+    if (newQty > product.quantiteDisponible) {
+      Alert.alert('Erreur', `Maximum ${product.quantiteDisponible} unités disponibles`);
+      return;
+    }
+
+    const updatedCart = cart.map(item => {
+      if (item.id === productId) {
+        return {
+          ...item,
+          quantiteAcheter: newQty,
+          montant: newQty * item.prixUnitaire,
+        };
+      }
+      return item;
+    });
+    
+    setCart(updatedCart);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [cart, removeFromCart]);
+
+  // Calculer le total
+  const totalAmount = cart.reduce((sum, item) => sum + item.montant, 0);
+  const totalItems = cart.reduce((sum, item) => sum + item.quantiteAcheter, 0);
+
+  // Naviguer vers l'écran de validation
+  const goToValidation = useCallback(() => {
+    if (cart.length === 0) {
+      Alert.alert('Panier vide', 'Ajoutez des produits avant de continuer');
+      return;
+    }
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    // Naviguer vers CartValidationScreen avec les données du panier
+    navigation.navigate('CartValidation', {
+      cart,
+      totalAmount,
+      totalItems,
+    });
+  }, [cart, totalAmount, totalItems, navigation]);
 
   return (
-    <SafeAreaView style={newSalesStyles.safeArea}>
+    <SafeAreaView style={cartSalesStyles.safeArea}>
       {/* Header */}
-      <View style={newSalesStyles.header}>
+      <View style={cartSalesStyles.header}>
         <TouchableOpacity
-          style={newSalesStyles.cancelButton}
-          onPress={handleCancel}
-          disabled={isSubmitting}
+          style={cartSalesStyles.cancelButton}
+          onPress={() => navigation.goBack()}
         >
-          <Text style={newSalesStyles.cancelButtonText}>Annuler</Text>
+          <Text style={cartSalesStyles.cancelButtonText}>Annuler</Text>
         </TouchableOpacity>
 
-        <Text style={newSalesStyles.headerTitle}>Nouvelle Vente</Text>
+        <Text style={cartSalesStyles.headerTitle}>Nouvelle Vente</Text>
 
-        <View style={{ width: 60 }} />
+        {cart.length > 0 && (
+          <View style={cartSalesStyles.headerBadge}>
+            <Text style={cartSalesStyles.headerBadgeText}>{totalItems}</Text>
+          </View>
+        )}
+        {cart.length === 0 && <View style={{ width: 40 }} />}
       </View>
 
-      {/* Form */}
       <ScrollView
-        style={newSalesStyles.formContainer}
-        contentContainerStyle={newSalesStyles.scrollContent}
+        style={cartSalesStyles.container}
+        contentContainerStyle={cartSalesStyles.scrollContent}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
       >
-        {/* CUSTOMER SECTION */}
-        <Text style={newSalesStyles.sectionTitle}>Client</Text>
-
-        {/* Customer Name */}
-        <View style={newSalesStyles.inputGroup}>
-          <Text style={newSalesStyles.label}>
-            Nom du Client <Text style={newSalesStyles.required}>*</Text>
-          </Text>
-          <View style={newSalesStyles.picker}>
+        {/* SECTION AJOUTER PRODUIT */}
+        <View style={cartSalesStyles.section}>
+          <Text style={cartSalesStyles.sectionTitle}>AJOUTER AU PANIER</Text>
+          
+          <View style={cartSalesStyles.picker}>
             <Picker
-              selectedValue={formData.customerName}
-              onValueChange={(value) => handleInputChange('customerName', value)}
-              enabled={!isSubmitting}
-              style={
-                Platform.OS === 'ios'
-                  ? newSalesStyles.pickerIOS
-                  : newSalesStyles.pickerAndroid
-              }
-            >
-              <Picker.Item label="Sélectionnez ou créez un client" value="" />
-              {MOCK_CUSTOMERS.map((customer) => (
-                <Picker.Item key={customer} label={customer} value={customer} />
-              ))}
-            </Picker>
-          </View>
-          {touched.customerName && errors.customerName && (
-            <Text style={newSalesStyles.errorText}>{errors.customerName}</Text>
-          )}
-        </View>
-
-        {/* Customer Phone */}
-        <View style={newSalesStyles.inputGroup}>
-          <Text style={newSalesStyles.label}>Téléphone (optionnel)</Text>
-          <TextInput
-            style={[
-              newSalesStyles.textInput,
-              touched.customerPhone && errors.customerPhone && newSalesStyles.errorInput
-            ]}
-            value={formData.customerPhone}
-            onChangeText={(value) => handleInputChange('customerPhone', value)}
-            onBlur={() => handleBlur('customerPhone')}
-            placeholder="+33 1 23 45 67 89"
-            placeholderTextColor="#999"
-            editable={!isSubmitting}
-            keyboardType="phone-pad"
-          />
-          {touched.customerPhone && errors.customerPhone && (
-            <Text style={newSalesStyles.errorText}>{errors.customerPhone}</Text>
-          )}
-        </View>
-
-        {/* PRODUCT SECTION */}
-        <Text style={newSalesStyles.sectionTitle}>Produit</Text>
-
-        {/* Product Name */}
-        <View style={newSalesStyles.inputGroup}>
-          <Text style={newSalesStyles.label}>
-            Produit <Text style={newSalesStyles.required}>*</Text>
-          </Text>
-          <View style={newSalesStyles.picker}>
-            <Picker
-              selectedValue={formData.productName}
-              onValueChange={(value) => handleInputChange('productName', value)}
-              enabled={!isSubmitting}
-              style={
-                Platform.OS === 'ios'
-                  ? newSalesStyles.pickerIOS
-                  : newSalesStyles.pickerAndroid
-              }
+              selectedValue={selectedProductId}
+              onValueChange={setSelectedProductId}
+              style={Platform.OS === 'ios' ? cartSalesStyles.pickerIOS : cartSalesStyles.pickerAndroid}
             >
               <Picker.Item label="Sélectionnez un produit" value="" />
               {MOCK_PRODUCTS.map((product) => (
-                <Picker.Item key={product} label={product} value={product} />
+                <Picker.Item 
+                  key={product.id} 
+                  label={`${product.reference} - ${product.designation} (€${product.prixUnitaire})`}
+                  value={product.id} 
+                />
               ))}
             </Picker>
           </View>
-          {touched.productName && errors.productName && (
-            <Text style={newSalesStyles.errorText}>{errors.productName}</Text>
+
+          {selectedProductId && (
+            <>
+              <View style={cartSalesStyles.productDetail}>
+                {(() => {
+                  const product = MOCK_PRODUCTS.find(p => p.id === selectedProductId);
+                  if (!product) return null;
+                  return (
+                    <>
+                      <View style={cartSalesStyles.productRow}>
+                        <Text style={cartSalesStyles.productLabel}>Référence:</Text>
+                        <Text style={cartSalesStyles.productValue}>{product.reference}</Text>
+                      </View>
+                      <View style={cartSalesStyles.productRow}>
+                        <Text style={cartSalesStyles.productLabel}>Prix unitaire:</Text>
+                        <Text style={cartSalesStyles.productValue}>€ {product.prixUnitaire.toFixed(2)}</Text>
+                      </View>
+                      <View style={cartSalesStyles.productRow}>
+                        <Text style={cartSalesStyles.productLabel}>Stock disponible:</Text>
+                        <Text style={[cartSalesStyles.productValue, { color: product.quantiteDisponible > 10 ? '#10b981' : '#f59e0b' }]}>
+                          {product.quantiteDisponible} unités
+                        </Text>
+                      </View>
+                    </>
+                  );
+                })()}
+              </View>
+
+              <View style={cartSalesStyles.addToCartRow}>
+                <View style={cartSalesStyles.quantityInput}>
+                  <Text style={cartSalesStyles.label}>Quantité</Text>
+                  <TextInput
+                    style={cartSalesStyles.textInput}
+                    value={quantityToAdd}
+                    onChangeText={(value) => setQuantityToAdd(value.replace(/[^0-9]/g, ''))}
+                    placeholder="1"
+                    keyboardType="number-pad"
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={cartSalesStyles.addButton}
+                  onPress={addToCart}
+                >
+                  <Text style={cartSalesStyles.addButtonText}>Ajouter</Text>
+                </TouchableOpacity>
+              </View>
+            </>
           )}
         </View>
 
-        {/* Quantity and Unit Price Row */}
-        <View style={newSalesStyles.rowContainer}>
-          {/* Quantity */}
-          <View style={[newSalesStyles.inputGroup, newSalesStyles.halfInput]}>
-            <Text style={newSalesStyles.label}>
-              Quantité <Text style={newSalesStyles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={[
-                newSalesStyles.textInput,
-                touched.quantity && errors.quantity && newSalesStyles.errorInput
-              ]}
-              value={formData.quantity}
-              onChangeText={(value) => handleInputChange('quantity', value.replace(/[^0-9]/g, ''))}
-              onBlur={() => handleBlur('quantity')}
-              placeholder="1"
-              placeholderTextColor="#999"
-              keyboardType="number-pad"
-              editable={!isSubmitting}
-            />
-            {touched.quantity && errors.quantity && (
-              <Text style={newSalesStyles.errorText}>{errors.quantity}</Text>
+        {/* PANIER */}
+        <View style={cartSalesStyles.section}>
+          <View style={cartSalesStyles.cartHeader}>
+            <Text style={cartSalesStyles.sectionTitle}>PANIER</Text>
+            {cart.length > 0 && (
+              <View style={cartSalesStyles.badge}>
+                <Text style={cartSalesStyles.badgeText}>{totalItems}</Text>
+              </View>
             )}
           </View>
 
-          {/* Unit Price */}
-          <View style={[newSalesStyles.inputGroup, newSalesStyles.halfInput]}>
-            <Text style={newSalesStyles.label}>
-              Prix Unitaire (€) <Text style={newSalesStyles.required}>*</Text>
-            </Text>
-            <View style={newSalesStyles.priceContainer}>
-              <Text style={newSalesStyles.currencySymbol}>€</Text>
-              <TextInput
-                style={[
-                  newSalesStyles.textInput,
-                  newSalesStyles.priceInput,
-                  touched.unitPrice && errors.unitPrice && newSalesStyles.errorInput
-                ]}
-                value={formData.unitPrice}
-                onChangeText={(value) =>
-                  handleInputChange('unitPrice', value.replace(',', '.'))
-                }
-                onBlur={() => handleBlur('unitPrice')}
-                placeholder="0.00"
-                placeholderTextColor="#999"
-                keyboardType="decimal-pad"
-                editable={!isSubmitting}
-              />
-            </View>
-            {touched.unitPrice && errors.unitPrice && (
-              <Text style={newSalesStyles.errorText}>{errors.unitPrice}</Text>
-            )}
-          </View>
-        </View>
-
-        {/* Summary Card */}
-        {quantity > 0 && unitPrice > 0 && (
-          <View style={newSalesStyles.summaryCard}>
-            <View style={newSalesStyles.summaryRow}>
-              <Text style={newSalesStyles.summaryLabel}>Quantité</Text>
-              <Text style={newSalesStyles.summaryValue}>{quantity}</Text>
-            </View>
-            <View style={newSalesStyles.summaryRow}>
-              <Text style={newSalesStyles.summaryLabel}>Prix Unitaire</Text>
-              <Text style={newSalesStyles.summaryValue}>€ {unitPrice.toFixed(2)}</Text>
-            </View>
-            <View style={[newSalesStyles.summaryRow, newSalesStyles.totalRow]}>
-              <Text style={[newSalesStyles.summaryLabel, { fontWeight: '700', fontSize: 16 }]}>
-                TOTAL
+          {cart.length === 0 ? (
+            <View style={cartSalesStyles.emptyCart}>
+              <Text style={cartSalesStyles.emptyCartIcon}>🛒</Text>
+              <Text style={cartSalesStyles.emptyCartText}>Le panier est vide</Text>
+              <Text style={cartSalesStyles.emptyCartSubtext}>
+                Sélectionnez des produits pour commencer
               </Text>
-              <Text style={newSalesStyles.totalValue}>€ {total.toFixed(2)}</Text>
             </View>
-          </View>
-        )}
+          ) : (
+            <>
+              {cart.map((item) => (
+                <View key={item.id} style={cartSalesStyles.cartItem}>
+                  <View style={cartSalesStyles.cartItemHeader}>
+                    <View style={cartSalesStyles.cartItemTitle}>
+                      <Text style={cartSalesStyles.cartItemRef}>{item.reference}</Text>
+                      <Text style={cartSalesStyles.cartItemName}>{item.designation}</Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => removeFromCart(item.id)}
+                      style={cartSalesStyles.removeButton}
+                    >
+                      <Text style={cartSalesStyles.removeButtonText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
 
-        {/* SALE DETAILS SECTION */}
-        <Text style={newSalesStyles.sectionTitle}>Détails</Text>
+                  <View style={cartSalesStyles.cartItemDetails}>
+                    <View style={cartSalesStyles.cartItemRow}>
+                      <Text style={cartSalesStyles.cartItemLabel}>Prix unitaire:</Text>
+                      <Text style={cartSalesStyles.cartItemValue}>€ {item.prixUnitaire.toFixed(2)}</Text>
+                    </View>
+                    
+                    <View style={cartSalesStyles.cartItemRow}>
+                      <Text style={cartSalesStyles.cartItemLabel}>Disponible:</Text>
+                      <Text style={cartSalesStyles.cartItemValue}>{item.quantiteDisponible} unités</Text>
+                    </View>
 
-        {/* Date */}
-        <View style={newSalesStyles.inputGroup}>
-          <Text style={newSalesStyles.label}>
-            Date <Text style={newSalesStyles.required}>*</Text>
-          </Text>
-          <TextInput
-            style={[
-              newSalesStyles.textInput,
-              touched.date && errors.date && newSalesStyles.errorInput
-            ]}
-            value={formData.date}
-            onChangeText={(value) => handleInputChange('date', value)}
-            onBlur={() => handleBlur('date')}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor="#999"
-            editable={!isSubmitting}
-          />
-          {touched.date && errors.date && (
-            <Text style={newSalesStyles.errorText}>{errors.date}</Text>
+                    <View style={cartSalesStyles.cartItemRow}>
+                      <Text style={cartSalesStyles.cartItemLabel}>Quantité:</Text>
+                      <View style={cartSalesStyles.quantityControls}>
+                        <TouchableOpacity
+                          style={cartSalesStyles.qtyButton}
+                          onPress={() => updateCartQuantity(item.id, item.quantiteAcheter - 1)}
+                        >
+                          <Text style={cartSalesStyles.qtyButtonText}>−</Text>
+                        </TouchableOpacity>
+                        <Text style={cartSalesStyles.qtyValue}>{item.quantiteAcheter}</Text>
+                        <TouchableOpacity
+                          style={cartSalesStyles.qtyButton}
+                          onPress={() => updateCartQuantity(item.id, item.quantiteAcheter + 1)}
+                        >
+                          <Text style={cartSalesStyles.qtyButtonText}>+</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    <View style={[cartSalesStyles.cartItemRow, cartSalesStyles.totalRow]}>
+                      <Text style={cartSalesStyles.cartItemTotal}>Montant:</Text>
+                      <Text style={cartSalesStyles.cartItemTotalValue}>€ {item.montant.toFixed(2)}</Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+
+              {/* Total général */}
+              <View style={cartSalesStyles.totalCard}>
+                <View style={cartSalesStyles.totalRow}>
+                  <Text style={cartSalesStyles.totalLabel}>Total articles:</Text>
+                  <Text style={cartSalesStyles.totalValue}>{totalItems}</Text>
+                </View>
+                <View style={[cartSalesStyles.totalRow, { marginTop: 8 }]}>
+                  <Text style={cartSalesStyles.totalLabelMain}>TOTAL:</Text>
+                  <Text style={cartSalesStyles.totalValueMain}>€ {totalAmount.toFixed(2)}</Text>
+                </View>
+              </View>
+            </>
           )}
-        </View>
-
-        {/* Notes */}
-        <View style={newSalesStyles.inputGroup}>
-          <Text style={newSalesStyles.label}>Notes (optionnel)</Text>
-          <TextInput
-            style={[
-              newSalesStyles.textInput,
-              { minHeight: 80, textAlignVertical: 'top', paddingTop: 12 }
-            ]}
-            value={formData.notes}
-            onChangeText={(value) => handleInputChange('notes', value)}
-            placeholder="Ajouter des notes sur cette vente..."
-            placeholderTextColor="#999"
-            multiline
-            numberOfLines={4}
-            editable={!isSubmitting}
-            maxLength={500}
-          />
         </View>
       </ScrollView>
 
-      {/* Footer with Submit Button */}
-      <View style={newSalesStyles.footer}>
-        <TouchableOpacity
-          style={newSalesStyles.cancelButtonFooter}
-          onPress={handleCancel}
-          disabled={isSubmitting}
-        >
-          <Text style={newSalesStyles.cancelButtonFooterText}>Annuler</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            newSalesStyles.submitButton,
-            (!isFormValid || isSubmitting) && newSalesStyles.submitButtonDisabled
-          ]}
-          onPress={handleSubmit}
-          disabled={!isFormValid || isSubmitting}
-          activeOpacity={0.8}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator color="white" size="small" />
-          ) : (
-            <Text
-              style={[
-                newSalesStyles.submitButtonText,
-                (!isFormValid || isSubmitting) && newSalesStyles.submitButtonTextDisabled
-              ]}
-            >
-              Enregistrer
-            </Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* Loading Overlay */}
-      {isSubmitting && (
-        <View style={newSalesStyles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={{ color: 'white', marginTop: 12, fontSize: 16 }}>
-            Enregistrement en cours...
-          </Text>
+      {/* Footer avec bouton continuer */}
+      {cart.length > 0 && (
+        <View style={cartSalesStyles.footer}>
+          <TouchableOpacity
+            style={cartSalesStyles.continueButton}
+            onPress={goToValidation}
+          >
+            <View style={cartSalesStyles.continueButtonContent}>
+              <View>
+                <Text style={cartSalesStyles.continueButtonLabel}>Continuer</Text>
+                <Text style={cartSalesStyles.continueButtonSubtext}>{totalItems} article(s)</Text>
+              </View>
+              <Text style={cartSalesStyles.continueButtonPrice}>€ {totalAmount.toFixed(2)}</Text>
+            </View>
+          </TouchableOpacity>
         </View>
       )}
     </SafeAreaView>

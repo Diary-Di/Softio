@@ -1,15 +1,16 @@
-import { Dimensions, Platform, StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 
-const { width: screenWidth } = Dimensions.get('window');
-
-export const newSalesStyles = StyleSheet.create({
+export const cartSalesStyles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#f8f9fa',
   },
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 120,
   },
   header: {
     flexDirection: 'row',
@@ -23,12 +24,12 @@ export const newSalesStyles = StyleSheet.create({
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 2,
+        shadowRadius: 3,
       },
       android: {
-        elevation: 2,
+        elevation: 3,
       },
     }),
   },
@@ -36,77 +37,49 @@ export const newSalesStyles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#1a1a1a',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   cancelButton: {
     padding: 8,
-    minHeight: 44,
-    minWidth: 44,
-    justifyContent: 'center',
   },
   cancelButtonText: {
     color: '#007AFF',
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
-  formContainer: {
-    flex: 1,
-    padding: 16,
+  headerBadge: {
+    backgroundColor: '#007AFF',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    minWidth: 40,
+    alignItems: 'center',
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 20,
+  headerBadgeText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // Sections
+  section: {
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: '#666',
     textTransform: 'uppercase',
-    marginTop: 24,
     marginBottom: 12,
     letterSpacing: 0.5,
   },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 8,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-  required: {
-    color: '#ff3b30',
-  },
-  textInput: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#1a1a1a',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
-  },
+
+  // Picker
   picker: {
     backgroundColor: 'white',
     borderWidth: 1,
     borderColor: '#d1d5db',
     borderRadius: 12,
+    overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -127,90 +100,304 @@ export const newSalesStyles = StyleSheet.create({
     width: '100%',
     height: 200,
   },
-  rowContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  halfInput: {
-    flex: 1,
-  },
-  errorInput: {
-    borderColor: '#ff3b30',
-    backgroundColor: '#fffafa',
-  },
-  errorText: {
-    color: '#ff3b30',
-    fontSize: 14,
-    marginTop: 6,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-  priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  currencySymbol: {
-    position: 'absolute',
-    left: 16,
-    zIndex: 1,
-    fontSize: 16,
-    color: '#666',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-  priceInput: {
-    paddingLeft: 30,
-  },
-  summaryCard: {
-    backgroundColor: '#f0f4ff',
-    borderRadius: 12,
-    padding: 16,
+
+  // Détails produit
+  productDetail: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 12,
     marginTop: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#007AFF',
+    borderWidth: 1,
+    borderColor: '#e9ecef',
   },
-  summaryRow: {
+  productRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    paddingVertical: 6,
   },
-  summaryLabel: {
+  productLabel: {
     fontSize: 14,
     color: '#666',
-    fontWeight: '500',
   },
-  summaryValue: {
+  productValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+
+  // Ajouter au panier
+  addToCartRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+    alignItems: 'flex-end',
+  },
+  quantityInput: {
+    flex: 1,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 6,
+  },
+  textInput: {
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#1a1a1a',
+  },
+  addButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 10,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 48,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#007AFF',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  addButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // Panier
+  cartHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  badge: {
+    backgroundColor: '#007AFF',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    minWidth: 24,
+    alignItems: 'center',
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  emptyCart: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 40,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  emptyCartIcon: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  emptyCartText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 4,
+  },
+  emptyCartSubtext: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+  },
+
+  // Items du panier
+  cartItem: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  cartItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  cartItemTitle: {
+    flex: 1,
+  },
+  cartItemRef: {
+    fontSize: 12,
+    color: '#007AFF',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  cartItemName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1a1a1a',
   },
-  totalRow: {
-    borderTopWidth: 1,
-    borderTopColor: '#d1d5db',
-    paddingTop: 8,
-    marginTop: 8,
+  removeButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#fee',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  totalValue: {
-    fontSize: 20,
+  removeButtonText: {
+    color: '#ff3b30',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  cartItemDetails: {
+    gap: 8,
+  },
+  cartItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cartItemLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  cartItemValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+
+  // Contrôles quantité
+  quantityControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  qtyButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  qtyButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  qtyValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    minWidth: 24,
+    textAlign: 'center',
+  },
+
+  // Total item
+  totalRow: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+  },
+  cartItemTotal: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  cartItemTotalValue: {
+    fontSize: 17,
     fontWeight: '700',
     color: '#007AFF',
   },
+
+  // Total général
+  totalCard: {
+    backgroundColor: '#f0f4ff',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#007AFF',
+  },
+  totalLabel: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  totalValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  totalLabelMain: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  totalValueMain: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#007AFF',
+  },
+
+  // Footer
   footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     padding: 16,
     paddingBottom: Platform.OS === 'ios' ? 34 : 16,
     backgroundColor: 'white',
     borderTopWidth: 1,
     borderTopColor: '#e9ecef',
-    flexDirection: 'row',
-    gap: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -3 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
-  submitButton: {
-    flex: 1,
+  continueButton: {
     backgroundColor: '#007AFF',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 56,
+    borderRadius: 14,
+    padding: 18,
     ...Platform.select({
       ios: {
         shadowColor: '#007AFF',
@@ -223,79 +410,24 @@ export const newSalesStyles = StyleSheet.create({
       },
     }),
   },
-  submitButtonDisabled: {
-    backgroundColor: '#cccccc',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#cccccc',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+  continueButtonContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  submitButtonText: {
+  continueButtonLabel: {
     color: 'white',
     fontSize: 18,
     fontWeight: '700',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    marginBottom: 2,
   },
-  submitButtonTextDisabled: {
-    color: '#999999',
+  continueButtonSubtext: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 13,
   },
-  cancelButtonFooter: {
-    flex: 1,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 56,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-  },
-  cancelButtonFooterText: {
-    color: '#666',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  dateInputButton: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    justifyContent: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
-  },
-  dateInputText: {
-    fontSize: 16,
-    color: '#1a1a1a',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-  dateInputPlaceholder: {
-    color: '#999',
+  continueButtonPrice: {
+    color: 'white',
+    fontSize: 22,
+    fontWeight: '700',
   },
 });
