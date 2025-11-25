@@ -13,6 +13,7 @@ import ProductStackNavigator from '../navigation/ProductStackNavigator';
 import SalesStackNavigator from '../navigation/SalesStackNavigator';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import ProformaScreen from '../screens/ProformaScreen';
 
 // ---------- Palette ----------
 const colors = {
@@ -116,6 +117,15 @@ export default function Dashboard() {
           drawerIcon: ({ color, size }) => <Ionicons name="cart-outline" size={size} color={color} />,
         }}
       />
+
+      <Drawer.Screen
+        name="Proforma"
+        component={ProformaScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <Ionicons name="cart-outline" size={size} color={color} />,
+        }}
+      />
+
       <Drawer.Screen
         name="Profil"
         component={ProfileScreen}
