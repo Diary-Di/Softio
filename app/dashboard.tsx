@@ -10,9 +10,9 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 // ---------- Écrans ----------
 import CustomerStackNavigator from '../navigation/CustomerStackNavigator';
 import ProductStackNavigator from '../navigation/ProductStackNavigator';
+import SalesStackNavigator from '../navigation/SalesStackNavigator';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import SaleScreen from '../screens/SaleScreen';
 
 // ---------- Palette ----------
 const colors = {
@@ -111,7 +111,7 @@ export default function Dashboard() {
       />
       <Drawer.Screen
         name="Ventes"
-        component={SaleScreen}
+        component={SalesStackNavigator}
         options={{
           drawerIcon: ({ color, size }) => <Ionicons name="cart-outline" size={size} color={color} />,
         }}

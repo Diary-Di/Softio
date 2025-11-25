@@ -2,10 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Pressable } from "react-native";
 
+import ProductStackNavigator from '../navigation/ProductStackNavigator';
+import SalesStackNavigator from '../navigation/SalesStackNavigator';
 import CustomerScreen from "../screens/CustomerScreen";
 import HomeScreen from "../screens/HomeScreen";
-import ProductStackNavigator from '../navigation/ProductStackNavigator';
-import SaleScreen from "../screens/SaleScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -46,7 +46,7 @@ export default function MainNavigator() {
       <Tab.Screen name="Accueil" component={HomeScreen} />
       <Tab.Screen name="Clients" component={CustomerScreen} />
       <Tab.Screen name="Produits" component={ProductStackNavigator} />
-      <Tab.Screen name="Ventes" component={SaleScreen} />
+      <Tab.Screen name="Ventes" component={SalesStackNavigator} />
     </Tab.Navigator>
   );
 }

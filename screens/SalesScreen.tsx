@@ -1,8 +1,18 @@
 
 import { Ionicons } from "@expo/vector-icons";
+import { StackNavigationProp } from '@react-navigation/stack';
 import { useState } from "react";
-import { Alert, FlatList, LayoutAnimation, Platform, Pressable, Text, UIManager, View } from "react-native";
+import { Alert, FlatList, LayoutAnimation, Platform, Pressable, Text, TouchableOpacity, UIManager, View } from "react-native";
+import { SalesStackParamList } from '../navigation/SalesStackNavigator';
 import styles from "../styles/SalesScreenStyles";
+import { productScreenStyles as productStyles } from '../styles/productScreenStyles';
+
+type SalesScreenNavigationProp = StackNavigationProp<SalesStackParamList, 'SaleList'>;
+
+interface SalesScreenProps {
+  navigation?: SalesScreenNavigationProp;
+  route?: any;
+}
 
 type Sale = {
   id: string;
@@ -32,7 +42,7 @@ const SAMPLE_SALES: Sale[] = [
   },
 ];
 
-export default function SaleScreen() {
+export default function SalesScreen({ navigation, route }: SalesScreenProps) {
   // Enable LayoutAnimation on Android
   if (Platform.OS === "android") {
     UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -120,7 +130,7 @@ export default function SaleScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { position: 'relative' }]}>
       <Text style={styles.title}>Ventes</Text>
       <FlatList
         data={SAMPLE_SALES}
@@ -128,7 +138,15 @@ export default function SaleScreen() {
         renderItem={renderItem}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={true}
       />
+      <TouchableOpacity
+        style={productStyles.fab}
+        activeOpacity={0.85}
+        onPress={() => navigation?.navigate('NewSale')}
+      >
+        <Ionicons name="add" size={26} color="#fff" />
+      </TouchableOpacity>
     </View>
   );
 }

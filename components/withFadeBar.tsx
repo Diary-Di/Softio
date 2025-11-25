@@ -7,6 +7,8 @@ export type Tab = 'produit' | 'prix' | 'categorie';
 
 type WithScrollProps = {
   onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  navigation?: any;
+  route?: any;
 };
 
 export default function withFadeBar<P>(
@@ -32,12 +34,12 @@ export default function withFadeBar<P>(
     const routeName = (props as any).route?.name as string | undefined;
     // Exclude certain screens so the product floating bar does not appear on those screens
     // Add 'CustomerFollowUp' so the product bar is hidden on the follow-up screen
-    const excludedScreens = ['CreateProduct', 'CreateCustomer', 'CustomerList', 'CustomerFollowUp'];
+    const excludedScreens = ['CreateProduct', 'CreateCustomer', 'CustomerList', 'CustomerFollowUp', 'NewSale'];
     const shouldShowBar = !routeName || !excludedScreens.includes(routeName);
 
     return (
       <>
-        <WrappedComponent {...props} onScroll={onScroll} />
+        <WrappedComponent {...props} onScroll={onScroll} navigation={(props as any).navigation} route={(props as any).route} />
         {shouldShowBar && <FloatingBottomBar visible={visible} active={activeTab} />}
       </>
     );
