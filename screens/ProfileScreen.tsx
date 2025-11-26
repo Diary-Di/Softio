@@ -60,7 +60,8 @@ export default function ProfileScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       
       <ScrollView style={styles.scrollView}>
-        {/* Header avec avatar */}
+        
+        {/* ---------- HEADER ---------- */}
         <View style={styles.header}>
           <View style={styles.avatarContainer}>
             <Image 
@@ -74,13 +75,9 @@ export default function ProfileScreen() {
           
           <Text style={styles.userName}>{user.name}</Text>
           <Text style={styles.userEmail}>{user.email}</Text>
-          
-          <TouchableOpacity style={styles.manageAccountButton}>
-            <Text style={styles.manageAccountText}>Gérer votre compte Google</Text>
-          </TouchableOpacity>
         </View>
 
-        {/* Section Comptes */}
+        {/* ---------- SECTION COMPTES ---------- */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>COMPTES</Text>
           
@@ -97,53 +94,12 @@ export default function ProfileScreen() {
           />
         </View>
 
-        {/* Section Paramètres */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>PARAMÈTRES</Text>
-          
-          <MenuItem
-            iconName="settings-outline"
-            title="Paramètres généraux"
-            subtitle="Notifications, mode sombre"
-            onPress={() => console.log('Paramètres généraux')}
-          />
-          
-          <MenuItem
-            iconName="shield-checkmark-outline"
-            title="Confidentialité et sécurité"
-            subtitle="Contrôles de confidentialité"
-            onPress={() => console.log('Confidentialité')}
-          />
-        </View>
-
-        {/* Section Aide */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>AIDE ET COMMENTAIRES</Text>
-          
-          <MenuItem
-            iconName="help-circle-outline"
-            title="Aide"
-            onPress={() => console.log('Aide')}
-          />
-          
-          <MenuItem
-            iconName="chatbubble-outline"
-            title="Envoyer des commentaires"
-            onPress={() => console.log('Commentaires')}
-          />
-        </View>
-
-        {/* Bouton Déconnexion */}
+        {/* ---------- BOUTON DÉCONNEXION ---------- */}
         <TouchableOpacity style={styles.logoutButton}>
           <Ionicons name="log-out-outline" size={20} color="#d93025" />
           <Text style={styles.logoutText}>Se déconnecter</Text>
         </TouchableOpacity>
 
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Confidentialité • Conditions d'utilisation</Text>
-          <Text style={styles.footerVersion}>Version 2024.1.0</Text>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );

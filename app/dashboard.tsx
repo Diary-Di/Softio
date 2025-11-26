@@ -5,7 +5,7 @@ import {
   DrawerItemList,
   createDrawerNavigator,
 } from '@react-navigation/drawer';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 
 // ---------- Écrans ----------
 import CustomerStackNavigator from '../navigation/CustomerStackNavigator';
@@ -46,7 +46,7 @@ function ModernDrawer(props: any) {
         <DrawerItem
           label="Déconnexion"
           icon={({ color, size }) => <Ionicons name="log-out-outline" color={color} size={size} />}
-          onPress={() => {}} // branche ta logique ici
+          onPress={() => {}}
           labelStyle={styles.logoutLabel}
           inactiveTintColor={colors.textSecondary}
           activeTintColor={colors.accent}
@@ -63,18 +63,17 @@ export default function Dashboard() {
   return (
     <Drawer.Navigator
       drawerContent={(props) => <ModernDrawer {...props} />}
-      screenOptions={{
+      screenOptions={({ navigation }) => ({
         headerShown        : true,
         drawerType         : 'slide',
         drawerStyle        : { width: 280, backgroundColor: colors.surface },
         overlayColor       : 'rgba(0,0,0,0.3)',
 
-        // Item styling
         drawerActiveTintColor   : '#fff',
         drawerInactiveTintColor : colors.textSecondary,
         drawerActiveBackgroundColor : colors.primary,
-        drawerLabelStyle     : { fontSize: 16, fontWeight: '600', marginLeft: 12 }, // ⬅️ ESPACEMENT
-        drawerItemStyle      : {
+        drawerLabelStyle        : { fontSize: 16, fontWeight: '600', marginLeft: 12 },
+        drawerItemStyle         : {
           borderRadius    : 12,
           marginHorizontal: 12,
           marginVertical  : 4,
@@ -84,37 +83,55 @@ export default function Dashboard() {
         // Header
         headerTintColor  : colors.primary,
         headerTitleStyle : { fontWeight: '700', fontSize: 20, color: colors.text },
-      }}
+
+        // 🔥 Bouton Profil dans le header (top bar)
+        headerRight: () => (
+          <TouchableOpacity
+            style={{ marginRight: 16 }}
+            onPress={() => navigation.navigate("Profil")}
+          >
+            <Ionicons name="person-circle-outline" size={28} color={colors.primary} />
+          </TouchableOpacity>
+        ),
+      })}
     >
       <Drawer.Screen
         name="Accueil"
         component={HomeScreen}
         options={{
-          drawerIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="home-outline" size={size} color={color} />
+          ),
         }}
       />
+
       <Drawer.Screen
         name="Clients"
         component={CustomerStackNavigator}
         options={{
-          drawerIcon: ({ color, size }) => <Ionicons name="people-outline" size={size} color={color} />,
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="people-outline" size={size} color={color} />
+          ),
         }}
       />
-
-
 
       <Drawer.Screen
         name="Produits"
-        component={ProductStackNavigator}  // ← Utilisez le Stack Navigator ici
+        component={ProductStackNavigator}
         options={{
-          drawerIcon: ({ color, size }) => <Ionicons name="cube-outline" size={size} color={color} />,
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="cube-outline" size={size} color={color} />
+          ),
         }}
       />
+
       <Drawer.Screen
         name="Ventes"
         component={SalesStackNavigator}
         options={{
-          drawerIcon: ({ color, size }) => <Ionicons name="cart-outline" size={size} color={color} />,
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="cart-outline" size={size} color={color} />
+          ),
         }}
       />
 
@@ -122,15 +139,18 @@ export default function Dashboard() {
         name="Proforma"
         component={ProformaScreen}
         options={{
-          drawerIcon: ({ color, size }) => <Ionicons name="cart-outline" size={size} color={color} />,
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="receipt-outline" size={size} color={color} />
+          ),
         }}
       />
 
+      {/* 🔥 Screen Profil caché du Drawer mais accessible */}
       <Drawer.Screen
         name="Profil"
         component={ProfileScreen}
         options={{
-          drawerIcon: ({ color, size }) => <Ionicons name="person-circle-outline" size={size} color={color} />,
+          drawerItemStyle: { height: 0 }, // ← caché dans le drawer
         }}
       />
     </Drawer.Navigator>
