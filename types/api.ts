@@ -1,20 +1,34 @@
 // types/api.ts
+
+// Types pour l'authentification
 export interface User {
   id: number;
+  nom: string;
   email: string;
-  name: string;
-  createdAt: string;
+}
+
+export interface RegisterRequest {
+  nom: string;
+  email: string;
+  mot_de_passe: string;
+}
+
+export interface RegisterResponse {
+  success: boolean;
+  message: string;
+  user_id?: number;
 }
 
 export interface LoginRequest {
   email: string;
-  password: string;
+  mot_de_passe: string;
 }
 
 export interface LoginResponse {
-  token: string;
-  user: User;
-  expiresIn: number;
+  success: boolean;
+  message: string;
+  token?: string;
+  user?: User;
 }
 
 export interface ApiError {

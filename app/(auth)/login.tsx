@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,12 +9,17 @@ import {
   ScrollView,
   Image,
   TouchableWithoutFeedback,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { styles } from "../../styles/loginStyles";
-import { useRouter } from "expo-router"; // Change from react-navigation to expo-router
+import { useRouter } from "expo-router";
+import { useAuth } from "../../hooks/useAuth";
 
 const LoginScreen = () => {
-  const router = useRouter(); // Use Expo Router instead of react-navigation
+  const router = useRouter();
+  const { login, loading, error } = useAuth();
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -29,23 +34,46 @@ const LoginScreen = () => {
   // Check if all fields are filled
   const isFormValid = email.trim().length > 0 && password.trim().length > 0;
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!isFormValid) {
       setMessageType("error");
       setMessage("Veuillez saisir l'email et le mot de passe.");
       return;
     }
 
-    if (email === "admin@gmail.com" && password === "123456") {
+    if (!isValidEmail(email)) {
+      setMessageType("error");
+      setMessage("Veuillez saisir un email valide.");
+      return;
+    }
+
+    setMessage("");
+    
+    try {
+      const credentials = {
+        email: email.trim().toLowerCase(),
+        mot_de_passe: password,
+      };
+
+      await login(credentials);
+      
       setMessageType("success");
       setMessage("Connexion réussie !");
+      
+      // Redirection vers la page d'accueil
       setTimeout(() => {
-        router.push("/"); // Navigate to home using Expo Router
+        router.replace("/");
       }, 1000);
-    } else {
+      
+    } catch (error: any) {
       setMessageType("error");
-      setMessage("Identifiants invalides. Veuillez réessayer.");
+      setMessage(error.message || "Erreur lors de la connexion");
     }
+  };
+
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
   };
 
   const handleGoogleLogin = () => {
@@ -54,11 +82,11 @@ const LoginScreen = () => {
   };
 
   const handleCreateAccount = () => {
-    router.push("/register"); // Navigate to register using Expo Router
+    router.push("/register");
   };
 
   const handleForgotPassword = () => {
-    router.push("/forgot-password"); // Navigate to forgot password using Expo Router
+    router.push("/forgot-password");
   };
 
   const toggleShowPassword = () => {
@@ -125,6 +153,9 @@ const LoginScreen = () => {
                 onBlur={() => setEmailFocused(false)}
                 selectionColor="#007bff"
                 cursorColor="#007bff"
+                editable={!loading}
+                returnKeyType="next"
+                onSubmitEditing={focusPasswordInput}
               />
             </View>
           </TouchableWithoutFeedback>
@@ -153,12 +184,16 @@ const LoginScreen = () => {
                 onBlur={() => setPasswordFocused(false)}
                 selectionColor="#007bff"
                 cursorColor="#007bff"
+                editable={!loading}
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
               />
               {/* Show/Hide Password Button */}
               <TouchableOpacity 
                 onPress={toggleShowPassword}
                 style={styles.eyeButton}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                disabled={loading}
               >
                 <Image 
                   source={
@@ -173,12 +208,13 @@ const LoginScreen = () => {
             </View>
           </TouchableWithoutFeedback>
 
-          {/* Forgot Password Link - Left side after password field */}
+          {/* Forgot Password Link */}
           <TouchableOpacity 
             style={styles.forgotPasswordContainer}
             onPress={handleForgotPassword}
+            disabled={loading}
           >
-            <Text style={styles.forgotPasswordText}>
+            <Text style={[styles.forgotPasswordText, loading && styles.disabledText]}>
               Mot de passe oublié ?
             </Text>
           </TouchableOpacity>
@@ -187,62 +223,48 @@ const LoginScreen = () => {
           <TouchableOpacity 
             style={[
               styles.button,
-              !isFormValid && styles.buttonDisabled
+              (!isFormValid || loading) && styles.buttonDisabled
             ]} 
             onPress={handleLogin}
-            activeOpacity={isFormValid ? 0.8 : 1}
-            disabled={!isFormValid}
+            activeOpacity={isFormValid && !loading ? 0.8 : 1}
+            disabled={!isFormValid || loading}
           >
-            <Text style={[
-              styles.buttonText,
-              !isFormValid && styles.buttonTextDisabled
-            ]}>
-              Se connecter
-            </Text>
-          </TouchableOpacity>
-
-          {/* Divider */}
-          <View style={styles.dividerContainer}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>ou</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Google Sign-In Button */}
-          <TouchableOpacity 
-            style={styles.googleButton}
-            onPress={handleGoogleLogin}
-            activeOpacity={0.8}
-          >
-            <Image 
-              source={require('../../assets/icons/google-icon.png')} 
-              style={styles.googleIcon}
-              resizeMode="contain"
-            />
-            <Text style={styles.googleButtonText}>
-              Se connecter avec Google
-            </Text>
+            {loading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={[
+                styles.buttonText,
+                (!isFormValid || loading) && styles.buttonTextDisabled
+              ]}>
+                Se connecter
+              </Text>
+            )}
           </TouchableOpacity>
 
           {/* Message Display */}
           {message ? (
-            <Text
-              style={[
-                styles.message,
-                messageType === "error" ? styles.error : styles.success,
-              ]}
-            >
-              {message}
-            </Text>
+            <View style={[
+              styles.messageContainer,
+              messageType === "error" ? styles.errorContainer : styles.successContainer
+            ]}>
+              <Text style={[
+                styles.messageText,
+                messageType === "error" ? styles.errorText : styles.successText,
+              ]}>
+                {message}
+              </Text>
+            </View>
           ) : null}
 
-          {/* Bottom Links - Inline layout */}
+          {/* Bottom Links */}
           <View style={styles.bottomLinksContainer}>
             <Text style={styles.bottomText}>
               Vous n'avez pas de compte ?{" "}
             </Text>
-            <TouchableOpacity onPress={handleCreateAccount}>
-              <Text style={styles.link}>Créer un compte</Text>
+            <TouchableOpacity onPress={handleCreateAccount} disabled={loading}>
+              <Text style={[styles.link, loading && styles.disabledText]}>
+                Créer un compte
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

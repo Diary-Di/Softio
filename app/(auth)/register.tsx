@@ -9,16 +9,23 @@ import {
   ScrollView,
   Image,
   TouchableWithoutFeedback,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { styles } from "../../styles/registerStyles";
-import { useRouter } from "expo-router"; // Use Expo Router
+import { useRouter } from "expo-router";
+import { authService } from "../../services/authService";
 
 const RegisterScreen = () => {
-  const router = useRouter(); // Use Expo Router
+  const router = useRouter();
+  
+  // États pour les champs du formulaire
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  
+  // États pour l'UI
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"error" | "success" | "">("");
   const [showPassword, setShowPassword] = useState(false);
@@ -27,49 +34,123 @@ const RegisterScreen = () => {
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
+  // Références pour les inputs
   const fullNameInputRef = useRef<TextInput>(null);
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
   const confirmPasswordInputRef = useRef<TextInput>(null);
 
-  // Check if all fields are filled and passwords match
+  // Validation du formulaire
   const isFormValid = fullName.trim().length > 0 && 
                      email.trim().length > 0 && 
-                     password.trim().length > 0 && 
+                     password.trim().length >= 6 && 
                      confirmPassword.trim().length > 0 &&
                      password === confirmPassword;
 
-  const handleRegister = () => {
-    if (!isFormValid) {
-      if (password !== confirmPassword) {
-        setMessageType("error");
-        setMessage("Les mots de passe ne correspondent pas.");
-      } else {
-        setMessageType("error");
-        setMessage("Veuillez remplir tous les champs.");
-      }
+  // Fonction pour gérer l'inscription
+  const handleRegister = async () => {
+    // Validation côté client
+    if (!fullName.trim()) {
+      setMessageType("error");
+      setMessage("Veuillez entrer votre nom complet.");
       return;
     }
 
-    // Simulate registration success
-    setMessageType("success");
-    setMessage("Compte créé avec succès !");
-    setTimeout(() => {
-      router.push("/login"); // Navigate back to login using Expo Router
-    }, 1500);
+    if (!email.trim()) {
+      setMessageType("error");
+      setMessage("Veuillez entrer votre email.");
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      setMessageType("error");
+      setMessage("Veuillez entrer un email valide.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setMessageType("error");
+      setMessage("Le mot de passe doit contenir au moins 6 caractères.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setMessageType("error");
+      setMessage("Les mots de passe ne correspondent pas.");
+      return;
+    }
+
+    setIsLoading(true);
+    setMessage("");
+
+    try {
+      // Préparation des données pour l'API
+      const userData = {
+        nom: fullName.trim(),
+        email: email.trim().toLowerCase(),
+        mot_de_passe: password,
+      };
+
+      console.log("Tentative d'inscription avec:", userData);
+
+      // Appel à l'API
+      const response = await authService.register(userData);
+      
+      console.log("Réponse d'inscription:", response);
+
+      if (response.success) {
+        setMessageType("success");
+        setMessage(response.message || "Compte créé avec succès !");
+        
+        // Redirection vers la page de connexion après 2 secondes
+        setTimeout(() => {
+          router.push("/login");
+        }, 2000);
+      } else {
+        setMessageType("error");
+        setMessage(response.message || "Erreur lors de la création du compte");
+      }
+      
+    } catch (error: any) {
+      console.error("Erreur détaillée:", error);
+      setMessageType("error");
+      setMessage(error.message || "Une erreur est survenue lors de l'inscription");
+      
+      // Afficher une alerte pour les erreurs critiques
+      if (error.code === 500 || error.message.includes("serveur")) {
+        Alert.alert(
+          "Erreur de connexion",
+          "Impossible de contacter le serveur. Veuillez vérifier votre connexion internet."
+        );
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  // Fonction de validation d'email
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  // Fonction pour l'inscription Google (placeholder)
   const handleGoogleRegister = () => {
+    // Pour Google, on utilise "success" au lieu de "info"
     setMessageType("success");
-    setMessage("Inscription Google sélectionnée");
+    setMessage("Fonctionnalité Google en cours de développement");
   };
 
+  // Navigation vers la page de connexion
   const handleLogin = () => {
-    router.push("/login"); // Navigate to login using Expo Router
+    if (!isLoading) {
+      router.push("/login");
+    }
   };
 
-
+  // Fonctions pour afficher/masquer les mots de passe
   const toggleShowPassword = () => {
     setShowPassword(!showPassword);
   };
@@ -78,6 +159,7 @@ const RegisterScreen = () => {
     setShowConfirmPassword(!showConfirmPassword);
   };
 
+  // Fonctions pour focus les inputs
   const focusFullNameInput = () => {
     fullNameInputRef.current?.focus();
   };
@@ -105,7 +187,7 @@ const RegisterScreen = () => {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Logo at the top */}
+        {/* Logo en haut */}
         <View style={styles.logoContainer}>
           <Image 
             source={require('../../assets/icons/softio-Dark.png')} 
@@ -114,21 +196,21 @@ const RegisterScreen = () => {
           />
         </View>
 
-        {/* Form inputs in the center */}
+        {/* Formulaire au centre */}
         <View style={styles.formContainer}>
-          {/* Instruction text above inputs */}
+          {/* Texte d'instruction */}
           <Text style={styles.instructionText}>
             Créer votre compte
           </Text>
 
-          {/* Full Name Input Container */}
+          {/* Champ Nom complet */}
           <TouchableWithoutFeedback onPress={focusFullNameInput}>
             <View style={[
               styles.inputContainer,
               fullNameFocused && styles.inputContainerFocused
             ]}>
               <Image 
-                source={require('../../assets/icons/person.png')}  // You might need to add this icon
+                source={require('../../assets/icons/person.png')}
                 style={styles.icon}
                 resizeMode="contain"
               />
@@ -145,11 +227,14 @@ const RegisterScreen = () => {
                 onBlur={() => setFullNameFocused(false)}
                 selectionColor="#007bff"
                 cursorColor="#007bff"
+                editable={!isLoading}
+                returnKeyType="next"
+                onSubmitEditing={focusEmailInput}
               />
             </View>
           </TouchableWithoutFeedback>
 
-          {/* Email Input Container */}
+          {/* Champ Email */}
           <TouchableWithoutFeedback onPress={focusEmailInput}>
             <View style={[
               styles.inputContainer,
@@ -174,11 +259,14 @@ const RegisterScreen = () => {
                 onBlur={() => setEmailFocused(false)}
                 selectionColor="#007bff"
                 cursorColor="#007bff"
+                editable={!isLoading}
+                returnKeyType="next"
+                onSubmitEditing={focusPasswordInput}
               />
             </View>
           </TouchableWithoutFeedback>
 
-          {/* Password Input Container */}
+          {/* Champ Mot de passe */}
           <TouchableWithoutFeedback onPress={focusPasswordInput}>
             <View style={[
               styles.inputContainer,
@@ -191,7 +279,7 @@ const RegisterScreen = () => {
               />
               <TextInput
                 ref={passwordInputRef}
-                placeholder="Mot de passe"
+                placeholder="Mot de passe (min. 6 caractères)"
                 placeholderTextColor="#888"
                 style={styles.input}
                 value={password}
@@ -202,12 +290,15 @@ const RegisterScreen = () => {
                 onBlur={() => setPasswordFocused(false)}
                 selectionColor="#007bff"
                 cursorColor="#007bff"
+                editable={!isLoading}
+                returnKeyType="next"
+                onSubmitEditing={focusConfirmPasswordInput}
               />
-              {/* Show/Hide Password Button */}
               <TouchableOpacity 
                 onPress={toggleShowPassword}
                 style={styles.eyeButton}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                disabled={isLoading}
               >
                 <Image 
                   source={
@@ -222,7 +313,7 @@ const RegisterScreen = () => {
             </View>
           </TouchableWithoutFeedback>
 
-          {/* Confirm Password Input Container */}
+          {/* Champ Confirmation mot de passe */}
           <TouchableWithoutFeedback onPress={focusConfirmPasswordInput}>
             <View style={[
               styles.inputContainer,
@@ -246,12 +337,15 @@ const RegisterScreen = () => {
                 onBlur={() => setConfirmPasswordFocused(false)}
                 selectionColor="#007bff"
                 cursorColor="#007bff"
+                editable={!isLoading}
+                returnKeyType="done"
+                onSubmitEditing={handleRegister}
               />
-              {/* Show/Hide Confirm Password Button */}
               <TouchableOpacity 
                 onPress={toggleShowConfirmPassword}
                 style={styles.eyeButton}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                disabled={isLoading}
               >
                 <Image 
                   source={
@@ -266,36 +360,41 @@ const RegisterScreen = () => {
             </View>
           </TouchableWithoutFeedback>
 
-          {/* Register Button */}
+          {/* Bouton d'inscription */}
           <TouchableOpacity 
             style={[
               styles.button,
-              !isFormValid && styles.buttonDisabled
+              (!isFormValid || isLoading) && styles.buttonDisabled
             ]} 
             onPress={handleRegister}
-            activeOpacity={isFormValid ? 0.8 : 1}
-            disabled={!isFormValid}
+            activeOpacity={isFormValid && !isLoading ? 0.8 : 1}
+            disabled={!isFormValid || isLoading}
           >
-            <Text style={[
-              styles.buttonText,
-              !isFormValid && styles.buttonTextDisabled
-            ]}>
-              Créer un compte
-            </Text>
+            {isLoading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={[
+                styles.buttonText,
+                (!isFormValid || isLoading) && styles.buttonTextDisabled
+              ]}>
+                Créer un compte
+              </Text>
+            )}
           </TouchableOpacity>
 
-          {/* Divider */}
+          {/* Séparateur */}
           <View style={styles.dividerContainer}>
             <View style={styles.dividerLine} />
             <Text style={styles.dividerText}>ou</Text>
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Google Sign-In Button */}
+          {/* Bouton Google */}
           <TouchableOpacity 
-            style={styles.googleButton}
+            style={[styles.googleButton, isLoading && styles.buttonDisabled]}
             onPress={handleGoogleRegister}
             activeOpacity={0.8}
+            disabled={isLoading}
           >
             <Image 
               source={require('../../assets/icons/google-icon.png')} 
@@ -307,25 +406,30 @@ const RegisterScreen = () => {
             </Text>
           </TouchableOpacity>
 
-          {/* Message Display */}
+          {/* Affichage des messages */}
           {message ? (
-            <Text
-              style={[
-                styles.message,
-                messageType === "error" ? styles.error : styles.success,
-              ]}
-            >
-              {message}
-            </Text>
+            <View style={[
+              styles.messageContainer,
+              messageType === "error" ? styles.errorContainer : styles.successContainer
+            ]}>
+              <Text style={[
+                styles.messageText,
+                messageType === "error" ? styles.errorText : styles.successText,
+              ]}>
+                {message}
+              </Text>
+            </View>
           ) : null}
 
-          {/* Bottom Links */}
+          {/* Liens en bas */}
           <View style={styles.bottomLinksContainer}>
             <Text style={styles.bottomText}>
               Vous avez déjà un compte ?{" "}
             </Text>
-            <TouchableOpacity onPress={handleLogin}>
-              <Text style={styles.link}>Se connecter</Text>
+            <TouchableOpacity onPress={handleLogin} disabled={isLoading}>
+              <Text style={[styles.link, isLoading && styles.linkDisabled]}>
+                Se connecter
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

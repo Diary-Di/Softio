@@ -1,12 +1,20 @@
 // config/api.ts
+
+// Pour le développement local avec XAMPP
 export const API_BASE_URL = __DEV__ 
-  ? 'http://localhost:8000/api'  // Développement
-  : 'https://votre-domaine.com/api'; // Production
+  ? 'https://palpebral-unsolemnized-caitlin.ngrok-free.dev/SOFTIO/backend/public'  // Remplacez par votre IP locale
+  : 'https://votredomaine.com';
+
+// Pour Ngrok (décommentez si vous utilisez Ngrok)
+// export const API_BASE_URL = __DEV__ 
+//   ? 'https://votre-url-ngrok.ngrok.io/SOFTIO/backend'
+//   : 'https://votredomaine.com';
 
 export const API_ENDPOINTS = {
-  LOGIN: '/auth/login',
-  REGISTER: '/auth/register',
-  USERS: '/users',
+  REGISTER: '/api/register',
+  LOGIN: '/api/login',
+  LOGOUT: '/api/logout',
+  PROFILE: '/api/profile',
 } as const;
 
 export type ApiEndpoints = keyof typeof API_ENDPOINTS;

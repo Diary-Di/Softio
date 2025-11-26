@@ -3,83 +3,85 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosR
 import { API_BASE_URL } from '../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-class ApiService {
-  private api: AxiosInstance;
+// Configuration de base axios
+const api: AxiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 15000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-  constructor() {
-    this.api = axios.create({
-      baseURL: API_BASE_URL,
-      timeout: 10000,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+// Intercepteur pour les requêtes
+api.interceptors.request.use(
+  async (config: InternalAxiosRequestConfig) => {
+    console.log(`🔄 API Call: ${config.method?.toUpperCase()} ${config.url}`);
+    
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (token && config.headers) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (error) {
+      console.warn('Erreur récupération token:', error);
+    }
+    
+    return config;
+  },
+  (error) => {
+    console.error('❌ Request Error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Intercepteur pour les réponses
+api.interceptors.response.use(
+  (response: AxiosResponse) => {
+    console.log(`✅ API Success: ${response.status} ${response.config.url}`);
+    return response;
+  },
+  (error) => {
+    console.error('❌ API Error:', {
+      url: error.config?.url,
+      status: error.response?.status,
+      message: error.message,
+      data: error.response?.data
     });
 
-    this.setupInterceptors();
+    // Gestion des erreurs spécifiques
+    if (error.code === 'ECONNABORTED') {
+      console.error('⏰ Timeout - Vérifiez votre connexion');
+    }
+
+    if (!error.response) {
+      console.error('🌐 Network Error - Serveur inaccessible');
+    }
+
+    return Promise.reject(error);
   }
+);
 
-  private setupInterceptors(): void {
-    // Intercepteur pour les requêtes
-    this.api.interceptors.request.use(
-      async (config: InternalAxiosRequestConfig) => {
-        try {
-          const token = await AsyncStorage.getItem('userToken');
-          if (token && config.headers) {
-            config.headers.Authorization = `Bearer ${token}`;
-          }
-        } catch (error) {
-          console.warn('Erreur lors de la récupération du token:', error);
-        }
-        return config;
-      },
-      (error) => {
-        return Promise.reject(error);
-      }
-    );
-
-    // Intercepteur pour les réponses
-    this.api.interceptors.response.use(
-      (response: AxiosResponse) => response,
-      (error) => {
-        if (error.response?.status === 401) {
-          this.handleUnauthorized();
-        }
-        return Promise.reject(error);
-      }
-    );
-  }
-
-  private handleUnauthorized(): void {
-    // Rediriger vers l'écran de login
-    console.log('Unauthorized - redirect to login');
-    // Vous pouvez ajouter une logique de redirection ici
-  }
-
-  // Méthodes HTTP typées
-  public async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response: AxiosResponse<T> = await this.api.get(url, config);
+// Méthodes API typées
+export const apiService = {
+  get: async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
+    const response: AxiosResponse<T> = await api.get(url, config);
     return response.data;
-  }
+  },
 
-  public async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response: AxiosResponse<T> = await this.api.post(url, data, config);
+  post: async <T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> => {
+    const response: AxiosResponse<T> = await api.post(url, data, config);
     return response.data;
-  }
+  },
 
-  public async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response: AxiosResponse<T> = await this.api.put(url, data, config);
+  put: async <T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> => {
+    const response: AxiosResponse<T> = await api.put(url, data, config);
     return response.data;
-  }
+  },
 
-  public async patch<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response: AxiosResponse<T> = await this.api.patch(url, data, config);
+  delete: async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
+    const response: AxiosResponse<T> = await api.delete(url, config);
     return response.data;
-  }
+  },
+};
 
-  public async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response: AxiosResponse<T> = await this.api.delete(url, config);
-    return response.data;
-  }
-}
-
-export const apiService = new ApiService();
+export default api;

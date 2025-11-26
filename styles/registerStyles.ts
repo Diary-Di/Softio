@@ -229,4 +229,33 @@ export const styles = StyleSheet.create({
   success: {
     color: "#2a9d8f",
   },
+
+  messageContainer: {
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+    borderWidth: 1,
+  },
+  errorContainer: {
+    backgroundColor: '#fee',
+    borderColor: '#fcc',
+  },
+  successContainer: {
+    backgroundColor: '#efe',
+    borderColor: '#cfc',
+  },
+  messageText: {
+    fontSize: 14,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  errorText: {
+    color: '#c00',
+  },
+  successText: {
+    color: '#080',
+  },
+  linkDisabled: {
+    opacity: 0.5,
+  },
 });
