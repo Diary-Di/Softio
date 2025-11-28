@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   View, 
   Text, 
@@ -10,13 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { styles } from '../styles/profileScreenStyles';
-
-interface User {
-  name: string;
-  email: string;
-  avatar: string;
-  accountType: string;
-}
+import { useAuth } from '../hooks/useAuth';
 
 interface MenuItemProps {
   iconName: keyof typeof Ionicons.glyphMap;
@@ -48,12 +42,24 @@ const MenuItem: React.FC<MenuItemProps> = ({
 );
 
 export default function ProfileScreen() {
-  const [user] = useState<User>({
-    name: 'Jean Dupont',
-    email: 'jean.dupont@gmail.com',
-    avatar: 'https://ui-avatars.com/api/?name=Jean+Dupont&size=200&background=4285F4&color=fff',
-    accountType: 'Personnel'
-  });
+  const { user, logout } = useAuth();
+
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={{ textAlign: 'center', marginTop: 50 }}>Aucun utilisateur connecté</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // Génère les initiales à partir du nom
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase();
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -64,16 +70,15 @@ export default function ProfileScreen() {
         {/* ---------- HEADER ---------- */}
         <View style={styles.header}>
           <View style={styles.avatarContainer}>
-            <Image 
-              source={{ uri: user.avatar }} 
-              style={styles.avatar}
-            />
+            <View style={styles.initialsAvatar}>
+              <Text style={styles.initialsText}>{getInitials(user.nom)}</Text>
+            </View>
             <TouchableOpacity style={styles.cameraButton}>
               <Ionicons name="camera" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
           
-          <Text style={styles.userName}>{user.name}</Text>
+          <Text style={styles.userName}>{user.nom}</Text>
           <Text style={styles.userEmail}>{user.email}</Text>
         </View>
 
@@ -95,7 +100,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* ---------- BOUTON DÉCONNEXION ---------- */}
-        <TouchableOpacity style={styles.logoutButton}>
+        <TouchableOpacity style={styles.logoutButton} onPress={logout}>
           <Ionicons name="log-out-outline" size={20} color="#d93025" />
           <Text style={styles.logoutText}>Se déconnecter</Text>
         </TouchableOpacity>

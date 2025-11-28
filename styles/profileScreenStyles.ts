@@ -146,4 +146,18 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     color: '#5f6368',
   },
+
+  initialsAvatar: {
+  width: 80,
+  height: 80,
+  borderRadius: 40,
+  backgroundColor: '#4285F4', // couleur de fond
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+initialsText: {
+  color: '#fff',
+  fontSize: 32,
+  fontWeight: 'bold',
+},
 });

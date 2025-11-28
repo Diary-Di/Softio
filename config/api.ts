@@ -15,7 +15,7 @@ export const API_ENDPOINTS = {
   REGISTER: '/api/register',
   LOGIN: '/api/login',
   LOGOUT: '/api/logout',
-  PROFILE: '/api/profile',
+  PROFILE: '/api/profil',
 } as const;
 
 export type ApiEndpoints = keyof typeof API_ENDPOINTS;
