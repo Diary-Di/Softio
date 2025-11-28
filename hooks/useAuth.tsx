@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { authService } from "../services/authService";
 import { User } from "../types/api";
 import * as storage from "../utils/storage";
+import { router } from "expo-router";
 
 type AuthContextType = {
   user: User | null;
@@ -70,6 +71,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     setToken(null);
     setUser(null);
+
+    router.replace("/(auth)/login");
   }, []);
 
   return (

@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { styles } from '../styles/profileScreenStyles';
 import { useAuth } from '../hooks/useAuth';
+import { router } from 'expo-router';
 
 interface MenuItemProps {
   iconName: keyof typeof Ionicons.glyphMap;
@@ -100,10 +101,17 @@ export default function ProfileScreen() {
         </View>
 
         {/* ---------- BOUTON DÉCONNEXION ---------- */}
-        <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-          <Ionicons name="log-out-outline" size={20} color="#d93025" />
-          <Text style={styles.logoutText}>Se déconnecter</Text>
-        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={() => {
+            logout();             
+              router.replace("/(auth)/login");  
+          }}
+>
+  <Ionicons name="log-out-outline" size={20} color="#d93025" />
+  <Text style={styles.logoutText}>Se déconnecter</Text>
+</TouchableOpacity>
+
 
       </ScrollView>
     </SafeAreaView>
