@@ -8,30 +8,29 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
-  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
-import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 import { createProductStyles } from '../styles/CreateProductStyles';
+import { Image } from 'react-native';
 
 // Types
 type ProductForm = {
   reference: string;
   designation: string;
-  marque: string;
-  prix: string;
   categorie: string;
-  description: string;
-  enStock: boolean;
+  prix_actuel: string;
+  qte_disponible: string;
+  illustration: string | null;
 };
 
 type FormErrors = {
   [key in keyof ProductForm]?: string;
 };
 
-// Mock data for categories and brands
+// Mock data for categories
 const CATEGORIES = [
   'Informatique',
   'Téléphonie',
@@ -43,50 +42,44 @@ const CATEGORIES = [
   'Autre',
 ];
 
-const BRANDS = [
-  'Apple',
-  'Samsung',
-  'Dell',
-  'Sony',
-  'LG',
-  'HP',
-  'Lenovo',
-  'Microsoft',
-  'Autre',
-];
+// Fonction de formatage des prix avec séparateur de milliers
+const formatPrice = (value: string) => {
+  if (!value) return '';
+  const number = parseFloat(value.replace(',', '.'));
+  if (isNaN(number)) return value;
+  return number.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
 
 export default function CreateProductScreen({ navigation }: any) {
   const [formData, setFormData] = useState<ProductForm>({
     reference: '',
     designation: '',
-    marque: '',
-    prix: '',
     categorie: '',
-    description: '',
-    enStock: true,
+    prix_actuel: '',
+    qte_disponible: '0',
+    illustration: null,
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [touched, setTouched] = useState<{ [key: string]: boolean }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Handle input changes
-  const handleInputChange = useCallback((field: keyof ProductForm, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
-    }
-  }, [errors]);
+  const handleInputChange = useCallback(
+    (field: keyof ProductForm, value: string) => {
+      setFormData(prev => ({ ...prev, [field]: value }));
+      if (errors[field]) setErrors(prev => ({ ...prev, [field]: undefined }));
+    },
+    [errors]
+  );
 
-  // Mark field as touched
-  const handleBlur = useCallback((field: keyof ProductForm) => {
-    setTouched(prev => ({ ...prev, [field]: true }));
-    validateField(field, formData[field]);
-  }, [formData]);
+  const handleBlur = useCallback(
+    (field: keyof ProductForm) => {
+      setTouched(prev => ({ ...prev, [field]: true }));
+      validateField(field, formData[field]);
+    },
+    [formData]
+  );
 
-  // Validate individual field
   const validateField = useCallback((field: keyof ProductForm, value: any) => {
     let error = '';
 
@@ -95,23 +88,21 @@ export default function CreateProductScreen({ navigation }: any) {
         if (!value.trim()) error = 'La référence est obligatoire';
         else if (value.trim().length < 2) error = 'La référence doit contenir au moins 2 caractères';
         break;
-      
       case 'designation':
         if (!value.trim()) error = 'La désignation est obligatoire';
         else if (value.trim().length < 3) error = 'La désignation doit contenir au moins 3 caractères';
         break;
-      
-      case 'marque':
-        if (!value.trim()) error = 'La marque est obligatoire';
-        break;
-      
-      case 'prix':
-        if (!value.trim()) error = 'Le prix est obligatoire';
-        else if (isNaN(parseFloat(value)) || parseFloat(value) <= 0) error = 'Le prix doit être un nombre positif';
-        break;
-      
       case 'categorie':
         if (!value.trim()) error = 'La catégorie est obligatoire';
+        break;
+      case 'prix_actuel':
+        if (!value.trim()) error = 'Le prix unitaire est obligatoire';
+        else if (isNaN(parseFloat(value)) || parseFloat(value) <= 0)
+          error = 'Le prix doit être un nombre positif';
+        break;
+      case 'qte_disponible':
+        if (value && (!Number.isInteger(Number(value)) || Number(value) < 0))
+          error = 'La quantité doit être un entier ≥ 0';
         break;
     }
 
@@ -119,28 +110,47 @@ export default function CreateProductScreen({ navigation }: any) {
     return !error;
   }, []);
 
-  // Validate entire form
-  const validateForm = useCallback((): boolean => {
-    const newErrors: FormErrors = {};
+  const validateForm = useCallback(() => {
     let isValid = true;
-
-    Object.keys(formData).forEach(key => {
-      const field = key as keyof ProductForm;
-      if (field !== 'description' && field !== 'enStock') {
-        const fieldIsValid = validateField(field, formData[field]);
-        if (!fieldIsValid) isValid = false;
-      }
+    (Object.keys(formData) as (keyof ProductForm)[]).forEach(field => {
+      const fieldIsValid = validateField(field, formData[field]);
+      if (!fieldIsValid) isValid = false;
     });
-
-    setErrors(newErrors);
     return isValid;
   }, [formData, validateField]);
 
-  // Handle form submission
+  const pickImage = async () => {
+    try {
+      if (Platform.OS !== 'web') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission refusée', 'Nous avons besoin de l’accès à vos photos pour sélectionner une image.');
+          return;
+        }
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets.length > 0) {
+        setFormData(prev => ({ ...prev, illustration: result.assets[0].uri }));
+      }
+    } catch (error) {
+      console.log('Erreur lors de la sélection de l’image :', error);
+      Alert.alert('Erreur', 'Impossible de sélectionner l’image.');
+    }
+  };
+
+  const removeImage = () => {
+    setFormData(prev => ({ ...prev, illustration: null }));
+  };
+
   const handleSubmit = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
-    // Mark all fields as touched
+
     const allTouched = Object.keys(formData).reduce((acc, key) => {
       acc[key] = true;
       return acc;
@@ -156,27 +166,24 @@ export default function CreateProductScreen({ navigation }: any) {
     setIsSubmitting(true);
 
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Replace with actual API call:
-      // const response = await api.post('/products', {
-      //   ...formData,
-      //   prix: parseFloat(formData.prix)
-      // });
+
+      const payload = {
+        ref_produit: formData.reference,
+        designation: formData.designation,
+        categorie: formData.categorie,
+        prix_actuel: parseFloat(formData.prix_actuel),
+        qte_disponible: parseInt(formData.qte_disponible) || 0,
+        illustration: formData.illustration,
+        date_mise_a_jour_prix: new Date().toISOString().split('T')[0],
+      };
+
+      console.log('Payload envoyé:', payload);
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
-      Alert.alert(
-        'Succès',
-        'Produit créé avec succès',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack()
-          }
-        ]
-      );
+      Alert.alert('Succès', 'Produit créé avec succès', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
     } catch (error) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Erreur', 'Impossible de créer le produit');
@@ -185,39 +192,31 @@ export default function CreateProductScreen({ navigation }: any) {
     }
   }, [formData, validateForm, navigation]);
 
-  // Handle cancel
   const handleCancel = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     navigation.goBack();
   }, [navigation]);
 
-  const isFormValid = 
-    formData.reference.trim() && 
-    formData.designation.trim() && 
-    formData.marque.trim() && 
-    formData.prix.trim() && 
-    formData.categorie.trim() && 
+  const isFormValid =
+    formData.reference.trim() &&
+    formData.designation.trim() &&
+    formData.categorie.trim() &&
+    formData.prix_actuel.trim() &&
     !Object.values(errors).some(error => error);
 
   return (
     <SafeAreaView style={createProductStyles.safeArea}>
       {/* Header */}
       <View style={createProductStyles.header}>
-        <TouchableOpacity
-          style={createProductStyles.cancelButton}
-          onPress={handleCancel}
-          disabled={isSubmitting}
-        >
+        <TouchableOpacity onPress={handleCancel} disabled={isSubmitting}>
           <Text style={createProductStyles.cancelButtonText}>Annuler</Text>
         </TouchableOpacity>
-        
         <Text style={createProductStyles.headerTitle}>Nouveau Produit</Text>
-        
-        <View style={{ width: 60 }} /> {/* Spacer for balance */}
+        <View style={{ width: 60 }} />
       </View>
 
       {/* Form */}
-      <ScrollView 
+      <ScrollView
         style={createProductStyles.formContainer}
         contentContainerStyle={createProductStyles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -225,190 +224,159 @@ export default function CreateProductScreen({ navigation }: any) {
       >
         {/* Référence */}
         <View style={createProductStyles.inputGroup}>
-          <Text style={createProductStyles.label}>
-            Référence <Text style={createProductStyles.required}>*</Text>
-          </Text>
+          <Text style={createProductStyles.label}>Référence *</Text>
           <TextInput
-            style={[
-              createProductStyles.textInput,
-              touched.reference && errors.reference && createProductStyles.errorInput
-            ]}
+            style={[createProductStyles.textInput, touched.reference && errors.reference && createProductStyles.errorInput]}
             value={formData.reference}
-            onChangeText={(value) => handleInputChange('reference', value)}
+            onChangeText={value => handleInputChange('reference', value)}
             onBlur={() => handleBlur('reference')}
             placeholder="ex: REF001"
             placeholderTextColor="#999"
             editable={!isSubmitting}
             maxLength={50}
           />
-          {touched.reference && errors.reference && (
-            <Text style={createProductStyles.errorText}>{errors.reference}</Text>
-          )}
+          {touched.reference && errors.reference && <Text style={createProductStyles.errorText}>{errors.reference}</Text>}
         </View>
 
         {/* Désignation */}
         <View style={createProductStyles.inputGroup}>
-          <Text style={createProductStyles.label}>
-            Désignation <Text style={createProductStyles.required}>*</Text>
-          </Text>
+          <Text style={createProductStyles.label}>Désignation *</Text>
           <TextInput
-            style={[
-              createProductStyles.textInput,
-              touched.designation && errors.designation && createProductStyles.errorInput
-            ]}
+            style={[createProductStyles.textInput, touched.designation && errors.designation && createProductStyles.errorInput]}
             value={formData.designation}
-            onChangeText={(value) => handleInputChange('designation', value)}
+            onChangeText={value => handleInputChange('designation', value)}
             onBlur={() => handleBlur('designation')}
             placeholder="Nom du produit"
             placeholderTextColor="#999"
             editable={!isSubmitting}
-            maxLength={100}
+            maxLength={255}
           />
-          {touched.designation && errors.designation && (
-            <Text style={createProductStyles.errorText}>{errors.designation}</Text>
-          )}
-        </View>
-
-        {/* Marque */}
-        <View style={createProductStyles.inputGroup}>
-          <Text style={createProductStyles.label}>
-            Marque <Text style={createProductStyles.required}>*</Text>
-          </Text>
-          <View style={createProductStyles.picker}>
-            <Picker
-              selectedValue={formData.marque}
-              onValueChange={(value) => handleInputChange('marque', value)}
-              enabled={!isSubmitting}
-              style={Platform.OS === 'ios' ? createProductStyles.pickerIOS : createProductStyles.pickerAndroid}
-            >
-              <Picker.Item label="Sélectionnez une marque" value="" />
-              {BRANDS.map((brand) => (
-                <Picker.Item key={brand} label={brand} value={brand} />
-              ))}
-            </Picker>
-          </View>
-          {touched.marque && errors.marque && (
-            <Text style={createProductStyles.errorText}>{errors.marque}</Text>
-          )}
-        </View>
-
-        {/* Prix */}
-        <View style={createProductStyles.inputGroup}>
-          <Text style={createProductStyles.label}>
-            Prix (€) <Text style={createProductStyles.required}>*</Text>
-          </Text>
-          <View style={createProductStyles.priceContainer}>
-            <Text style={createProductStyles.currencySymbol}>€</Text>
-            <TextInput
-              style={[
-                createProductStyles.textInput,
-                createProductStyles.priceInput,
-                touched.prix && errors.prix && createProductStyles.errorInput
-              ]}
-              value={formData.prix}
-              onChangeText={(value) => handleInputChange('prix', value.replace(',', '.'))}
-              onBlur={() => handleBlur('prix')}
-              placeholder="0.00"
-              placeholderTextColor="#999"
-              keyboardType="decimal-pad"
-              editable={!isSubmitting}
-            />
-          </View>
-          {touched.prix && errors.prix && (
-            <Text style={createProductStyles.errorText}>{errors.prix}</Text>
-          )}
+          {touched.designation && errors.designation && <Text style={createProductStyles.errorText}>{errors.designation}</Text>}
         </View>
 
         {/* Catégorie */}
         <View style={createProductStyles.inputGroup}>
-          <Text style={createProductStyles.label}>
-            Catégorie <Text style={createProductStyles.required}>*</Text>
-          </Text>
+          <Text style={createProductStyles.label}>Catégorie *</Text>
           <View style={createProductStyles.picker}>
             <Picker
               selectedValue={formData.categorie}
-              onValueChange={(value) => handleInputChange('categorie', value)}
+              onValueChange={value => handleInputChange('categorie', value)}
               enabled={!isSubmitting}
               style={Platform.OS === 'ios' ? createProductStyles.pickerIOS : createProductStyles.pickerAndroid}
             >
               <Picker.Item label="Sélectionnez une catégorie" value="" />
-              {CATEGORIES.map((category) => (
-                <Picker.Item key={category} label={category} value={category} />
-              ))}
+              {CATEGORIES.map(cat => <Picker.Item key={cat} label={cat} value={cat} />)}
             </Picker>
           </View>
-          {touched.categorie && errors.categorie && (
-            <Text style={createProductStyles.errorText}>{errors.categorie}</Text>
-          )}
+          {touched.categorie && errors.categorie && <Text style={createProductStyles.errorText}>{errors.categorie}</Text>}
         </View>
 
-        {/* Description */}
+        {/* Prix unitaire */}
         <View style={createProductStyles.inputGroup}>
-          <Text style={createProductStyles.label}>Description</Text>
+          <Text style={createProductStyles.label}>Prix unitaire (€) *</Text>
           <TextInput
             style={[
               createProductStyles.textInput,
-              createProductStyles.textArea
+              touched.prix_actuel && errors.prix_actuel && createProductStyles.errorInput
             ]}
-            value={formData.description}
-            onChangeText={(value) => handleInputChange('description', value)}
-            placeholder="Description du produit (optionnel)"
+            value={formatPrice(formData.prix_actuel)} // affichage formaté
+            onChangeText={value => {
+              // Supprimer espaces et remplacer ',' par '.'
+              const cleanedValue = value.replace(/\s/g, '').replace(',', '.');
+              handleInputChange('prix_actuel', cleanedValue);
+            }}
+            onBlur={() => handleBlur('prix_actuel')}
+            placeholder="0,00"
             placeholderTextColor="#999"
-            multiline
-            numberOfLines={4}
+            keyboardType="decimal-pad"
             editable={!isSubmitting}
-            maxLength={500}
           />
+          {touched.prix_actuel && errors.prix_actuel && (
+            <Text style={createProductStyles.errorText}>{errors.prix_actuel}</Text>
+          )}
         </View>
 
-        {/* En Stock */}
+        {/* Quantité disponible */}
         <View style={createProductStyles.inputGroup}>
-          <View style={createProductStyles.switchContainer}>
-            <Text style={createProductStyles.switchLabel}>En stock</Text>
-            <Switch
-              value={formData.enStock}
-              onValueChange={(value) => handleInputChange('enStock', value)}
-              disabled={isSubmitting}
-              trackColor={{ false: '#767577', true: '#81b0ff' }}
-              thumbColor={formData.enStock ? '#007AFF' : '#f4f3f4'}
-            />
-          </View>
+          <Text style={createProductStyles.label}>Quantité disponible</Text>
+          <TextInput
+            style={[createProductStyles.textInput, touched.qte_disponible && errors.qte_disponible && createProductStyles.errorInput]}
+            value={formData.qte_disponible}
+            onChangeText={value => handleInputChange('qte_disponible', value)}
+            onBlur={() => handleBlur('qte_disponible')}
+            placeholder="0"
+            placeholderTextColor="#999"
+            keyboardType="numeric"
+            editable={!isSubmitting}
+          />
+          {touched.qte_disponible && errors.qte_disponible && <Text style={createProductStyles.errorText}>{errors.qte_disponible}</Text>}
         </View>
+
+        {/* Illustration */}
+        {/* Illustration */}
+<View style={createProductStyles.inputGroup}>
+
+  {/* CONTENEUR DU BOUTON D'AJOUT */}
+  {!formData.illustration && (
+    <TouchableOpacity 
+      onPress={pickImage} 
+      style={createProductStyles.imageContainer}
+    >
+      <Text style={createProductStyles.imagePlaceholderText}>
+        + Ajouter une image
+      </Text>
+    </TouchableOpacity>
+  )}
+
+  {/* APERCU DE L'IMAGE */}
+  {formData.illustration && (
+    <View style={createProductStyles.imagePreviewWrapper}>
+
+      {/* Croix pour supprimer */}
+      <TouchableOpacity 
+        onPress={removeImage} 
+        style={createProductStyles.removeIconContainer}
+      >
+        <Text style={createProductStyles.removeIconText}>✕</Text>
+      </TouchableOpacity>
+
+      <Image
+        source={{ uri: formData.illustration }}
+        style={createProductStyles.imagePreview}
+        resizeMode="cover"
+      />
+    </View>
+  )}
+
+  {/* BOUTON POUR CHANGER D'IMAGE */}
+  {formData.illustration && (
+    <TouchableOpacity 
+      onPress={pickImage}
+      style={[createProductStyles.imageButton, { marginTop: 10 }]}
+    >
+      <Text style={createProductStyles.imageButtonText}>
+        Changer l’image
+      </Text>
+    </TouchableOpacity>
+  )}
+</View>
+
       </ScrollView>
 
-      {/* Footer with Submit Button */}
+      {/* Footer */}
       <View style={createProductStyles.footer}>
         <TouchableOpacity
-          style={[
-            createProductStyles.submitButton,
-            (!isFormValid || isSubmitting) && createProductStyles.submitButtonDisabled
-          ]}
+          style={[createProductStyles.submitButton, (!isFormValid || isSubmitting) && createProductStyles.submitButtonDisabled]}
           onPress={handleSubmit}
           disabled={!isFormValid || isSubmitting}
-          activeOpacity={0.8}
         >
           {isSubmitting ? (
             <ActivityIndicator color="white" size="small" />
           ) : (
-            <Text style={[
-              createProductStyles.submitButtonText,
-              (!isFormValid || isSubmitting) && createProductStyles.submitButtonTextDisabled
-            ]}>
-              Créer le Produit
-            </Text>
+            <Text style={createProductStyles.submitButtonText}>Créer le Produit</Text>
           )}
         </TouchableOpacity>
       </View>
-
-      {/* Loading Overlay */}
-      {isSubmitting && (
-        <View style={createProductStyles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={{ color: 'white', marginTop: 12, fontSize: 16 }}>
-            Création en cours...
-          </Text>
-        </View>
-      )}
     </SafeAreaView>
   );
 }

@@ -109,18 +109,22 @@ export default function Dashboard() {
         headerTitleStyle: { fontWeight: '700', fontSize: 20, color: colors.text },
 
         // BOUTON PROFIL
-        headerRight: () => (
-          <TouchableOpacity
-            style={{ marginRight: 16 }}
-            onPress={() => navigation.navigate("Profil")}
-          >
-            <Ionicons 
-              name="person-circle-outline"
-              size={28}
-              color={colors.primary}
-            />
-          </TouchableOpacity>
-        ),
+        headerRight: () => {
+  const { user } = useAuth();
+  const initials = getInitials(user?.nom);
+
+  return (
+    <TouchableOpacity
+      style={{ marginRight: 16 }}
+      onPress={() => navigation.navigate("Profil")}
+    >
+      <View style={styles.initialsCircle}>
+        <Text style={styles.initialsText}>{initials}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+,
       })}
     >
       <Drawer.Screen
@@ -236,4 +240,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 12,
   },
+
+  initialsCircle: {
+  width: 36,
+  height: 36,
+  borderRadius: 18,
+  backgroundColor: colors.primary,
+  justifyContent: "center",
+  alignItems: "center",
+},
+
+
+
 });

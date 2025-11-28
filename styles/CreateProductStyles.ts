@@ -232,4 +232,86 @@ export const createProductStyles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 1000,
   },
+
+  imageButton: {
+  backgroundColor: '#007AFF',
+  paddingVertical: 14,
+  borderRadius: 12,
+  alignItems: 'center',
+  justifyContent: 'center',
+  ...Platform.select({
+    ios: {
+      shadowColor: '#007AFF',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+    },
+    android: {
+      elevation: 4,
+    },
+  }),
+},
+imageButtonText: {
+  color: 'white',
+  fontSize: 16,
+  fontWeight: '600',
+  fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+},
+
+imageContainer: {
+  height: 180,
+  borderRadius: 12,
+  borderWidth: 2,
+  borderColor: '#d1d5db',
+  borderStyle: 'dashed',
+  justifyContent: 'center',
+  alignItems: 'center',
+  backgroundColor: '#fafafa',
+},
+
+imagePlaceholderText: {
+  fontSize: 16,
+  color: '#6b7280',
+  fontWeight: '600',
+},
+
+imagePreviewWrapper: {
+  width: '100%',
+  height: 220,
+  borderRadius: 12,
+  overflow: 'hidden',
+  position: 'relative',
+  justifyContent: 'center',
+  alignItems: 'center',
+  backgroundColor: '#f0f0f0',
+},
+
+imagePreview: {
+  width: '100%',
+  height: '100%',
+  borderRadius: 12,
+},
+
+removeIconContainer: {
+  position: 'absolute',
+  top: 10,
+  right: 10,
+  backgroundColor: 'white',
+  borderRadius: 50,
+  width: 28,
+  height: 28,
+  justifyContent: 'center',
+  alignItems: 'center',
+  borderWidth: 1,
+  borderColor: '#ff3b30',
+  zIndex: 10,
+},
+
+removeIconText: {
+  color: '#ff3b30',
+  fontSize: 16,
+  fontWeight: '700',
+},
+
+
 });
