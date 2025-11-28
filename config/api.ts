@@ -2,7 +2,8 @@
 
 // Pour le développement local avec XAMPP
 export const API_BASE_URL = __DEV__ 
-  ? 'https://palpebral-unsolemnized-caitlin.ngrok-free.dev/SOFTIO/backend/public'  // Remplacez par votre IP locale
+   ?'https://palpebral-unsolemnized-caitlin.ngrok-free.dev/SOFTIO/backend/public'
+  //? 'https://palpebral-unsolemnized-caitlin.ngrok-free.dev/SOFTIO/backend/public'  // Remplacez par votre IP locale
   : 'https://votredomaine.com';
 
 // Pour Ngrok (décommentez si vous utilisez Ngrok)

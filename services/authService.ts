@@ -1,96 +1,75 @@
-// services/authService.ts
-import { apiService } from './api';
-import { API_ENDPOINTS } from '../config/api';
-import { 
-  RegisterRequest, 
-  RegisterResponse, 
-  LoginRequest, 
-  LoginResponse, 
-  ApiError, 
-  User
-} from '../types/api';
+import { apiService } from "./api";
+import { API_ENDPOINTS } from "../config/api";
+import { User } from "../types/api";
 
-// Fonction utilitaire pour gérer les erreurs
-const handleApiError = (error: any): ApiError => {
-  console.log('Erreur API détaillée:', error);
-  
-  if (error.response) {
-    // Le serveur a répondu avec un statut d'erreur
-    return {
-      message: error.response.data?.message || 'Erreur serveur',
-      code: error.response.status,
-      details: error.response.data,
-    };
-  } else if (error.request) {
-    // La requête a été faite mais aucune réponse n'a été reçue
-    return {
-      message: 'Impossible de contacter le serveur. Vérifiez votre connexion internet.',
-    };
-  } else {
-    // Une erreur s'est produite lors de la configuration de la requête
-    return {
-      message: 'Erreur de configuration de la requête',
-      details: error.message,
-    };
-  }
-};
+interface LoginResponse {
+  success: boolean;
+  token?: string;
+  user?: User;
+  message?: string;
+}
+
+interface RegisterResponse {
+  success: boolean;
+  message?: string;
+}
 
 export const authService = {
-  register: async (userData: RegisterRequest): Promise<RegisterResponse> => {
+  // Connexion
+  login: async (credentials: { email: string; mot_de_passe: string }): Promise<LoginResponse> => {
     try {
-      console.log('📝 Tentative d\'inscription:', { ...userData, mot_de_passe: '***' });
-      const response = await apiService.post<RegisterResponse>(
-        API_ENDPOINTS.REGISTER, 
-        userData
-      );
-      console.log('✅ Inscription réussie:', response);
-      return response;
+      const data = await apiService.post<LoginResponse>(API_ENDPOINTS.LOGIN, credentials);
+      return {
+        success: data.success,
+        token: data.token,
+        user: data.user,
+        message: data.message,
+      };
     } catch (error: any) {
-      console.error('❌ Erreur inscription:', error);
-      const apiError = handleApiError(error);
-      throw apiError;
+      console.error("Erreur login:", error);
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || "Erreur lors de la connexion",
+      };
     }
   },
 
-  login: async (credentials: LoginRequest): Promise<LoginResponse> => {
+  // Inscription
+  register: async (userData: { nom: string; email: string; mot_de_passe: string }): Promise<RegisterResponse> => {
     try {
-      console.log('🔐 Tentative de connexion:', { ...credentials, mot_de_passe: '***' });
-      const response = await apiService.post<LoginResponse>(
-        API_ENDPOINTS.LOGIN, 
-        credentials
-      );
-      console.log('✅ Connexion réussie:', response);
-      return response;
+      const data = await apiService.post<RegisterResponse>(API_ENDPOINTS.REGISTER, userData);
+      return {
+        success: data.success,
+        message: data.message,
+      };
     } catch (error: any) {
-      console.error('❌ Erreur connexion:', error);
-      const apiError = handleApiError(error);
-      throw apiError;
+      console.error("Erreur register:", error);
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || "Erreur lors de l'inscription",
+      };
     }
   },
 
-  logout: async (): Promise<{ success: boolean; message: string }> => {
+  // Déconnexion (optionnel côté API si nécessaire)
+  logout: async (): Promise<{ success: boolean }> => {
     try {
-      const response = await apiService.post<{ success: boolean; message: string }>(
-        API_ENDPOINTS.LOGOUT
-      );
-      return response;
-    } catch (error: any) {
-      console.error('❌ Erreur déconnexion:', error);
-      const apiError = handleApiError(error);
-      throw apiError;
+      const data = await apiService.post<{ success: boolean }>(API_ENDPOINTS.LOGOUT);
+      return { success: data.success };
+    } catch (error) {
+      console.error("Erreur logout:", error);
+      return { success: false };
     }
   },
 
-  getProfile: async (): Promise<{ success: boolean; user: User }> => {
+  // Récupération du profil utilisateur
+  getProfile: async (): Promise<User | null> => {
     try {
-      const response = await apiService.get<{ success: boolean; user: User }>(
-        API_ENDPOINTS.PROFILE
-      );
-      return response;
-    } catch (error: any) {
-      console.error('❌ Erreur profil:', error);
-      const apiError = handleApiError(error);
-      throw apiError;
+      const data = await apiService.get<User>(API_ENDPOINTS.PROFILE);
+      return data;
+    } catch (error) {
+      console.error("Erreur getProfile:", error);
+      return null;
     }
   },
 };
