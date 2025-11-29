@@ -313,5 +313,59 @@ removeIconText: {
   fontWeight: '700',
 },
 
+quantityContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  backgroundColor: 'white',
+  borderWidth: 1,
+  borderColor: '#d1d5db',
+  borderRadius: 12,
+  paddingHorizontal: 16,
+  paddingVertical: 10,
+},
+
+qtyButton: {
+  width: 40,
+  height: 40,
+  borderRadius: 20,
+  backgroundColor: '#f1f5f9',
+  justifyContent: 'center',
+  alignItems: 'center',
+
+  ...Platform.select({
+    ios: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.15,
+      shadowRadius: 3,
+    },
+    android: {
+      elevation: 3,
+    },
+  }),
+},
+
+qtyButtonText: {
+  fontSize: 22,
+  fontWeight: '700',
+  color: '#1a1a1a',
+},
+
+qtyValue: {
+  fontSize: 18,
+  fontWeight: '600',
+  color: '#1a1a1a',
+  textAlign: 'center',
+  minWidth: 40,
+},
+
+qtyInput: {
+  minWidth: 50,
+  textAlign: "center",
+  fontSize: 18,
+  paddingHorizontal: 6,
+}
+
 
 });

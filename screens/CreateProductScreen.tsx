@@ -22,7 +22,7 @@ type ProductForm = {
   designation: string;
   categorie: string;
   prix_actuel: string;
-  qte_disponible: string;
+  qte_disponible: number | "";
   illustration: string | null;
 };
 
@@ -56,7 +56,7 @@ export default function CreateProductScreen({ navigation }: any) {
     designation: '',
     categorie: '',
     prix_actuel: '',
-    qte_disponible: '0',
+    qte_disponible: 0,
     illustration: null,
   });
 
@@ -173,7 +173,7 @@ export default function CreateProductScreen({ navigation }: any) {
         designation: formData.designation,
         categorie: formData.categorie,
         prix_actuel: parseFloat(formData.prix_actuel),
-        qte_disponible: parseInt(formData.qte_disponible) || 0,
+        qte_disponible: parseInt(String(formData.qte_disponible)) || 0,
         illustration: formData.illustration,
         date_mise_a_jour_prix: new Date().toISOString().split('T')[0],
       };
@@ -297,22 +297,63 @@ export default function CreateProductScreen({ navigation }: any) {
         </View>
 
         {/* Quantité disponible */}
-        <View style={createProductStyles.inputGroup}>
-          <Text style={createProductStyles.label}>Quantité disponible</Text>
-          <TextInput
-            style={[createProductStyles.textInput, touched.qte_disponible && errors.qte_disponible && createProductStyles.errorInput]}
-            value={formData.qte_disponible}
-            onChangeText={value => handleInputChange('qte_disponible', value)}
-            onBlur={() => handleBlur('qte_disponible')}
-            placeholder="0"
-            placeholderTextColor="#999"
-            keyboardType="numeric"
-            editable={!isSubmitting}
-          />
-          {touched.qte_disponible && errors.qte_disponible && <Text style={createProductStyles.errorText}>{errors.qte_disponible}</Text>}
-        </View>
+<View style={createProductStyles.inputGroup}>
+  <Text style={createProductStyles.label}>
+    Quantité disponible <Text style={createProductStyles.required}>*</Text>
+  </Text>
 
-        {/* Illustration */}
+  <View style={createProductStyles.quantityContainer}>
+
+    {/* Bouton "-" */}
+    <TouchableOpacity
+      onPress={() =>
+        setFormData((prev) => ({
+          ...prev,
+          qte_disponible: Math.max(
+            0,
+            (Number(prev.qte_disponible) || 0) - 1
+          ),
+        }))
+      }
+      style={createProductStyles.qtyButton}
+    >
+      <Text style={createProductStyles.qtyButtonText}>–</Text>
+    </TouchableOpacity>
+
+    {/* Champ de saisie */}
+    <TextInput
+      style={createProductStyles.qtyInput}
+      keyboardType="numeric"
+      value={
+        formData.qte_disponible === ""
+          ? ""
+          : String(formData.qte_disponible)
+      }
+      onChangeText={(text) =>
+        setFormData((prev) => ({
+          ...prev,
+          qte_disponible: text === "" ? "" : Number(text),
+        }))
+      }
+    />
+
+    {/* Bouton "+" */}
+    <TouchableOpacity
+      onPress={() =>
+        setFormData((prev) => ({
+          ...prev,
+          qte_disponible: (Number(prev.qte_disponible) || 0) + 1,
+        }))
+      }
+      style={createProductStyles.qtyButton}
+    >
+      <Text style={createProductStyles.qtyButtonText}>+</Text>
+    </TouchableOpacity>
+
+  </View>
+</View>
+
+
         {/* Illustration */}
 <View style={createProductStyles.inputGroup}>
 
