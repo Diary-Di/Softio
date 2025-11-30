@@ -81,9 +81,12 @@ export default function CreateCustomerScreen() {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+
           <View style={styles.header}>
+
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} accessibilityLabel="Retour">
               <Ionicons name="arrow-back" size={18} color="#374151" />
+              
             </TouchableOpacity>
             <View style={styles.headerCenter}>
               <Text style={styles.title}>Ajouter un client</Text>

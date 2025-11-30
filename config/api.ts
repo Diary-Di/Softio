@@ -16,6 +16,9 @@ export const API_ENDPOINTS = {
   LOGIN: '/api/login',
   LOGOUT: '/api/logout',
   PROFILE: '/api/profil',
+  CATEGORY: '/api/category',
+  PRODUCT: '/api/product',
+  CUSTOMER: '/api/customer',
 } as const;
 
 export type ApiEndpoints = keyof typeof API_ENDPOINTS;
