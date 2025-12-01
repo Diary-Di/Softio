@@ -1,143 +1,110 @@
+// services/productService.ts
 import axios from "axios";
-import * as FileSystem from "expo-file-system";
 import { API_BASE_URL, API_ENDPOINTS } from "../config/api";
 
 const PRODUCT_URL = `${API_BASE_URL}${API_ENDPOINTS.PRODUCT}`;
 
-export type CreateProductPayload = {
-  ref_produit: string;
-  designation: string;
-  categorie: string;
-  prix_actuel: number;
-  qte_disponible: number;
-  illustration?: string | null;
-  date_mise_a_jour_prix: string;
-};
+export interface ProductResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
+
+export interface ApiError {
+  code: number;
+  message: string;
+}
 
 export const productService = {
-
-  /* ------------------------------------
-   *  CREATE PRODUCT (avec upload image)
-   * ------------------------------------ */
-  async createProduct(data: CreateProductPayload) {
+  /** ✔ CREATE PRODUCT */
+  createProduct: async (productData: any): Promise<ProductResponse> => {
     try {
-      console.log("📤 Envoi du produit à :", `${PRODUCT_URL}/create`);
-
-      const formData = new FormData();
-
-      for (const key in data) {
-        if (key !== "illustration") {
-          formData.append(key, String((data as any)[key]));
-        }
-      }
-
-      // Ajout image
-      if (data.illustration) {
-        const ext = data.illustration.split(".").pop();
-        const mimeType = `image/${ext}`;
-        const fileInfo = await FileSystem.getInfoAsync(data.illustration);
-
-        if (fileInfo.exists) {
-          formData.append("illustration", {
-            uri: data.illustration,
-            name: `image_${Date.now()}.${ext}`,
-            type: mimeType,
-          } as any);
-        }
-      }
-
-      const response = await axios.post(
-        `${PRODUCT_URL}/create`,
-        formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
-
-      return response.data;
-
+      const response = await axios.post(PRODUCT_URL, productData);
+      return {
+        success: true,
+        message: response.data.message || "Produit créé avec succès",
+        data: response.data.data,
+      };
     } catch (error: any) {
-      console.log("⚠️ Erreur création produit:", error.response?.data || error);
-      throw error;
+      console.log("❌ Erreur API createProduct :", error.response?.data);
+      
+      throw {
+        code: error.response?.status || 500,
+        message: error.response?.data?.message || "Erreur réseau ou serveur",
+      };
     }
   },
 
-  /* ------------------------------------
-   * GET ALL PRODUCTS
-   * ------------------------------------ */
-  async getAllProducts() {
+  /** ✔ UPDATE PRODUCT */
+  updateProduct: async (id: string, productData: any): Promise<ProductResponse> => {
     try {
-      const response = await axios.get(`${PRODUCT_URL}/list`);
-      return response.data;
+      const response = await axios.put(`${PRODUCT_URL}/${id}`, productData);
+      return {
+        success: true,
+        message: response.data.message || "Produit mis à jour avec succès",
+        data: response.data.data,
+      };
     } catch (error: any) {
-      console.log("⚠️ Erreur getAllProducts:", error.response?.data || error);
-      throw error;
+      console.log("❌ Erreur API updateProduct :", error.response?.data);
+      
+      throw {
+        code: error.response?.status || 500,
+        message: error.response?.data?.message || "Erreur réseau ou serveur",
+      };
     }
   },
 
-  /* ------------------------------------
- * GET PRODUCT BY REF_PRODUIT
- * ------------------------------------ */
-async getProductByRef(ref_produit: string) {
-  try {
-    const response = await axios.get(`${PRODUCT_URL}/show/${ref_produit}`);
-    return response.data;
-  } catch (error: any) {
-    console.log("⚠️ Erreur getProductByRef:", error.response?.data || error);
-    throw error;
-  }
-},
-
-/* ------------------------------------
- * UPDATE PRODUCT (avec ref_produit)
- * ------------------------------------ */
-async updateProduct(ref_produit: string, data: Partial<CreateProductPayload>) {
-  try {
-    const formData = new FormData();
-
-    for (const key in data) {
-      if (key !== "illustration") {
-        formData.append(key, String((data as any)[key]));
-      }
+  /** ✔ CHECK REFERENCE EXISTS */
+  checkReferenceExists: async (reference: string): Promise<boolean> => {
+    try {
+      const response = await axios.get(`${PRODUCT_URL}/check-reference/${reference}`);
+      return response.data.exists || false;
+    } catch (error: any) {
+      console.log("❌ Erreur API checkReferenceExists :", error.response?.data);
+      return false;
     }
+  },
 
-    if (data.illustration) {
-      const ext = data.illustration.split(".").pop();
-      const mimeType = `image/${ext}`;
-      const fileInfo = await FileSystem.getInfoAsync(data.illustration);
-      if (fileInfo.exists) {
-        formData.append("illustration", {
-          uri: data.illustration,
-          name: `image_${Date.now()}.${ext}`,
-          type: mimeType,
-        } as any);
-      }
+  // Vous pouvez ajouter d'autres méthodes suivant le même pattern :
+
+  /** ✔ GET ALL PRODUCTS */
+  getProducts: async () => {
+    try {
+      const response = await axios.get(PRODUCT_URL);
+      return response.data.data;
+    } catch (error: any) {
+      throw {
+        message:
+          error.response?.data?.messages ||
+          "Impossible de charger les produits",
+      };
     }
+  },
 
-    const response = await axios.post(
-      `${PRODUCT_URL}/update/${ref_produit}`,
-      formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
-    );
+  /** ✔ GET ONE PRODUCT */
+  getProduct: async (id: string) => {
+    try {
+      const response = await axios.get(`${PRODUCT_URL}/${id}`);
+      return response.data.data;
+    } catch (error: any) {
+      throw {
+        message:
+          error.response?.data?.messages || "Produit introuvable",
+      };
+    }
+  },
 
-    return response.data;
-
-  } catch (error: any) {
-    console.log("⚠️ Erreur updateProduct:", error.response?.data || error);
-    throw error;
-  }
-},
-
-/* ------------------------------------
- * DELETE PRODUCT (avec ref_produit)
- * ------------------------------------ */
-async deleteProduct(ref_produit: string) {
-  try {
-    const response = await axios.delete(`${PRODUCT_URL}/delete/${ref_produit}`);
-    return response.data;
-  } catch (error: any) {
-    console.log("⚠️ Erreur deleteProduct:", error.response?.data || error);
-    throw error;
-  }
-}
+  /** ✔ DELETE PRODUCT */
+  deleteProduct: async (id: string) => {
+    try {
+      const response = await axios.delete(`${PRODUCT_URL}/${id}`);
+      return response.data;
+    } catch (error: any) {
+      throw {
+        message:
+          error.response?.data?.messages ||
+          "Erreur lors de la suppression du produit",
+      };
+    }
+  },
 };
-
-export default productService;

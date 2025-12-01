@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
     Alert,
     KeyboardAvoidingView,
@@ -11,162 +11,424 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View
+    View,
+    ActivityIndicator,
+    TouchableWithoutFeedback
 } from 'react-native';
 import styles from '../styles/CreateCustomerStyles';
+import { customerService } from '../services/customerService';
 
 export default function CreateCustomerScreen() {
   const navigation = useNavigation<any>();
 
+  // États pour les données du formulaire
   const [raisonSocial, setRaisonSocial] = useState('');
   const [customerType, setCustomerType] = useState<'particulier' | 'entreprise'>('particulier');
   const [sigle, setSigle] = useState('');
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [nom, setNom] = useState('');
-  const [prenom, setPrenom] = useState('');
+  const [prenoms, setPrenoms] = useState('');
   const [adresse, setAdresse] = useState('');
   const [telephone, setTelephone] = useState('');
   const [email, setEmail] = useState('');
   const [nif, setNif] = useState('');
   const [stat, setStat] = useState('');
 
+  // États UI
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'error' | 'success' | ''>('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // États de focus pour les champs
+  const [nomFocused, setNomFocused] = useState(false);
+  const [prenomsFocused, setPrenomsFocused] = useState(false);
+  const [sigleFocused, setSigleFocused] = useState(false);
+  const [adresseFocused, setAdresseFocused] = useState(false);
+  const [telephoneFocused, setTelephoneFocused] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [nifFocused, setNifFocused] = useState(false);
+  const [statFocused, setStatFocused] = useState(false);
+
+  // Refs pour la navigation entre champs
+  const nomRef = useRef<TextInput>(null);
+  const prenomsRef = useRef<TextInput>(null);
+  const sigleRef = useRef<TextInput>(null);
+  const adresseRef = useRef<TextInput>(null);
+  const telephoneRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
+  const nifRef = useRef<TextInput>(null);
+  const statRef = useRef<TextInput>(null);
+
+  // Validation du formulaire
   const validate = () => {
     if (customerType === 'particulier') {
-      if (!nom.trim() || !prenom.trim()) {
-        Alert.alert('Champs requis', 'Veuillez renseigner le nom et le prénom.');
+      if (!nom.trim() || !prenoms.trim()) {
+        showError('Veuillez renseigner le nom et le prénom.');
         return false;
       }
     } else {
       if (!sigle.trim()) {
-        Alert.alert('Champs requis', 'Veuillez renseigner le SIGLE de l\'entreprise.');
+        showError('Veuillez renseigner le SIGLE de l\'entreprise.');
         return false;
       }
     }
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      Alert.alert('Email invalide', 'Veuillez entrer une adresse email valide.');
+      showError('Veuillez entrer une adresse email valide.');
       return false;
     }
     return true;
   };
 
-  const handleSubmit = () => {
+  // Vérifie si le formulaire est valide
+  const isFormValid = customerType === 'particulier' 
+    ? nom.trim().length > 0 && prenoms.trim().length > 0
+    : sigle.trim().length > 0;
+
+  const handleSubmit = async () => {
     if (!validate()) return;
 
-    const newCustomer: any = {
-      id: Date.now().toString(),
+    setIsLoading(true);
+    setMessage('');
+
+    const payload: any = {
       type: customerType,
-      raisonSocial,
-      adresse,
-      telephone,
-      email,
+      raisonSocial: customerType === 'particulier' ? 'Particulier' : 'Entreprise',
+      adresse: adresse.trim(),
+      telephone: telephone.trim(),
+      email: email.trim(),
     };
 
-    // Ajouter NIF et STAT seulement pour les entreprises
     if (customerType === 'entreprise') {
-      newCustomer.nif = nif;
-      newCustomer.stat = stat;
-    }
-
-    if (customerType === 'particulier') {
-      newCustomer.nom = nom;
-      newCustomer.prenom = prenom;
+      payload.sigle = sigle.trim();
+      payload.nif = nif.trim();
+      payload.stat = stat.trim();
     } else {
-      newCustomer.sigle = sigle;
+      payload.nom = nom.trim();
+      payload.prenoms = prenoms.trim();
     }
 
-    // TODO: send to API (services/api.ts) — currently just logging
-    console.log('Create customer', newCustomer);
-    Alert.alert('Client créé', `${prenom} ${nom} a été ajouté.`, [
-      { text: 'OK', onPress: () => navigation.goBack() },
-    ]);
+    try {
+      const response = await customerService.createCustomer(payload);
+      
+      setMessageType('success');
+      setMessage(response.message || `Client ${customerType === 'particulier' ? `${prenoms} ${nom}` : sigle} créé avec succès !`);
+
+      // Réinitialiser le formulaire après succès
+      setTimeout(() => {
+        resetForm();
+        navigation.goBack();
+      }, 1500);
+    } catch (error: any) {
+      console.error('❌ Erreur création client :', error);
+      showError(error.message || 'Erreur lors de l\'ajout du client');
+
+      if (error.code === 500) {
+        Alert.alert('Erreur serveur', 'Impossible de contacter le serveur.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setRaisonSocial('');
+    setCustomerType('particulier');
+    setSigle('');
+    setNom('');
+    setPrenoms('');
+    setAdresse('');
+    setTelephone('');
+    setEmail('');
+    setNif('');
+    setStat('');
+    setMessage('');
+    setMessageType('');
+  };
+
+  const showError = (msg: string) => {
+    setMessageType('error');
+    setMessage(msg);
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} accessibilityLabel="Retour">
-              <Ionicons name="arrow-back" size={18} color="#374151" />
-            </TouchableOpacity>
-            <View style={styles.headerCenter}>
-              <Text style={styles.title}>Ajouter un client</Text>
-            </View>
-            <View style={styles.headerRight} />
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={styles.container}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* HEADER */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} accessibilityLabel="Retour">
+            <Ionicons name="arrow-back" size={24} color="#111" />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Text style={styles.title}>Ajouter un client</Text>
           </View>
+          <View style={{ width: 32 }} />
+        </View>
 
-          <View style={{ marginBottom: 8 }}>
-            <Text style={styles.label}>Raison social</Text>
-            <TouchableOpacity style={styles.pickerButton} onPress={() => setShowTypePicker(true)}>
-              <Text style={styles.pickerButtonText}>{customerType === 'particulier' ? 'Particulier' : 'Entreprise'}</Text>
-            </TouchableOpacity>
+        {/* TYPE DE CLIENT */}
+        <View style={{ marginBottom: 16 }}>
+          <Text style={styles.label}>Type de client *</Text>
+          <TouchableOpacity 
+            style={[styles.inputContainer, showTypePicker && styles.inputFocused]}
+            onPress={() => setShowTypePicker(true)}
+            disabled={isLoading}
+          >
+            <View style={{ paddingVertical: 12 }}>
+              <Text style={[styles.input, { color: '#111' }]}>
+                {customerType === 'particulier' ? 'Particulier' : 'Entreprise'}
+              </Text>
+            </View>
+          </TouchableOpacity>
 
-            <Modal transparent visible={showTypePicker} animationType="fade" onRequestClose={() => setShowTypePicker(false)}>
-              <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowTypePicker(false)}>
-                <View style={styles.pickerContainer}>
-                  <TouchableOpacity style={styles.pickerOption} onPress={() => { 
+          <Modal transparent visible={showTypePicker} animationType="fade" onRequestClose={() => setShowTypePicker(false)}>
+            <TouchableOpacity 
+              style={styles.modalOverlay} 
+              activeOpacity={1} 
+              onPress={() => setShowTypePicker(false)}
+            >
+              <View style={styles.pickerContainer}>
+                <TouchableOpacity 
+                  style={styles.pickerOption} 
+                  onPress={() => { 
                     setCustomerType('particulier'); 
                     setShowTypePicker(false); 
                     setRaisonSocial('Particulier');
-                    // Réinitialiser les champs NIF et STAT lors du changement de type
                     setNif('');
                     setStat('');
-                  }}>
-                    <Text style={styles.pickerOptionText}>Particulier</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.pickerOption} onPress={() => { 
+                  }}
+                >
+                  <Text style={styles.pickerOptionText}>Particulier</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.pickerOption} 
+                  onPress={() => { 
                     setCustomerType('entreprise'); 
                     setShowTypePicker(false); 
                     setRaisonSocial('Entreprise');
-                  }}>
-                    <Text style={styles.pickerOptionText}>Entreprise</Text>
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
-            </Modal>
+                  }}
+                >
+                  <Text style={styles.pickerOptionText}>Entreprise</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </Modal>
+        </View>
+
+        {/* CHAMPS SPÉCIFIQUES SELON LE TYPE */}
+        {customerType === 'particulier' ? (
+          <>
+            {/* NOM */}
+            <TouchableWithoutFeedback onPress={() => nomRef.current?.focus()}>
+              <View style={[styles.inputContainer, nomFocused && styles.inputFocused]}>
+                <TextInput
+                  ref={nomRef}
+                  placeholder="Nom *"
+                  placeholderTextColor="#777"
+                  value={nom}
+                  style={styles.input}
+                  onChangeText={setNom}
+                  onFocus={() => setNomFocused(true)}
+                  onBlur={() => setNomFocused(false)}
+                  editable={!isLoading}
+                  returnKeyType="next"
+                  onSubmitEditing={() => prenomsRef.current?.focus()}
+                />
+              </View>
+            </TouchableWithoutFeedback>
+
+            {/* PRÉNOMS */}
+            <TouchableWithoutFeedback onPress={() => prenomsRef.current?.focus()}>
+              <View style={[styles.inputContainer, prenomsFocused && styles.inputFocused]}>
+                <TextInput
+                  ref={prenomsRef}
+                  placeholder="Prénom *"
+                  placeholderTextColor="#777"
+                  value={prenoms}
+                  style={styles.input}
+                  onChangeText={setPrenoms}
+                  onFocus={() => setPrenomsFocused(true)}
+                  onBlur={() => setPrenomsFocused(false)}
+                  editable={!isLoading}
+                  returnKeyType="next"
+                  onSubmitEditing={() => adresseRef.current?.focus()}
+                />
+              </View>
+            </TouchableWithoutFeedback>
+          </>
+        ) : (
+          <>
+            {/* SIGLE */}
+            <TouchableWithoutFeedback onPress={() => sigleRef.current?.focus()}>
+              <View style={[styles.inputContainer, sigleFocused && styles.inputFocused]}>
+                <TextInput
+                  ref={sigleRef}
+                  placeholder="SIGLE de l'entreprise *"
+                  placeholderTextColor="#777"
+                  value={sigle}
+                  style={styles.input}
+                  onChangeText={setSigle}
+                  onFocus={() => setSigleFocused(true)}
+                  onBlur={() => setSigleFocused(false)}
+                  editable={!isLoading}
+                  returnKeyType="next"
+                  onSubmitEditing={() => adresseRef.current?.focus()}
+                />
+              </View>
+            </TouchableWithoutFeedback>
+          </>
+        )}
+
+        {/* ADRESSE */}
+        <TouchableWithoutFeedback onPress={() => adresseRef.current?.focus()}>
+          <View style={[styles.inputContainer, adresseFocused && styles.inputFocused]}>
+            <TextInput
+              ref={adresseRef}
+              placeholder="Adresse"
+              placeholderTextColor="#777"
+              value={adresse}
+              style={[styles.input, { height: 80 }]}
+              onChangeText={setAdresse}
+              multiline
+              onFocus={() => setAdresseFocused(true)}
+              onBlur={() => setAdresseFocused(false)}
+              editable={!isLoading}
+              returnKeyType="next"
+              onSubmitEditing={() => telephoneRef.current?.focus()}
+            />
           </View>
+        </TouchableWithoutFeedback>
 
-          {customerType === 'particulier' ? (
-            <>
-              <Text style={styles.label}>Nom *</Text>
-              <TextInput style={styles.input} value={nom} onChangeText={setNom} placeholder="Nom" />
+        {/* TÉLÉPHONE */}
+        <TouchableWithoutFeedback onPress={() => telephoneRef.current?.focus()}>
+          <View style={[styles.inputContainer, telephoneFocused && styles.inputFocused]}>
+            <TextInput
+              ref={telephoneRef}
+              placeholder="Téléphone"
+              placeholderTextColor="#777"
+              value={telephone}
+              style={styles.input}
+              onChangeText={setTelephone}
+              keyboardType="phone-pad"
+              onFocus={() => setTelephoneFocused(true)}
+              onBlur={() => setTelephoneFocused(false)}
+              editable={!isLoading}
+              returnKeyType="next"
+              onSubmitEditing={() => emailRef.current?.focus()}
+            />
+          </View>
+        </TouchableWithoutFeedback>
 
-              <Text style={styles.label}>Prénom *</Text>
-              <TextInput style={styles.input} value={prenom} onChangeText={setPrenom} placeholder="Prénom" />
-            </>
+        {/* EMAIL */}
+        <TouchableWithoutFeedback onPress={() => emailRef.current?.focus()}>
+          <View style={[styles.inputContainer, emailFocused && styles.inputFocused]}>
+            <TextInput
+              ref={emailRef}
+              placeholder="Email"
+              placeholderTextColor="#777"
+              value={email}
+              style={styles.input}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              onFocus={() => setEmailFocused(true)}
+              onBlur={() => setEmailFocused(false)}
+              editable={!isLoading}
+              returnKeyType={customerType === 'entreprise' ? 'next' : 'done'}
+              onSubmitEditing={() => {
+                if (customerType === 'entreprise') {
+                  nifRef.current?.focus();
+                } else {
+                  handleSubmit();
+                }
+              }}
+            />
+          </View>
+        </TouchableWithoutFeedback>
+
+        {/* CHAMPS ENTREPRISE UNIQUEMENT */}
+        {customerType === 'entreprise' && (
+          <>
+            {/* NIF */}
+            <TouchableWithoutFeedback onPress={() => nifRef.current?.focus()}>
+              <View style={[styles.inputContainer, nifFocused && styles.inputFocused]}>
+                <TextInput
+                  ref={nifRef}
+                  placeholder="NIF"
+                  placeholderTextColor="#777"
+                  value={nif}
+                  style={styles.input}
+                  onChangeText={setNif}
+                  onFocus={() => setNifFocused(true)}
+                  onBlur={() => setNifFocused(false)}
+                  editable={!isLoading}
+                  returnKeyType="next"
+                  onSubmitEditing={() => statRef.current?.focus()}
+                />
+              </View>
+            </TouchableWithoutFeedback>
+
+            {/* STAT */}
+            <TouchableWithoutFeedback onPress={() => statRef.current?.focus()}>
+              <View style={[styles.inputContainer, statFocused && styles.inputFocused]}>
+                <TextInput
+                  ref={statRef}
+                  placeholder="STAT"
+                  placeholderTextColor="#777"
+                  value={stat}
+                  style={styles.input}
+                  onChangeText={setStat}
+                  onFocus={() => setStatFocused(true)}
+                  onBlur={() => setStatFocused(false)}
+                  editable={!isLoading}
+                  returnKeyType="done"
+                  onSubmitEditing={handleSubmit}
+                />
+              </View>
+            </TouchableWithoutFeedback>
+          </>
+        )}
+
+        {/* BOUTON ENREGISTRER */}
+        <TouchableOpacity
+          style={[
+            styles.button,
+            (!isFormValid || isLoading) && styles.buttonDisabled,
+          ]}
+          disabled={!isFormValid || isLoading}
+          onPress={handleSubmit}
+          activeOpacity={0.9}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#fff" />
           ) : (
-            <>
-              <Text style={styles.label}>SIGLE *</Text>
-              <TextInput style={styles.input} value={sigle} onChangeText={setSigle} placeholder="SIGLE de l'entreprise" />
-            </>
-          )}
-
-          <Text style={styles.label}>Adresse</Text>
-          <TextInput style={[styles.input, styles.multiline]} value={adresse} onChangeText={setAdresse} placeholder="Adresse" multiline />
-
-          <Text style={styles.label}>Téléphone</Text>
-          <TextInput style={styles.input} value={telephone} onChangeText={setTelephone} placeholder="Téléphone" keyboardType="phone-pad" />
-
-          <Text style={styles.label}>Email</Text>
-          <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="Email" keyboardType="email-address" autoCapitalize="none" />
-
-          {/* Afficher NIF et STAT seulement pour les entreprises */}
-          {customerType === 'entreprise' && (
-            <>
-              <Text style={styles.label}>NIF</Text>
-              <TextInput style={styles.input} value={nif} onChangeText={setNif} placeholder="NIF" />
-
-              <Text style={styles.label}>STAT</Text>
-              <TextInput style={styles.input} value={stat} onChangeText={setStat} placeholder="STAT" />
-            </>
-          )}
-
-          <TouchableOpacity style={styles.button} onPress={handleSubmit} activeOpacity={0.9}>
             <Text style={styles.buttonText}>Enregistrer</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          )}
+        </TouchableOpacity>
+
+        {/* MESSAGE */}
+        {message ? (
+          <View
+            style={[
+              styles.messageBox,
+              messageType === 'error' ? styles.errorBox : styles.successBox,
+            ]}
+          >
+            <Text
+              style={[
+                styles.messageText,
+                messageType === 'error' ? styles.errorText : styles.successText,
+              ]}
+            >
+              {message}
+            </Text>
+          </View>
+        ) : null}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
