@@ -1,371 +1,288 @@
-import { StyleSheet, Platform, Dimensions } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 
-const { width: screenWidth } = Dimensions.get('window');
-
-export const createProductStyles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
+export const styles = StyleSheet.create({
+  // Layout
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#F5F5F5',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-  cancelButton: {
-    padding: 8,
-    minHeight: 44,
-    minWidth: 44,
-    justifyContent: 'center',
-  },
-  cancelButtonText: {
-    color: '#007AFF',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-  formContainer: {
+  scrollView: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 20,
+  spacer: {
+    height: 100,
   },
-  inputGroup: {
+
+  // Titre
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 30,
+    textAlign: 'center',
+  },
+
+  // Conteneurs d'input
+  inputContainer: {
     marginBottom: 20,
   },
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: '#333',
     marginBottom: 8,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
-  required: {
-    color: '#ff3b30',
-  },
-  textInput: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+
+  // Inputs généraux
+  input: {
+    backgroundColor: '#FFF',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: Platform.OS === 'ios' ? 14 : 12,
     fontSize: 16,
-    color: '#1a1a1a',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#DDD',
   },
-  textArea: {
+  multilineInput: {
     minHeight: 100,
     textAlignVertical: 'top',
-    paddingTop: 12,
   },
-  picker: {
-    backgroundColor: 'white',
+
+  // Dropdown catégorie
+  dropdown: {
+    backgroundColor: '#FFF',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
-  },
-  pickerAndroid: {
-    width: '100%',
-    height: 50,
-  },
-  pickerIOS: {
-    width: '100%',
-    height: 200,
-  },
-  errorInput: {
-    borderColor: '#ff3b30',
-    backgroundColor: '#fffafa',
-  },
-  errorText: {
-    color: '#ff3b30',
-    fontSize: 14,
-    marginTop: 6,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-  priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  currencySymbol: {
-    position: 'absolute',
-    left: 16,
-    zIndex: 1,
-    fontSize: 16,
-    color: '#666',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-  priceInput: {
-    paddingLeft: 30,
-  },
-  switchContainer: {
+    borderColor: '#DDD',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
   },
-  switchLabel: {
+  dropdownTextSelected: {
     fontSize: 16,
-    color: '#1a1a1a',
-    fontWeight: '500',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    color: '#333',
+    flex: 1,
   },
-  footer: {
-    padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
-    backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderTopColor: '#e9ecef',
+  dropdownTextPlaceholder: {
+    fontSize: 16,
+    color: '#999',
+    flex: 1,
   },
-  submitButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 12,
-    paddingVertical: 16,
+
+  // Prix
+  prixContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 56,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#007AFF',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
   },
-  submitButtonDisabled: {
-    backgroundColor: '#cccccc',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#cccccc',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+  prixInput: {
+    flex: 1,
+    marginRight: 10,
   },
-  submitButtonText: {
-    color: 'white',
+  currency: {
     fontSize: 18,
-    fontWeight: '700',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    fontWeight: '600',
+    color: '#333',
   },
-  submitButtonTextDisabled: {
-    color: '#999999',
+  hint: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 5,
+    fontStyle: 'italic',
   },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+
+  // Quantité
+  quantiteContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quantiteButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#4A90E2',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1000,
+    borderWidth: 2,
+    borderColor: '#4A90E2',
+  },
+  quantiteButtonDisabled: {
+    backgroundColor: '#E0E0E0',
+    borderColor: '#E0E0E0',
+  },
+  quantiteInput: {
+    width: 100,
+    height: 50,
+    backgroundColor: '#FFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#DDD',
+    marginHorizontal: 10,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
   },
 
+  // Image
+  imageContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#DDD',
+    overflow: 'hidden',
+  },
+  imagePreview: {
+    width: '100%',
+    height: 200,
+    resizeMode: 'cover',
+  },
+  imageActions: {
+    flexDirection: 'row',
+    padding: 10,
+    backgroundColor: '#FFF',
+  },
   imageButton: {
-  backgroundColor: '#007AFF',
-  paddingVertical: 14,
-  borderRadius: 12,
-  alignItems: 'center',
-  justifyContent: 'center',
-  ...Platform.select({
-    ios: {
-      shadowColor: '#007AFF',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-    },
-    android: {
-      elevation: 4,
-    },
-  }),
-},
-imageButtonText: {
-  color: 'white',
-  fontSize: 16,
-  fontWeight: '600',
-  fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-},
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginHorizontal: 5,
+  },
+  changeButton: {
+    backgroundColor: '#4A90E2',
+  },
+  deleteButton: {
+    backgroundColor: '#E74C3C',
+  },
+  imageButtonText: {
+    color: '#FFF',
+    fontWeight: '600',
+    marginLeft: 8,
+    fontSize: 14,
+  },
+  uploadArea: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    backgroundColor: '#FAFAFA',
+  },
+  uploadText: {
+    fontSize: 18,
+    color: '#4A90E2',
+    fontWeight: '600',
+    marginTop: 15,
+  },
+  uploadSubtext: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 5,
+    textAlign: 'center',
+  },
 
-imageContainer: {
-  height: 180,
-  borderRadius: 12,
-  borderWidth: 2,
-  borderColor: '#d1d5db',
-  borderStyle: 'dashed',
-  justifyContent: 'center',
-  alignItems: 'center',
-  backgroundColor: '#fafafa',
-},
+  // Bouton Enregistrer
+  saveButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#F5F5F5',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#DDD',
+  },
+  saveButton: {
+    backgroundColor: '#4A90E2',
+    borderRadius: 10,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 12,
+  },
 
-imagePlaceholderText: {
-  fontSize: 16,
-  color: '#6b7280',
-  fontWeight: '600',
-},
+  // Modal catégories
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    flex: 1,
+    marginRight: 10,
+  },
+  categorieItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  categorieText: {
+    fontSize: 16,
+    color: '#333',
+    flex: 1,
+  },
+});
 
-imagePreviewWrapper: {
-  width: '100%',
-  height: 220,
-  borderRadius: 12,
-  overflow: 'hidden',
-  position: 'relative',
-  justifyContent: 'center',
-  alignItems: 'center',
-  backgroundColor: '#f0f0f0',
-},
-
-imagePreview: {
-  width: '100%',
-  height: '100%',
-  borderRadius: 12,
-},
-
-removeIconContainer: {
-  position: 'absolute',
-  top: 10,
-  right: 10,
-  backgroundColor: 'white',
-  borderRadius: 50,
-  width: 28,
-  height: 28,
-  justifyContent: 'center',
-  alignItems: 'center',
-  borderWidth: 1,
-  borderColor: '#ff3b30',
-  zIndex: 10,
-},
-
-removeIconText: {
-  color: '#ff3b30',
-  fontSize: 16,
-  fontWeight: '700',
-},
-
-quantityContainer: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  backgroundColor: 'white',
-  borderWidth: 1,
-  borderColor: '#d1d5db',
-  borderRadius: 12,
-  paddingHorizontal: 16,
-  paddingVertical: 10,
-},
-
-qtyButton: {
-  width: 40,
-  height: 40,
-  borderRadius: 20,
-  backgroundColor: '#f1f5f9',
-  justifyContent: 'center',
-  alignItems: 'center',
-
-  ...Platform.select({
-    ios: {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.15,
-      shadowRadius: 3,
-    },
-    android: {
-      elevation: 3,
-    },
-  }),
-},
-
-qtyButtonText: {
-  fontSize: 22,
-  fontWeight: '700',
-  color: '#1a1a1a',
-},
-
-qtyValue: {
-  fontSize: 18,
-  fontWeight: '600',
-  color: '#1a1a1a',
-  textAlign: 'center',
-  minWidth: 40,
-},
-
-qtyInput: {
-  minWidth: 50,
-  textAlign: "center",
-  fontSize: 18,
-  paddingHorizontal: 6,
+// Types
+export interface Categorie {
+  id: string;
+  nom: string;
 }
 
+export interface ProductFormData {
+  reference: string;
+  designation: string;
+  categorie: string;
+  prix: string;
+  quantite: number;
+  image: string | null;
+  imageBase64?: string;
+}
 
-});
+// Constantes
+export const CATEGORIES: Categorie[] = [
+  { id: '1', nom: 'Électronique' },
+  { id: '2', nom: 'Vêtements' },
+  { id: '3', nom: 'Alimentation' },
+  { id: '4', nom: 'Meubles' },
+  { id: '5', nom: 'Livres' },
+  { id: '6', nom: 'Sports' },
+  { id: '7', nom: 'Beauté' },
+  { id: '8', nom: 'Jouets' },
+  { id: '9', nom: 'Automobile' },
+  { id: '10', nom: 'Jardin' },
+];

@@ -59,9 +59,13 @@ export default function CreateCustomerScreen() {
       adresse,
       telephone,
       email,
-      nif,
-      stat,
     };
+
+    // Ajouter NIF et STAT seulement pour les entreprises
+    if (customerType === 'entreprise') {
+      newCustomer.nif = nif;
+      newCustomer.stat = stat;
+    }
 
     if (customerType === 'particulier') {
       newCustomer.nom = nom;
@@ -83,10 +87,8 @@ export default function CreateCustomerScreen() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
 
           <View style={styles.header}>
-
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} accessibilityLabel="Retour">
               <Ionicons name="arrow-back" size={18} color="#374151" />
-              
             </TouchableOpacity>
             <View style={styles.headerCenter}>
               <Text style={styles.title}>Ajouter un client</Text>
@@ -96,8 +98,6 @@ export default function CreateCustomerScreen() {
 
           <View style={{ marginBottom: 8 }}>
             <Text style={styles.label}>Raison social</Text>
-
-            {/* Replace free-text raisonSocial with a prefilled selector (Entreprise / Particulier) */}
             <TouchableOpacity style={styles.pickerButton} onPress={() => setShowTypePicker(true)}>
               <Text style={styles.pickerButtonText}>{customerType === 'particulier' ? 'Particulier' : 'Entreprise'}</Text>
             </TouchableOpacity>
@@ -105,10 +105,21 @@ export default function CreateCustomerScreen() {
             <Modal transparent visible={showTypePicker} animationType="fade" onRequestClose={() => setShowTypePicker(false)}>
               <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowTypePicker(false)}>
                 <View style={styles.pickerContainer}>
-                  <TouchableOpacity style={styles.pickerOption} onPress={() => { setCustomerType('particulier'); setShowTypePicker(false); setRaisonSocial('Particulier'); }}>
+                  <TouchableOpacity style={styles.pickerOption} onPress={() => { 
+                    setCustomerType('particulier'); 
+                    setShowTypePicker(false); 
+                    setRaisonSocial('Particulier');
+                    // Réinitialiser les champs NIF et STAT lors du changement de type
+                    setNif('');
+                    setStat('');
+                  }}>
                     <Text style={styles.pickerOptionText}>Particulier</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.pickerOption} onPress={() => { setCustomerType('entreprise'); setShowTypePicker(false); setRaisonSocial('Entreprise'); }}>
+                  <TouchableOpacity style={styles.pickerOption} onPress={() => { 
+                    setCustomerType('entreprise'); 
+                    setShowTypePicker(false); 
+                    setRaisonSocial('Entreprise');
+                  }}>
                     <Text style={styles.pickerOptionText}>Entreprise</Text>
                   </TouchableOpacity>
                 </View>
@@ -140,13 +151,16 @@ export default function CreateCustomerScreen() {
           <Text style={styles.label}>Email</Text>
           <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="Email" keyboardType="email-address" autoCapitalize="none" />
 
-          <Text style={styles.label}>NIF</Text>
-          <TextInput style={styles.input} value={nif} onChangeText={setNif} placeholder="NIF" />
+          {/* Afficher NIF et STAT seulement pour les entreprises */}
+          {customerType === 'entreprise' && (
+            <>
+              <Text style={styles.label}>NIF</Text>
+              <TextInput style={styles.input} value={nif} onChangeText={setNif} placeholder="NIF" />
 
-          <Text style={styles.label}>STAT</Text>
-          <TextInput style={styles.input} value={stat} onChangeText={setStat} placeholder="STAT" />
-
-          {/* Editeur field removed */}
+              <Text style={styles.label}>STAT</Text>
+              <TextInput style={styles.input} value={stat} onChangeText={setStat} placeholder="STAT" />
+            </>
+          )}
 
           <TouchableOpacity style={styles.button} onPress={handleSubmit} activeOpacity={0.9}>
             <Text style={styles.buttonText}>Enregistrer</Text>
