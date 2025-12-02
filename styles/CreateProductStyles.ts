@@ -277,6 +277,28 @@ export const styles = StyleSheet.create({
     marginTop: 4,
     marginLeft: 4,
   },
+
+  headerCenter: { 
+    flex: 1, 
+    alignItems: 'center' 
+  },
+
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: 12,
+    paddingTop: Platform.OS === 'ios' ? 0 : 12 
+  },
+  
+  backButton: { 
+    width: 36, 
+    height: 36, 
+    borderRadius: 8, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginRight: 8, 
+    backgroundColor: '#F3F4F6' 
+  },
   
   imageHint: {
     fontSize: 12,

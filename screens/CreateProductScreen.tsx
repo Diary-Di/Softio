@@ -19,6 +19,8 @@ import {
 } from '../styles/CreateProductStyles';
 import { productService } from '../services/productService';
 import { categoryService } from '../services/categoryService';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 //import type { ApiError } from '../services/productService';
 
 // Interface pour les catégories
@@ -42,6 +44,8 @@ interface ProductFormData {
 }
 
 const ProductFormScreen: React.FC = () => {
+
+  const navigation = useNavigation<any>();
   // États du formulaire
   const [formData, setFormData] = useState<ProductFormData>({
     ref_produit: '',
@@ -454,8 +458,16 @@ const handleImageDelete = () => {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Titre */}
-        <Text style={styles.title}>Nouveau Produit</Text>
+        {/* HEADER */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} accessibilityLabel="Retour">
+            <Ionicons name="arrow-back" size={24} color="#111" />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Text style={styles.title}>Ajouter un client</Text>
+          </View>
+          <View style={{ width: 32 }} />
+        </View>
         
         {/* Référence du produit */}
         <View style={styles.inputContainer}>
