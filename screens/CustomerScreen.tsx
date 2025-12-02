@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useState, useEffect, useCallback } from "react";
 import { Alert, FlatList, LayoutAnimation, Linking, Platform, Pressable, Text, TouchableOpacity, UIManager, View, RefreshControl, ActivityIndicator } from "react-native";
 import FloatingBottomBarCustomer from '../components/FloatingBottomBarCustomer';
@@ -9,34 +9,68 @@ import { customerService } from '../services/customerService';
 
 type Customer = {
   id?: string;
-  email: string; // Clé primaire
+  email: string;
   type: 'particulier' | 'entreprise';
   sigle?: string;
   nom?: string;
-  prenoms?: string;
+  prenom?: string;
   adresse?: string;
   telephone?: string;
   nif?: string;
   stat?: string;
   raison_social?: string;
-  created_at?: string;
-  updated_at?: string;
 };
 
+const ITEMS_PER_PAGE = 5; // 5 clients par page
+
 export default function CustomerScreen() {
-  // Enable LayoutAnimation on Android
   if (Platform.OS === "android") {
     UIManager.setLayoutAnimationEnabledExperimental?.(true);
   }
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [customerType, setCustomerType] = useState<'all' | 'particulier' | 'entreprise'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
   const navigation = useNavigation<any>();
 
-  // Fonction pour charger les clients
+  // Filtrer et paginer les clients
+  useEffect(() => {
+    let filtered = [...customers];
+    
+    // Filtre par recherche
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(customer =>
+        (customer.nom?.toLowerCase().includes(query)) ||
+        (customer.prenom?.toLowerCase().includes(query)) ||
+        (customer.sigle?.toLowerCase().includes(query)) ||
+        (customer.email?.toLowerCase().includes(query)) ||
+        (customer.telephone?.includes(query))
+      );
+    }
+    
+    // Filtre par type
+    if (customerType !== 'all') {
+      filtered = filtered.filter(customer => customer.type === customerType);
+    }
+    
+    setFilteredCustomers(filtered);
+    setCurrentPage(1); // Reset à la première page quand le filtre change
+  }, [customers, searchQuery, customerType]);
+
+  // Calculer les données paginées
+  const totalPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedCustomers = filteredCustomers.slice(startIndex, endIndex);
+
+  // Charger les clients
   const loadCustomers = useCallback(async () => {
     try {
       setError(null);
@@ -52,10 +86,12 @@ export default function CustomerScreen() {
     }
   }, []);
 
-  // Chargement initial
-  useEffect(() => {
-    loadCustomers();
-  }, [loadCustomers]);
+  // Recharger quand l'écran obtient le focus
+  useFocusEffect(
+    useCallback(() => {
+      loadCustomers();
+    }, [loadCustomers])
+  );
 
   // Pull to refresh
   const onRefresh = useCallback(() => {
@@ -63,30 +99,20 @@ export default function CustomerScreen() {
     loadCustomers();
   }, [loadCustomers]);
 
-  // Formatage du nom complet
+  // Fonctions utilitaires
   const getFullName = (customer: Customer): string => {
     if (customer.type === 'particulier') {
-      return `${customer.prenoms || ''} ${customer.nom || ''}`.trim();
+      return `${customer.prenom || ''} ${customer.nom || ''}`.trim();
     } else {
-      return customer.sigle || customer.raison_social || 'Entreprise';
+      return customer.sigle || 'Entreprise';
     }
   };
 
-  // Initiales pour l'avatar
   const getInitials = (customer: Customer): string => {
     if (customer.type === 'particulier') {
-      return `${customer.prenoms?.[0] || ''}${customer.nom?.[0] || ''}`.toUpperCase();
+      return `${customer.prenom?.[0] || ''}${customer.nom?.[0] || ''}`.toUpperCase();
     } else {
-      return customer.sigle?.[0] || customer.raison_social?.[0] || 'E';
-    }
-  };
-
-  // Formatage de la raison sociale
-  const getRaisonSocial = (customer: Customer): string => {
-    if (customer.type === 'particulier') {
-      return `${customer.prenoms || ''} ${customer.nom || ''}`.trim();
-    } else {
-      return customer.sigle || customer.raison_social || 'Entreprise';
+      return customer.sigle?.[0] || 'E';
     }
   };
 
@@ -102,36 +128,75 @@ export default function CustomerScreen() {
     setExpandedId((prev) => (prev === email ? null : email));
   };
 
-  // Fonction pour supprimer un client
-  const handleDeleteCustomer = async (email: string, name: string) => {
-    Alert.alert(
-      "Supprimer",
-      `Voulez-vous supprimer ${name} ?`,
-      [
-        { text: "Annuler", style: "cancel" },
-        { 
-          text: "Supprimer", 
-          style: "destructive", 
-          onPress: async () => {
-            try {
-              await customerService.deleteCustomer(email);
-              Alert.alert('Succès', 'Client supprimé avec succès');
-              // Recharger la liste
-              loadCustomers();
-            } catch (error: any) {
-              Alert.alert('Erreur', error.message || 'Erreur lors de la suppression');
-            }
-          }
-        },
-      ]
-    );
+  // Gestion de la pagination
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
   };
 
-  // Fonction pour éditer un client
-  const handleEditCustomer = (customer: Customer) => {
-    navigation.navigate('EditCustomer', { customer });
+  const renderPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    // Bouton première page
+    if (startPage > 1) {
+      pages.push(
+        <TouchableOpacity
+          key="first"
+          style={styles.pageButton}
+          onPress={() => goToPage(1)}
+        >
+          <Text style={styles.pageButtonText}>1</Text>
+        </TouchableOpacity>
+      );
+      if (startPage > 2) {
+        pages.push(<Text key="dots1" style={styles.pageDots}>...</Text>);
+      }
+    }
+    
+    // Pages numérotées
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(
+        <TouchableOpacity
+          key={i}
+          style={[styles.pageButton, currentPage === i && styles.activePageButton]}
+          onPress={() => goToPage(i)}
+        >
+          <Text style={[styles.pageButtonText, currentPage === i && styles.activePageButtonText]}>
+            {i}
+          </Text>
+        </TouchableOpacity>
+      );
+    }
+    
+    // Bouton dernière page
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        pages.push(<Text key="dots2" style={styles.pageDots}>...</Text>);
+      }
+      pages.push(
+        <TouchableOpacity
+          key="last"
+          style={styles.pageButton}
+          onPress={() => goToPage(totalPages)}
+        >
+          <Text style={styles.pageButtonText}>{totalPages}</Text>
+        </TouchableOpacity>
+      );
+    }
+    
+    return pages;
   };
 
+  // Render item pour FlatList
   const renderItem = ({ item }: { item: Customer }) => {
     const isExpanded = expandedId === item.email;
     const fullName = getFullName(item);
@@ -179,7 +244,7 @@ export default function CustomerScreen() {
             
             {item.type === 'entreprise' && renderField("SIGLE", item.sigle)}
             {item.type === 'particulier' && renderField("Nom", item.nom)}
-            {item.type === 'particulier' && renderField("Prénom", item.prenoms)}
+            {item.type === 'particulier' && renderField("Prénom", item.prenom)}
             
             {renderField("Adresse", item.adresse)}
             {renderField("Téléphone", item.telephone)}
@@ -188,15 +253,10 @@ export default function CustomerScreen() {
             {item.type === 'entreprise' && renderField("NIF", item.nif)}
             {item.type === 'entreprise' && renderField("STAT", item.stat)}
 
-            {/* Action buttons */}
             <View style={styles.actionRow}>
               {item.telephone && (
                 <Pressable
-                  style={({ pressed }) => [
-                    styles.actionButton,
-                    { opacity: pressed ? 0.8 : 1 },
-                  ]}
-                  android_ripple={{ color: 'rgba(0,0,0,0.08)', borderless: true }}
+                  style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1 }]}
                   onPress={() => {
                     const url = `tel:${item.telephone}`;
                     Linking.canOpenURL(url).then((supported) => {
@@ -204,43 +264,34 @@ export default function CustomerScreen() {
                       else Alert.alert("Appel impossible", "Votre appareil ne peut pas passer d'appels.");
                     });
                   }}
-                  accessibilityLabel={`Appeler ${fullName}`}
                 >
                   <Ionicons name="call" size={24} color="#2563EB" />
                 </Pressable>
               )}
 
-              {item.email && (
-                <Pressable
-                  style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1 }]}
-                  android_ripple={{ color: 'rgba(0,0,0,0.08)', borderless: true }}
-                  onPress={() => {
-                    const url = `mailto:${item.email}`;
-                    Linking.canOpenURL(url).then((supported) => {
-                      if (supported) Linking.openURL(url);
-                      else Alert.alert("Email impossible", "Votre appareil ne peut pas envoyer d'emails.");
-                    });
-                  }}
-                  accessibilityLabel={`Email ${fullName}`}
-                >
-                  <Ionicons name="mail" size={24} color="#059669" />
-                </Pressable>
-              )}
+              <Pressable
+                style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1 }]}
+                onPress={() => {
+                  const url = `mailto:${item.email}`;
+                  Linking.canOpenURL(url).then((supported) => {
+                    if (supported) Linking.openURL(url);
+                    else Alert.alert("Email impossible", "Votre appareil ne peut pas envoyer d'emails.");
+                  });
+                }}
+              >
+                <Ionicons name="mail" size={24} color="#059669" />
+              </Pressable>
 
               <Pressable
                 style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1 }]}
-                android_ripple={{ color: 'rgba(0,0,0,0.08)', borderless: true }}
                 onPress={() => handleEditCustomer(item)}
-                accessibilityLabel={`Editer ${fullName}`}
               >
                 <Ionicons name="create" size={24} color="#F59E0B" />
               </Pressable>
 
               <Pressable
                 style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1 }]}
-                android_ripple={{ color: 'rgba(0,0,0,0.08)', borderless: true }}
                 onPress={() => handleDeleteCustomer(item.email, fullName)}
-                accessibilityLabel={`Supprimer ${fullName}`}
               >
                 <Ionicons name="trash" size={24} color="#DC2626" />
               </Pressable>
@@ -251,8 +302,36 @@ export default function CustomerScreen() {
     );
   };
 
+  // Gestion des actions
+  const handleDeleteCustomer = async (email: string, name: string) => {
+    Alert.alert(
+      "Supprimer",
+      `Voulez-vous supprimer ${name} ?`,
+      [
+        { text: "Annuler", style: "cancel" },
+        { 
+          text: "Supprimer", 
+          style: "destructive", 
+          onPress: async () => {
+            try {
+              await customerService.deleteCustomer(email);
+              Alert.alert('Succès', 'Client supprimé avec succès');
+              loadCustomers();
+            } catch (error: any) {
+              Alert.alert('Erreur', error.message || 'Erreur lors de la suppression');
+            }
+          }
+        },
+      ]
+    );
+  };
+
+  const handleEditCustomer = (customer: Customer) => {
+    navigation.navigate('EditCustomer', { customer });
+  };
+
   // Écran de chargement
-  if (loading) {
+  if (loading && customers.length === 0) {
     return (
       <View style={[styles.container, styles.centerContainer]}>
         <ActivityIndicator size="large" color="#4F46E5" />
@@ -261,56 +340,121 @@ export default function CustomerScreen() {
     );
   }
 
-  // Écran d'erreur
-  if (error && customers.length === 0) {
-    return (
-      <View style={[styles.container, styles.centerContainer]}>
-        <Ionicons name="alert-circle-outline" size={64} color="#DC2626" />
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity
-          style={styles.retryButton}
-          onPress={loadCustomers}
-        >
-          <Text style={styles.retryButtonText}>Réessayer</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Clients</Text>
-      
-      {customers.length === 0 ? (
+      {/* En-tête avec titre et statistiques */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Clients</Text>
+        <Text style={styles.subtitle}>
+          {filteredCustomers.length} client{filteredCustomers.length > 1 ? 's' : ''}
+          {customerType !== 'all' && ` (${customerType}s)`}
+        </Text>
+      </View>
+
+      {/* Filtres */}
+      <View style={styles.filterContainer}>
+        <View style={styles.filterRow}>
+          <TouchableOpacity
+            style={[styles.filterButton, customerType === 'all' && styles.filterButtonActive]}
+            onPress={() => setCustomerType('all')}
+          >
+            <Text style={[styles.filterButtonText, customerType === 'all' && styles.filterButtonTextActive]}>
+              Tous
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.filterButton, customerType === 'particulier' && styles.filterButtonActive]}
+            onPress={() => setCustomerType('particulier')}
+          >
+            <Text style={[styles.filterButtonText, customerType === 'particulier' && styles.filterButtonTextActive]}>
+              Particuliers
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.filterButton, customerType === 'entreprise' && styles.filterButtonActive]}
+            onPress={() => setCustomerType('entreprise')}
+          >
+            <Text style={[styles.filterButtonText, customerType === 'entreprise' && styles.filterButtonTextActive]}>
+              Entreprises
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Liste des clients */}
+      {paginatedCustomers.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="people-outline" size={64} color="#9CA3AF" />
-          <Text style={styles.emptyText}>Aucun client pour le moment</Text>
-          <Text style={styles.emptySubtext}>Ajoutez votre premier client en cliquant sur le bouton +</Text>
+          <Text style={styles.emptyText}>
+            {searchQuery || customerType !== 'all' 
+              ? "Aucun client ne correspond aux critères" 
+              : "Aucun client pour le moment"}
+          </Text>
+          <Text style={styles.emptySubtext}>
+            {searchQuery || customerType !== 'all' 
+              ? "Essayez de modifier vos filtres" 
+              : "Ajoutez votre premier client en cliquant sur le bouton +"}
+          </Text>
         </View>
       ) : (
-        <FlatList
-          data={customers}
-          keyExtractor={(item) => item.email}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={['#4F46E5']}
-              tintColor="#4F46E5"
-            />
-          }
-          ListHeaderComponent={
-            <Text style={styles.countText}>
-              {customers.length} client{customers.length > 1 ? 's' : ''}
-            </Text>
-          }
-        />
+        <>
+          <FlatList
+            data={paginatedCustomers}
+            keyExtractor={(item) => item.email}
+            renderItem={renderItem}
+            contentContainerStyle={styles.listContainer}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#4F46E5']}
+                tintColor="#4F46E5"
+              />
+            }
+          />
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <View style={styles.paginationContainer}>
+              <View style={styles.paginationInfo}>
+                <Text style={styles.paginationText}>
+                  Page {currentPage} sur {totalPages}
+                </Text>
+                <Text style={styles.paginationCount}>
+                  {startIndex + 1}-{Math.min(endIndex, filteredCustomers.length)} sur {filteredCustomers.length}
+                </Text>
+              </View>
+              
+              <View style={styles.paginationControls}>
+                <TouchableOpacity
+                  style={[styles.navButton, currentPage === 1 && styles.navButtonDisabled]}
+                  onPress={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <Ionicons name="chevron-back" size={20} color={currentPage === 1 ? "#9CA3AF" : "#4F46E5"} />
+                </TouchableOpacity>
+                
+                <View style={styles.pageNumbersContainer}>
+                  {renderPageNumbers()}
+                </View>
+                
+                <TouchableOpacity
+                  style={[styles.navButton, currentPage === totalPages && styles.navButtonDisabled]}
+                  onPress={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  <Ionicons name="chevron-forward" size={20} color={currentPage === totalPages ? "#9CA3AF" : "#4F46E5"} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </>
       )}
       
-      {/* FAB pour créer un nouveau client */}
+      {/* FAB */}
       <TouchableOpacity
         style={[productStyles.fab, { bottom: 92 }]}
         activeOpacity={0.85}
@@ -319,7 +463,6 @@ export default function CustomerScreen() {
         <Ionicons name="add" size={26} color="#fff" />
       </TouchableOpacity>
       
-      {/* Customer-specific floating bottom bar */}
       <FloatingBottomBarCustomer active="client" />
     </View>
   );
