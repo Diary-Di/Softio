@@ -118,8 +118,6 @@ export default function CreateCustomerScreen() {
       // Réinitialiser le formulaire après succès
       setTimeout(() => {
         resetForm();
-        router.back();
-        CustomerScreen
 
       }, 1500);
     } catch (error: any) {
