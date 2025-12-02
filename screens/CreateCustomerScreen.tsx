@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from "expo-router";
 import { useNavigation } from '@react-navigation/native';
 import { useState, useRef } from 'react';
 import {
@@ -17,9 +18,10 @@ import {
 } from 'react-native';
 import styles from '../styles/CreateCustomerStyles';
 import { customerService } from '../services/customerService';
+import CustomerScreen from './CustomerScreen';
 
 export default function CreateCustomerScreen() {
-  const navigation = useNavigation<any>();
+  const router = useRouter();
 
   // États pour les données du formulaire
   const [raisonSocial, setRaisonSocial] = useState('');
@@ -116,7 +118,9 @@ export default function CreateCustomerScreen() {
       // Réinitialiser le formulaire après succès
       setTimeout(() => {
         resetForm();
-        navigation.goBack();
+        router.back();
+        CustomerScreen
+
       }, 1500);
     } catch (error: any) {
       console.error('❌ Erreur création client :', error);
@@ -161,7 +165,7 @@ export default function CreateCustomerScreen() {
       >
         {/* HEADER */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} accessibilityLabel="Retour">
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton} accessibilityLabel="Retour">
             <Ionicons name="arrow-back" size={24} color="#111" />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
