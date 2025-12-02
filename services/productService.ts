@@ -4,106 +4,75 @@ import { API_BASE_URL, API_ENDPOINTS } from "../config/api";
 
 const PRODUCT_URL = `${API_BASE_URL}${API_ENDPOINTS.PRODUCT}`;
 
-export interface ProductResponse {
-  success: boolean;
-  message: string;
-  data?: any;
-}
-
-export interface ApiError {
-  code: number;
-  message: string;
-}
-
 export const productService = {
-  /** ✔ CREATE PRODUCT */
-  createProduct: async (productData: any): Promise<ProductResponse> => {
+  /** Créer un produit */
+  createProduct: async (productData: any) => {
     try {
       const response = await axios.post(PRODUCT_URL, productData);
-      return {
-        success: true,
-        message: response.data.message || "Produit créé avec succès",
-        data: response.data.data,
-      };
+      return response.data;
     } catch (error: any) {
-      console.log("❌ Erreur API createProduct :", error.response?.data);
-      
       throw {
+        message: error.response?.data?.message || "Erreur création produit",
         code: error.response?.status || 500,
-        message: error.response?.data?.message || "Erreur réseau ou serveur",
       };
     }
   },
 
-  /** ✔ UPDATE PRODUCT */
-  updateProduct: async (id: string, productData: any): Promise<ProductResponse> => {
+  /** Vérifier si une référence existe */
+  checkReferenceExists: async (ref_produit: string) => {
     try {
-      const response = await axios.put(`${PRODUCT_URL}/${id}`, productData);
-      return {
-        success: true,
-        message: response.data.message || "Produit mis à jour avec succès",
-        data: response.data.data,
-      };
-    } catch (error: any) {
-      console.log("❌ Erreur API updateProduct :", error.response?.data);
-      
-      throw {
-        code: error.response?.status || 500,
-        message: error.response?.data?.message || "Erreur réseau ou serveur",
-      };
-    }
-  },
-
-  /** ✔ CHECK REFERENCE EXISTS */
-  checkReferenceExists: async (reference: string): Promise<boolean> => {
-    try {
-      const response = await axios.get(`${PRODUCT_URL}/check-reference/${reference}`);
+      const response = await axios.get(`${PRODUCT_URL}/check-reference/${ref_produit}`);
       return response.data.exists || false;
     } catch (error: any) {
-      console.log("❌ Erreur API checkReferenceExists :", error.response?.data);
+      console.error("Erreur vérification référence:", error);
       return false;
     }
   },
 
-  // Vous pouvez ajouter d'autres méthodes suivant le même pattern :
-
-  /** ✔ GET ALL PRODUCTS */
+  /** Récupérer tous les produits */
   getProducts: async () => {
     try {
       const response = await axios.get(PRODUCT_URL);
       return response.data.data;
     } catch (error: any) {
       throw {
-        message:
-          error.response?.data?.messages ||
-          "Impossible de charger les produits",
+        message: error.response?.data?.message || "Erreur chargement produits",
       };
     }
   },
 
-  /** ✔ GET ONE PRODUCT */
-  getProduct: async (id: string) => {
+  /** Récupérer un produit */
+  getProduct: async (ref_produit: string) => {
     try {
-      const response = await axios.get(`${PRODUCT_URL}/${id}`);
+      const response = await axios.get(`${PRODUCT_URL}/${ref_produit}`);
       return response.data.data;
     } catch (error: any) {
       throw {
-        message:
-          error.response?.data?.messages || "Produit introuvable",
+        message: error.response?.data?.message || "Produit introuvable",
       };
     }
   },
 
-  /** ✔ DELETE PRODUCT */
-  deleteProduct: async (id: string) => {
+  /** Mettre à jour un produit */
+  updateProduct: async (ref_produit: string, productData: any) => {
     try {
-      const response = await axios.delete(`${PRODUCT_URL}/${id}`);
+      const response = await axios.put(`${PRODUCT_URL}/${ref_produit}`, productData);
       return response.data;
     } catch (error: any) {
       throw {
-        message:
-          error.response?.data?.messages ||
-          "Erreur lors de la suppression du produit",
+        message: error.response?.data?.message || "Erreur mise à jour",
+      };
+    }
+  },
+
+  /** Supprimer un produit */
+  deleteProduct: async (ref_produit: string) => {
+    try {
+      const response = await axios.delete(`${PRODUCT_URL}/${ref_produit}`);
+      return response.data;
+    } catch (error: any) {
+      throw {
+        message: error.response?.data?.message || "Erreur suppression",
       };
     }
   },

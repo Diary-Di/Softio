@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,48 +9,144 @@ import {
   Alert,
   Modal,
   FlatList,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import * as ImagePicker from 'expo-image-picker';
 import { 
-  styles, 
-  CATEGORIES, 
-  ProductFormData, 
-  Categorie 
+  styles 
 } from '../styles/CreateProductStyles';
+import { productService } from '../services/productService';
+import { categoryService } from '../services/categoryService';
+//import type { ApiError } from '../services/productService';
+
+// Interface pour les catégories
+interface Categorie {
+  categorie: string;
+  description: string;
+}
+
+// Interface pour les données du produit
+interface ProductFormData {
+  ref_produit: string;
+  designation: string;
+  categorie: string;
+  prix_actuel: string;
+  qte_disponible: number;
+  illustration: string | null;
+  imageBase64?: string;
+  // Non inclus dans le formulaire mais gérés par le backend :
+  // prix_precedent: number | null
+  // date_mise_a_jour_prix: string | null
+}
 
 const ProductFormScreen: React.FC = () => {
-  // États
+  // États du formulaire
   const [formData, setFormData] = useState<ProductFormData>({
-    reference: '',
+    ref_produit: '',
     designation: '',
     categorie: '',
-    prix: '',
-    quantite: 1,
-    image: null,
+    prix_actuel: '',
+    qte_disponible: 1,
+    illustration: null,
     imageBase64: undefined,
   });
   
+  // États pour les catégories
+  const [categories, setCategories] = useState<Categorie[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [refreshingCategories, setRefreshingCategories] = useState(false);
+  
+  // États UI
   const [modalVisible, setModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingReference, setIsCheckingReference] = useState(false);
+  const [referenceError, setReferenceError] = useState<string | null>(null);
 
   // Références
   const inputRef = useRef<TextInput>(null);
 
   // Destructuration
-  const { reference, designation, categorie, prix, quantite, image, imageBase64 } = formData;
+  const { ref_produit, designation, categorie, prix_actuel, qte_disponible, illustration, imageBase64 } = formData;
+
+  // Charger les catégories au démarrage
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  // Charger les catégories depuis l'API
+  const loadCategories = async () => {
+    try {
+      setLoadingCategories(true);
+      const categoriesData = await categoryService.getCategories();
+      
+      if (Array.isArray(categoriesData)) {
+        setCategories(categoriesData);
+      } else {
+        console.warn('Format de données de catégories inattendu:', categoriesData);
+        setCategories([]);
+      }
+    } catch (error: any) {
+      console.error('❌ Erreur chargement catégories:', error);
+      Alert.alert(
+        'Erreur',
+        error.message || 'Impossible de charger les catégories',
+        [
+          { text: 'Réessayer', onPress: () => loadCategories() },
+          { text: 'Continuer', style: 'cancel' }
+        ]
+      );
+      setCategories([]);
+    } finally {
+      setLoadingCategories(false);
+      setRefreshingCategories(false);
+    }
+  };
+
+  // Rafraîchir les catégories
+  const handleRefreshCategories = () => {
+    setRefreshingCategories(true);
+    loadCategories();
+  };
+
+  // Vérifier si la référence existe (avec debounce)
+  useEffect(() => {
+    const checkReference = async () => {
+      if (ref_produit.trim().length >= 2) {
+        setIsCheckingReference(true);
+        setReferenceError(null);
+        
+        try {
+          const exists = await productService.checkReferenceExists(ref_produit);
+          if (exists) {
+            setReferenceError('Cette référence existe déjà');
+          }
+        } catch (error) {
+          console.error('Erreur vérification référence:', error);
+        } finally {
+          setIsCheckingReference(false);
+        }
+      }
+    };
+
+    const timer = setTimeout(() => {
+      checkReference();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [ref_produit]);
 
   // Mise à jour des champs
   const updateField = useCallback((field: keyof ProductFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   }, []);
 
-  // Sélectionner une image depuis la galerie (VERSION SIMPLIFIÉE)
+  // Sélectionner une image depuis la galerie
   const selectImageFromGallery = async () => {
     try {
       setIsLoading(true);
       
-      // Demander la permission
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission requise', 'Nous avons besoin d\'accéder à votre galerie');
@@ -58,33 +154,25 @@ const ProductFormScreen: React.FC = () => {
         return;
       }
 
-      // Lancer le sélecteur d'image
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.8,
-        base64: true, // IMPORTANT: demande le base64 directement
+        quality: 0.7,
+        base64: true,
       });
 
-      // Traiter le résultat
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
         
-        // Stocker l'URI pour l'affichage
-        updateField('image', asset.uri);
-        
-        // Stocker le base64 fourni par Expo
-        if (asset.base64) {
-          updateField('imageBase64', asset.base64);
-          console.log('✅ Image sélectionnée');
-          console.log('URI:', asset.uri.substring(0, 50) + '...');
-          console.log('Base64 taille:', asset.base64.length, 'caractères');
-        } else {
-          // Si base64 n'est pas fourni, on utilise juste l'URI
-          updateField('imageBase64', undefined);
-          console.log('⚠️ Base64 non disponible, URI seulement:', asset.uri);
+        // Limiter la taille de l'image
+        if (asset.base64 && asset.base64.length > 5000000) {
+          Alert.alert('Image trop grande', 'Veuillez choisir une image de moins de 5MB');
+          return;
         }
+        
+        updateField('illustration', asset.uri);
+        updateField('imageBase64', asset.base64);
       }
     } catch (error) {
       console.error('❌ Erreur sélection image:', error);
@@ -99,8 +187,18 @@ const ProductFormScreen: React.FC = () => {
     selectImageFromGallery();
   };
 
-  // Supprimer l'image
-  const handleImageDelete = () => {
+  // Supprimer l'image - Version compatible web et mobile
+const handleImageDelete = () => {
+  // Pour le web
+  if (typeof window !== 'undefined' && window.confirm) {
+    const confirmDelete = window.confirm('Êtes-vous sûr de vouloir supprimer cette image ?');
+    if (confirmDelete) {
+      updateField('illustration', null);
+      updateField('imageBase64', undefined);
+    }
+  } 
+  // Pour React Native
+  else {
     Alert.alert(
       'Supprimer l\'image',
       'Êtes-vous sûr de vouloir supprimer cette image ?',
@@ -110,15 +208,16 @@ const ProductFormScreen: React.FC = () => {
           text: 'Supprimer', 
           style: 'destructive',
           onPress: () => {
-            updateField('image', null);
+            updateField('illustration', null);
             updateField('imageBase64', undefined);
           }
         },
       ]
     );
-  };
+  }
+};
 
-  // Formatage du prix avec séparateur de milliers
+  // Formatage du prix
   const formatPrix = useCallback((text: string) => {
     let cleaned = text.replace(/[^\d.,]/g, '');
     cleaned = cleaned.replace(',', '.');
@@ -135,39 +234,51 @@ const ProductFormScreen: React.FC = () => {
       ? `${partieEntiere}.${partieDecimale}`
       : partieEntiere;
     
-    updateField('prix', formatted);
+    updateField('prix_actuel', formatted);
   }, [updateField]);
 
   // Gestion de la quantité
   const incrementQuantite = useCallback(() => {
-    updateField('quantite', quantite + 1);
-  }, [quantite, updateField]);
+    updateField('qte_disponible', qte_disponible + 1);
+  }, [qte_disponible, updateField]);
 
   const decrementQuantite = useCallback(() => {
-    if (quantite > 1) {
-      updateField('quantite', quantite - 1);
+    if (qte_disponible > 1) {
+      updateField('qte_disponible', qte_disponible - 1);
     }
-  }, [quantite, updateField]);
+  }, [qte_disponible, updateField]);
 
   const handleQuantiteChange = useCallback((text: string) => {
     const num = parseInt(text);
     if (!isNaN(num) && num > 0) {
-      updateField('quantite', num);
+      updateField('qte_disponible', num);
     } else if (text === '') {
-      updateField('quantite', 0);
+      updateField('qte_disponible', 0);
     }
   }, [updateField]);
 
   // Sélection de catégorie
-  const handleSelectCategorie = useCallback((nom: string) => {
-    updateField('categorie', nom);
+  const handleSelectCategorie = useCallback((nomCategorie: string) => {
+    updateField('categorie', nomCategorie);
     setModalVisible(false);
   }, [updateField]);
 
   // Validation du formulaire
   const validateForm = useCallback((): boolean => {
-    if (!reference.trim()) {
+    setReferenceError(null);
+
+    if (!ref_produit.trim()) {
       Alert.alert('Erreur', 'La référence du produit est obligatoire');
+      return false;
+    }
+
+    if (ref_produit.trim().length < 2) {
+      Alert.alert('Erreur', 'La référence doit avoir au moins 2 caractères');
+      return false;
+    }
+
+    if (referenceError) {
+      Alert.alert('Erreur', referenceError);
       return false;
     }
 
@@ -181,77 +292,165 @@ const ProductFormScreen: React.FC = () => {
       return false;
     }
 
-    if (!prix) {
-      Alert.alert('Erreur', 'Le prix unitaire est obligatoire');
+    if (!prix_actuel) {
+      Alert.alert('Erreur', 'Le prix actuel est obligatoire');
+      return false;
+    }
+
+    const prixNumerique = parseFloat(prix_actuel.replace(/\s/g, '').replace(',', '.'));
+    if (isNaN(prixNumerique) || prixNumerique <= 0) {
+      Alert.alert('Erreur', 'Veuillez entrer un prix valide (supérieur à 0)');
+      return false;
+    }
+
+    if (qte_disponible < 0) {
+      Alert.alert('Erreur', 'La quantité doit être positive');
       return false;
     }
 
     return true;
-  }, [reference, designation, categorie, prix]);
+  }, [ref_produit, designation, categorie, prix_actuel, qte_disponible, referenceError]);
 
-  // Enregistrement
+  // Enregistrement du produit
   const handleSave = useCallback(async () => {
-    if (!validateForm()) return;
+  if (!validateForm()) return;
 
-    try {
-      setIsLoading(true);
-      
-      // Convertir le prix formaté en nombre
-      const prixNumerique = parseFloat(prix.replace(/\s/g, '').replace(',', '.'));
-      
-      // Préparer les données pour l'API
-      const productData = {
-        reference,
-        designation,
-        categorie,
-        prix: prixNumerique,
-        quantite,
-        imageBlob: imageBase64 || null, // Prêt pour LONGBLOB
-      };
+  try {
+    setIsLoading(true);
+    
+    // Convertir le prix formaté en nombre
+    const prixClean = prix_actuel.replace(/\s/g, '').replace(',', '.');
+    const prixNumerique = parseFloat(prixClean);
+    
+    // Préparer les données POUR POSTMAN/API (pas pour FormData)
+    const productData = {
+      ref_produit: ref_produit.trim(),
+      designation: designation.trim(),
+      categorie: categorie.trim(),
+      prix_actuel: prixNumerique, // Doit être un nombre
+      qte_disponible: Number(qte_disponible), // Doit être un nombre
+      image: imageBase64 || null,
+    };
 
-      console.log('📤 Données prêtes pour l\'API:', {
-        reference,
-        designation,
-        categorie,
-        prix: prixNumerique,
-        quantite,
-        imageBlob: imageBase64 ? `[BLOB: ${imageBase64.length} caractères]` : 'null'
-      });
+    // 🔍 DEBUG : Afficher ce qu'on envoie
+    console.log('🔍 DEBUG - Données à envoyer:', JSON.stringify(productData, null, 2));
+    console.log('🔍 DEBUG - Type de prix_actuel:', typeof prixNumerique, 'Valeur:', prixNumerique);
+    console.log('🔍 DEBUG - Type de qte_disponible:', typeof qte_disponible, 'Valeur:', qte_disponible);
+    console.log('🔍 DEBUG - Catégorie:', categorie);
 
-      // SIMULATION: Attendre 1 seconde pour simuler l'envoi
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    // Appeler le service pour créer le produit
+    const response = await productService.createProduct(productData);
+    
+    console.log('✅ Réponse du serveur:', response);
 
-      Alert.alert(
-        'Succès ✅', 
-        'Produit prêt pour l\'enregistrement!\n\n' +
-        `Référence: ${reference}\n` +
-        `Désignation: ${designation}\n` +
-        `Catégorie: ${categorie}\n` +
-        `Prix: ${prixNumerique} €\n` +
-        `Quantité: ${quantite}\n` +
-        `Image: ${imageBase64 ? 'Oui' : 'Non'}`
-      );
+    // Afficher le succès
+    Alert.alert(
+      'Succès ✅', 
+      response.message || 'Produit créé avec succès',
+      [
+        {
+          text: 'OK',
+          onPress: () => {
+            // Réinitialiser le formulaire après succès
+            setFormData({
+              ref_produit: '',
+              designation: '',
+              categorie: '',
+              prix_actuel: '',
+              qte_disponible: 1,
+              illustration: null,
+              imageBase64: undefined,
+            });
+            setReferenceError(null);
+          }
+        }
+      ]
+    );
 
-    } catch (error) {
-      console.error('❌ Erreur enregistrement:', error);
-      Alert.alert('Erreur', 'Échec de l\'enregistrement');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [reference, designation, categorie, prix, quantite, imageBase64, validateForm]);
+  } catch (error: any) {
+    console.error('❌ Erreur complète:', error);
+    console.error('❌ Code erreur:', error.code);
+    console.error('❌ Message erreur:', error.message);
+    console.error('❌ Validation errors:', error.validationErrors);
+    
+    Alert.alert(
+      'Erreur ❌',
+      error.message || 'Échec de l\'enregistrement'
+    );
+  } finally {
+    setIsLoading(false);
+  }
+}, [ref_produit, designation, categorie, prix_actuel, qte_disponible, imageBase64, validateForm]);
 
   // Rendu d'un élément de catégorie
   const renderCategorieItem = useCallback(({ item }: { item: Categorie }) => (
     <TouchableOpacity
       style={styles.categorieItem}
-      onPress={() => handleSelectCategorie(item.nom)}
+      onPress={() => handleSelectCategorie(item.categorie)}
     >
-      <Text style={styles.categorieText}>{item.nom}</Text>
-      {categorie === item.nom && (
+      <View style={styles.categorieInfo}>
+        <Text style={styles.categorieText}>{item.categorie}</Text>
+        {item.description && (
+          <Text style={styles.categorieDescription} numberOfLines={1}>
+            {item.description}
+          </Text>
+        )}
+      </View>
+      {categorie === item.categorie && (
         <Icon name="check" size={20} color="#4A90E2" />
       )}
     </TouchableOpacity>
   ), [categorie, handleSelectCategorie]);
+
+  // Rendu du contenu du modal
+  const renderModalContent = () => {
+    if (loadingCategories && !refreshingCategories) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4A90E2" />
+          <Text style={styles.loadingText}>Chargement des catégories...</Text>
+        </View>
+      );
+    }
+
+    if (categories.length === 0 && !loadingCategories) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Icon name="category" size={60} color="#CCCCCC" />
+          <Text style={styles.emptyText}>Aucune catégorie disponible</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={handleRefreshCategories}
+          >
+            <Text style={styles.retryButtonText}>Réessayer</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return (
+      <FlatList
+        data={categories}
+        renderItem={renderCategorieItem}
+        keyExtractor={(item) => item.categorie}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={10}
+        windowSize={5}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshingCategories}
+            onRefresh={handleRefreshCategories}
+            colors={['#4A90E2']}
+          />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Aucune catégorie trouvée</Text>
+          </View>
+        }
+      />
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -265,16 +464,32 @@ const ProductFormScreen: React.FC = () => {
         
         {/* Référence du produit */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Référence du produit *</Text>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>Référence du produit *</Text>
+            {isCheckingReference && (
+              <ActivityIndicator size="small" color="#4A90E2" style={styles.loadingIndicator} />
+            )}
+          </View>
           <TextInput
-            style={styles.input}
-            value={reference}
-            onChangeText={(text) => updateField('reference', text)}
-            placeholder="Entrez la référence"
+            style={[
+              styles.input, 
+              referenceError && styles.inputError
+            ]}
+            value={ref_produit}
+            onChangeText={(text) => {
+              updateField('ref_produit', text);
+              setReferenceError(null);
+            }}
+            placeholder="Ex: PROD001"
             placeholderTextColor="#999"
             returnKeyType="next"
             editable={!isLoading}
+            autoCapitalize="none"
+            maxLength={50}
           />
+          {referenceError && (
+            <Text style={styles.errorText}>{referenceError}</Text>
+          )}
         </View>
 
         {/* Désignation */}
@@ -284,7 +499,7 @@ const ProductFormScreen: React.FC = () => {
             style={[styles.input, styles.multilineInput]}
             value={designation}
             onChangeText={(text) => updateField('designation', text)}
-            placeholder="Entrez la désignation"
+            placeholder="Description du produit"
             placeholderTextColor="#999"
             multiline
             numberOfLines={3}
@@ -296,26 +511,44 @@ const ProductFormScreen: React.FC = () => {
 
         {/* Catégorie */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Catégorie *</Text>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>Catégorie *</Text>
+            {loadingCategories && (
+              <ActivityIndicator size="small" color="#4A90E2" style={styles.loadingIndicator} />
+            )}
+          </View>
           <TouchableOpacity
-            style={[styles.dropdown, isLoading && { opacity: 0.5 }]}
+            style={[styles.dropdown, (isLoading || loadingCategories) && { opacity: 0.5 }]}
             onPress={() => !isLoading && setModalVisible(true)}
-            disabled={isLoading}
+            disabled={isLoading || loadingCategories}
           >
-            <Text style={categorie ? styles.dropdownTextSelected : styles.dropdownTextPlaceholder}>
-              {categorie || 'Sélectionnez une catégorie'}
-            </Text>
+            <View style={styles.dropdownContent}>
+              {categorie ? (
+                <View>
+                  <Text style={styles.dropdownTextSelected}>{categorie}</Text>
+                  {categories.find(cat => cat.categorie === categorie)?.description && (
+                    <Text style={styles.dropdownDescription} numberOfLines={1}>
+                      {categories.find(cat => cat.categorie === categorie)?.description}
+                    </Text>
+                  )}
+                </View>
+              ) : (
+                <Text style={styles.dropdownTextPlaceholder}>
+                  {loadingCategories ? 'Chargement...' : 'Sélectionnez une catégorie'}
+                </Text>
+              )}
+            </View>
             <Icon name="arrow-drop-down" size={24} color="#666" />
           </TouchableOpacity>
         </View>
 
-        {/* Prix unitaire */}
+        {/* Prix actuel */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Prix unitaire (€) *</Text>
+          <Text style={styles.label}>Prix actuel (€) *</Text>
           <View style={styles.prixContainer}>
             <TextInput
               style={[styles.input, styles.prixInput, isLoading && { opacity: 0.5 }]}
-              value={prix}
+              value={prix_actuel}
               onChangeText={formatPrix}
               placeholder="0,00"
               placeholderTextColor="#999"
@@ -328,26 +561,26 @@ const ProductFormScreen: React.FC = () => {
           <Text style={styles.hint}>Utilisez le point ou la virgule pour les décimales</Text>
         </View>
 
-        {/* Section Quantité */}
+        {/* Quantité disponible */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Quantité</Text>
+          <Text style={styles.label}>Quantité disponible</Text>
           
           <View style={styles.quantiteContainer}>
             {/* Bouton Moins */}
             <TouchableOpacity
               style={[
                 styles.quantiteButton,
-                quantite <= 1 && styles.quantiteButtonDisabled,
+                qte_disponible <= 0 && styles.quantiteButtonDisabled,
                 isLoading && { opacity: 0.5 }
               ]}
               onPress={decrementQuantite}
-              disabled={quantite <= 1 || isLoading}
+              disabled={qte_disponible <= 0 || isLoading}
               activeOpacity={0.7}
             >
               <Icon 
                 name="remove" 
                 size={24} 
-                color={quantite <= 1 ? "#999" : "#FFF"} 
+                color={qte_disponible <= 0 ? "#999" : "#FFF"} 
               />
             </TouchableOpacity>
 
@@ -355,14 +588,14 @@ const ProductFormScreen: React.FC = () => {
             <TextInput
               ref={inputRef}
               style={[styles.quantiteInput, isLoading && { opacity: 0.5 }]}
-              value={quantite.toString()}
+              value={qte_disponible.toString()}
               onChangeText={handleQuantiteChange}
               keyboardType="numeric"
               textAlign="center"
               returnKeyType="done"
               maxLength={6}
               onBlur={() => {
-                if (quantite < 1) updateField('quantite', 1);
+                if (qte_disponible < 0) updateField('qte_disponible', 0);
               }}
               editable={!isLoading}
             />
@@ -383,9 +616,9 @@ const ProductFormScreen: React.FC = () => {
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Illustration</Text>
           <View style={styles.imageContainer}>
-            {image ? (
+            {illustration ? (
               <>
-                <Image source={{ uri: image }} style={styles.imagePreview} />
+                <Image source={{ uri: illustration }} style={styles.imagePreview} />
                 <View style={styles.imageActions}>
                   <TouchableOpacity
                     style={[styles.imageButton, styles.changeButton, isLoading && { opacity: 0.5 }]}
@@ -418,6 +651,9 @@ const ProductFormScreen: React.FC = () => {
                 <Text style={styles.uploadSubtext}>Appuyez pour sélectionner</Text>
               </TouchableOpacity>
             )}
+            <Text style={styles.imageHint}>
+              {imageBase64 ? `Taille: ${Math.round(imageBase64.length / 1024)} KB` : 'Optionnel'}
+            </Text>
           </View>
         </View>
 
@@ -428,20 +664,25 @@ const ProductFormScreen: React.FC = () => {
       {/* Bouton Enregistrer */}
       <View style={styles.saveButtonContainer}>
         <TouchableOpacity 
-          style={[styles.saveButton, isLoading && { opacity: 0.7 }]} 
+          style={[
+            styles.saveButton, 
+            (isLoading || isCheckingReference || !!referenceError || loadingCategories) && { opacity: 0.7 }
+          ]} 
           onPress={handleSave}
           activeOpacity={0.8}
-          disabled={isLoading}
+          disabled={isLoading || isCheckingReference || !!referenceError || loadingCategories}
         >
           {isLoading ? (
             <>
-              <Icon name="hourglass-empty" size={24} color="#FFF" />
+              <ActivityIndicator size="small" color="#FFF" />
               <Text style={styles.saveButtonText}>Enregistrement...</Text>
             </>
           ) : (
             <>
               <Icon name="save" size={24} color="#FFF" />
-              <Text style={styles.saveButtonText}>Enregistrer</Text>
+              <Text style={styles.saveButtonText}>
+                {loadingCategories ? 'Chargement...' : 'Enregistrer'}
+              </Text>
             </>
           )}
         </TouchableOpacity>
@@ -458,21 +699,27 @@ const ProductFormScreen: React.FC = () => {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Sélectionnez une catégorie</Text>
-              <TouchableOpacity 
-                onPress={() => setModalVisible(false)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Icon name="close" size={24} color="#666" />
-              </TouchableOpacity>
+              <View style={styles.modalHeaderActions}>
+                <TouchableOpacity 
+                  style={styles.refreshButton}
+                  onPress={handleRefreshCategories}
+                  disabled={refreshingCategories}
+                >
+                  <Icon 
+                    name="refresh" 
+                    size={22} 
+                    color={refreshingCategories ? "#999" : "#4A90E2"} 
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={() => setModalVisible(false)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Icon name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
             </View>
-            <FlatList
-              data={CATEGORIES}
-              renderItem={renderCategorieItem}
-              keyExtractor={(item) => item.id}
-              showsVerticalScrollIndicator={false}
-              initialNumToRender={10}
-              windowSize={5}
-            />
+            {renderModalContent()}
           </View>
         </View>
       </Modal>

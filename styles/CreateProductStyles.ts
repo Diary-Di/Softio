@@ -255,6 +255,110 @@ export const styles = StyleSheet.create({
     color: '#333',
     flex: 1,
   },
+
+  labelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  
+  loadingIndicator: {
+    marginLeft: 8,
+  },
+  
+  inputError: {
+    borderColor: '#FF3B30',
+    backgroundColor: '#FFF5F5',
+  },
+  
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  
+  imageHint: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+
+  
+  // Styles pour les catégories
+  dropdownContent: {
+    flex: 1,
+  },
+  
+  dropdownDescription: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  
+  
+  categorieInfo: {
+    flex: 1,
+    marginRight: 8,
+  },
+  
+  categorieDescription: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  
+  loadingText: {
+    marginTop: 12,
+    color: '#666',
+    fontSize: 14,
+  },
+  
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  
+  emptyText: {
+    fontSize: 16,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    backgroundColor: '#4A90E2',
+    borderRadius: 6,
+  },
+  
+  retryButtonText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  
+  modalHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  
+  refreshButton: {
+    marginRight: 16,
+    padding: 4,
+  }
 });
 
 // Types
