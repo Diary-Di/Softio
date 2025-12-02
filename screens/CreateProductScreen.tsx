@@ -315,72 +315,67 @@ const handleImageDelete = () => {
   const handleSave = useCallback(async () => {
   if (!validateForm()) return;
 
+  const categorieExists = categories.some(cat => cat.categorie === categorie);
+  if (!categorieExists) {
+    Alert.alert('Erreur', 'La catégorie sélectionnée n\'existe plus.');
+    setModalVisible(true);
+    return;
+  }
+
   try {
     setIsLoading(true);
     
-    // Convertir le prix formaté en nombre
     const prixClean = prix_actuel.replace(/\s/g, '').replace(',', '.');
     const prixNumerique = parseFloat(prixClean);
     
-    // Préparer les données POUR POSTMAN/API (pas pour FormData)
+    if (isNaN(prixNumerique) || prixNumerique <= 0) {
+      Alert.alert('Erreur', 'Le prix doit être supérieur à 0');
+      setIsLoading(false);
+      return;
+    }
+
     const productData = {
       ref_produit: ref_produit.trim(),
       designation: designation.trim(),
       categorie: categorie.trim(),
-      prix_actuel: prixNumerique, // Doit être un nombre
-      qte_disponible: Number(qte_disponible), // Doit être un nombre
+      prix_actuel: prixNumerique,
+      qte_disponible: Number(qte_disponible),
       image: imageBase64 || null,
     };
 
-    // 🔍 DEBUG : Afficher ce qu'on envoie
-    console.log('🔍 DEBUG - Données à envoyer:', JSON.stringify(productData, null, 2));
-    console.log('🔍 DEBUG - Type de prix_actuel:', typeof prixNumerique, 'Valeur:', prixNumerique);
-    console.log('🔍 DEBUG - Type de qte_disponible:', typeof qte_disponible, 'Valeur:', qte_disponible);
-    console.log('🔍 DEBUG - Catégorie:', categorie);
-
-    // Appeler le service pour créer le produit
     const response = await productService.createProduct(productData);
-    
-    console.log('✅ Réponse du serveur:', response);
 
-    // Afficher le succès
-    Alert.alert(
-      'Succès ✅', 
-      response.message || 'Produit créé avec succès',
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            // Réinitialiser le formulaire après succès
-            setFormData({
-              ref_produit: '',
-              designation: '',
-              categorie: '',
-              prix_actuel: '',
-              qte_disponible: 1,
-              illustration: null,
-              imageBase64: undefined,
-            });
-            setReferenceError(null);
-          }
-        }
-      ]
-    );
+    // VIDER IMMÉDIATEMENT LE FORMULAIRE
+    setFormData({
+      ref_produit: '',
+      designation: '',
+      categorie: '',
+      prix_actuel: '',
+      qte_disponible: 1,
+      illustration: null,
+      imageBase64: undefined,
+    });
+    setReferenceError(null);
+    setModalVisible(false);
+
+    // Afficher le message de succès
+    Alert.alert('Succès ✅', response.message);
 
   } catch (error: any) {
-    console.error('❌ Erreur complète:', error);
-    console.error('❌ Code erreur:', error.code);
-    console.error('❌ Message erreur:', error.message);
-    console.error('❌ Validation errors:', error.validationErrors);
+    console.error('❌ Erreur:', error);
     
-    Alert.alert(
-      'Erreur ❌',
-      error.message || 'Échec de l\'enregistrement'
-    );
+    let errorMessage = 'Échec de l\'enregistrement';
+    if (error.code === 409) errorMessage = 'Cette référence existe déjà';
+    else if (error.code === 400) errorMessage = 'Données invalides';
+    else if (error.code === 404) errorMessage = 'Catégorie introuvable';
+    else if (error.code === 413) errorMessage = 'Image trop volumineuse';
+    else if (error.message) errorMessage = error.message;
+
+    Alert.alert('Erreur ❌', errorMessage);
   } finally {
     setIsLoading(false);
   }
-}, [ref_produit, designation, categorie, prix_actuel, qte_disponible, imageBase64, validateForm]);
+}, [ref_produit, designation, categorie, prix_actuel, qte_disponible, imageBase64, validateForm, categories]);
 
   // Rendu d'un élément de catégorie
   const renderCategorieItem = useCallback(({ item }: { item: Categorie }) => (
