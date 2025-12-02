@@ -122,4 +122,100 @@ export default StyleSheet.create({
 	actionIcon: {
 		// reserved for minor adjustments
 	},
+
+	centerContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#DC2626',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  
+  retryButton: {
+    backgroundColor: '#4F46E5',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  
+  emptyText: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  
+  emptySubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    maxWidth: 300,
+  },
+  
+  nameContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  
+  email: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  
+  typeBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#E0E7FF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginTop: 4,
+  },
+  
+  typeText: {
+    fontSize: 10,
+    color: '#4F46E5',
+    fontWeight: '600',
+  },
+  
+  avatarEnterprise: {
+    backgroundColor: '#10B981',
+  },
+  
+  avatarParticulier: {
+    backgroundColor: '#3B82F6',
+  },
+  
+  countText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
 });
