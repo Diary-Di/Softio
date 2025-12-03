@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { validationStyles } from '../styles/CartValidationStyles';
+import { Ionicons } from '@expo/vector-icons';
 
 // Types
 type CartItem = {
@@ -119,13 +120,6 @@ export default function CartValidationScreen({ route, navigation }: any) {
       // Simuler l'API call
       await new Promise(resolve => setTimeout(resolve, 1500));
 
-      // Replace with actual API call:
-      // const response = await api.post('/sales', {
-      //   customerId: selectedCustomer.id,
-      //   items: cart,
-      //   total: totalAmount
-      // });
-
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       Alert.alert(
@@ -134,7 +128,7 @@ export default function CartValidationScreen({ route, navigation }: any) {
         [
           {
             text: 'OK',
-            onPress: () => navigation.navigate('Home') // ou navigation.goBack() selon votre navigation
+            onPress: () => navigation.navigate('Home')
           }
         ]
       );
@@ -155,12 +149,17 @@ export default function CartValidationScreen({ route, navigation }: any) {
           onPress={() => navigation.goBack()}
           disabled={isSubmitting}
         >
-          <Text style={validationStyles.backButtonText}>← Retour</Text>
+          <Ionicons name="arrow-back" size={24} color="#007AFF" />
         </TouchableOpacity>
 
-        <Text style={validationStyles.headerTitle}>Validation</Text>
+        <View style={validationStyles.headerTitleContainer}>
+          <Text style={validationStyles.headerTitle}>Validation</Text>
+          <View style={validationStyles.headerBadge}>
+            <Text style={validationStyles.headerBadgeText}>{totalItems}</Text>
+          </View>
+        </View>
 
-        <View style={{ width: 80 }} />
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView
@@ -168,69 +167,77 @@ export default function CartValidationScreen({ route, navigation }: any) {
         contentContainerStyle={validationStyles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Boutons Client */}
-        <View style={validationStyles.clientButtonsContainer}>
-          <TouchableOpacity
-            style={validationStyles.clientActionButton}
-            onPress={openSearchModal}
-            disabled={isSubmitting}
-          >
-            <Text style={validationStyles.clientActionIcon}>🔍</Text>
-            <Text style={validationStyles.clientActionText}>Rechercher</Text>
-          </TouchableOpacity>
+        {/* Section Client */}
+        <View style={validationStyles.section}>
+          <Text style={validationStyles.sectionTitle}>CLIENT</Text>
+          
+          <View style={validationStyles.clientButtonsContainer}>
+            <TouchableOpacity
+              style={validationStyles.clientButton}
+              onPress={openSearchModal}
+              disabled={isSubmitting}
+            >
+              <Ionicons name="search" size={24} color="#007AFF" />
+              <Text style={validationStyles.clientButtonText}>Rechercher</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[validationStyles.clientActionButton, validationStyles.clientActionButtonPrimary]}
-            onPress={openCreateModal}
-            disabled={isSubmitting}
-          >
-            <Text style={validationStyles.clientActionIcon}>➕</Text>
-            <Text style={[validationStyles.clientActionText, validationStyles.clientActionTextPrimary]}>
-              Nouveau Client
-            </Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity
+              style={[validationStyles.clientButton, validationStyles.clientButtonPrimary]}
+              onPress={openCreateModal}
+              disabled={isSubmitting}
+            >
+              <Ionicons name="person-add" size={24} color="#FFF" />
+              <Text style={validationStyles.clientButtonTextPrimary}>Nouveau</Text>
+            </TouchableOpacity>
+          </View>
 
-        {/* Client sélectionné */}
-        {selectedCustomer ? (
-          <View style={validationStyles.selectedClientCard}>
-            <View style={validationStyles.selectedClientHeader}>
-              <View style={validationStyles.clientIconContainer}>
-                <Text style={validationStyles.clientIcon}>👤</Text>
+          {/* Client sélectionné */}
+          {selectedCustomer ? (
+            <View style={validationStyles.selectedClientCard}>
+              <View style={validationStyles.selectedClientHeader}>
+                <View style={validationStyles.clientAvatar}>
+                  <Ionicons name="person" size={24} color="#007AFF" />
+                </View>
+                <View style={validationStyles.selectedClientInfo}>
+                  <Text style={validationStyles.selectedClientName}>{selectedCustomer.name}</Text>
+                  {selectedCustomer.phone && (
+                    <View style={validationStyles.clientPhoneContainer}>
+                      <Ionicons name="call" size={14} color="#8E8E93" style={{ marginRight: 4 }} />
+                      <Text style={validationStyles.selectedClientPhone}>{selectedCustomer.phone}</Text>
+                    </View>
+                  )}
+                </View>
+                <TouchableOpacity
+                  style={validationStyles.changeClientButton}
+                  onPress={openSearchModal}
+                >
+                  <Ionicons name="create" size={18} color="#007AFF" />
+                </TouchableOpacity>
               </View>
-              <View style={validationStyles.selectedClientInfo}>
-                <Text style={validationStyles.selectedClientName}>{selectedCustomer.name}</Text>
-                {selectedCustomer.phone && (
-                  <Text style={validationStyles.selectedClientPhone}>{selectedCustomer.phone}</Text>
-                )}
-              </View>
-              <TouchableOpacity
-                style={validationStyles.changeClientButton}
-                onPress={openSearchModal}
-              >
-                <Text style={validationStyles.changeClientText}>Modifier</Text>
-              </TouchableOpacity>
             </View>
-          </View>
-        ) : (
-          <View style={validationStyles.noClientCard}>
-            <Text style={validationStyles.noClientIcon}>⚠️</Text>
-            <Text style={validationStyles.noClientText}>Aucun client sélectionné</Text>
-            <Text style={validationStyles.noClientSubtext}>
-              Recherchez ou créez un client pour continuer
-            </Text>
-          </View>
-        )}
+          ) : (
+            <View style={validationStyles.noClientCard}>
+              <View style={validationStyles.noClientIconContainer}>
+                <Ionicons name="person-outline" size={48} color="#D1D1D6" />
+              </View>
+              <Text style={validationStyles.noClientText}>Aucun client sélectionné</Text>
+              <Text style={validationStyles.noClientSubtext}>
+                Choisissez un client existant ou créez-en un nouveau
+              </Text>
+            </View>
+          )}
+        </View>
 
         {/* Récapitulatif de la commande */}
         <View style={validationStyles.section}>
-          <Text style={validationStyles.sectionTitle}>RÉCAPITULATIF DE LA COMMANDE</Text>
+          <View style={validationStyles.sectionHeader}>
+            <Text style={validationStyles.sectionTitle}>RÉCAPITULATIF</Text>
+            <View style={validationStyles.itemsCountBadge}>
+              <Text style={validationStyles.itemsCountText}>{totalItems} article(s)</Text>
+            </View>
+          </View>
 
           <View style={validationStyles.summaryCard}>
-            <View style={validationStyles.summaryHeader}>
-              <Text style={validationStyles.summaryHeaderText}>Articles ({totalItems})</Text>
-            </View>
-
             {cart.map((item: CartItem, index: number) => (
               <View 
                 key={item.id} 
@@ -239,15 +246,22 @@ export default function CartValidationScreen({ route, navigation }: any) {
                   index !== cart.length - 1 && validationStyles.summaryItemBorder
                 ]}
               >
-                <View style={validationStyles.summaryItemHeader}>
+                <View style={validationStyles.summaryItemMain}>
+                  <View style={validationStyles.summaryItemHeader}>
+                    <Text style={validationStyles.summaryItemName} numberOfLines={1}>
+                      {item.designation}
+                    </Text>
+                    <Text style={validationStyles.summaryItemPrice}>€ {item.montant.toFixed(2)}</Text>
+                  </View>
                   <Text style={validationStyles.summaryItemRef}>{item.reference}</Text>
-                  <Text style={validationStyles.summaryItemPrice}>€ {item.montant.toFixed(2)}</Text>
-                </View>
-                <Text style={validationStyles.summaryItemName}>{item.designation}</Text>
-                <View style={validationStyles.summaryItemDetails}>
-                  <Text style={validationStyles.summaryItemDetailText}>
-                    {item.quantiteAcheter} × €{item.prixUnitaire.toFixed(2)}
-                  </Text>
+                  <View style={validationStyles.summaryItemDetails}>
+                    <View style={validationStyles.quantityBadge}>
+                      <Text style={validationStyles.quantityBadgeText}>{item.quantiteAcheter}</Text>
+                    </View>
+                    <Text style={validationStyles.summaryItemDetailText}>
+                      × €{item.prixUnitaire.toFixed(2)}
+                    </Text>
+                  </View>
                 </View>
               </View>
             ))}
@@ -256,20 +270,39 @@ export default function CartValidationScreen({ route, navigation }: any) {
           {/* Total */}
           <View style={validationStyles.totalCard}>
             <View style={validationStyles.totalRow}>
-              <Text style={validationStyles.totalLabel}>Sous-total:</Text>
+              <Text style={validationStyles.totalLabel}>Sous-total</Text>
               <Text style={validationStyles.totalValue}>€ {totalAmount.toFixed(2)}</Text>
             </View>
             <View style={validationStyles.totalDivider} />
             <View style={validationStyles.totalRow}>
-              <Text style={validationStyles.totalLabelMain}>TOTAL À PAYER:</Text>
+              <Text style={validationStyles.totalLabelMain}>TOTAL À PAYER</Text>
               <Text style={validationStyles.totalValueMain}>€ {totalAmount.toFixed(2)}</Text>
             </View>
+          </View>
+        </View>
+
+        {/* Notes optionnelles */}
+        <View style={validationStyles.section}>
+          <Text style={validationStyles.sectionTitle}>NOTES (OPTIONNEL)</Text>
+          <View style={validationStyles.notesCard}>
+            <TextInput
+              style={validationStyles.notesInput}
+              placeholder="Ajouter une note pour cette vente..."
+              placeholderTextColor="#8E8E93"
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
           </View>
         </View>
       </ScrollView>
 
       {/* Footer avec validation */}
       <View style={validationStyles.footer}>
+        <View style={validationStyles.footerTotal}>
+          <Text style={validationStyles.footerTotalLabel}>Total</Text>
+          <Text style={validationStyles.footerTotalAmount}>€ {totalAmount.toFixed(2)}</Text>
+        </View>
         <TouchableOpacity
           style={[
             validationStyles.validateButton,
@@ -283,7 +316,7 @@ export default function CartValidationScreen({ route, navigation }: any) {
           ) : (
             <>
               <Text style={validationStyles.validateButtonText}>Confirmer la vente</Text>
-              <Text style={validationStyles.validateButtonPrice}>€ {totalAmount.toFixed(2)}</Text>
+              <Ionicons name="checkmark-circle" size={20} color="#FFF" style={{ marginLeft: 8 }} />
             </>
           )}
         </TouchableOpacity>
@@ -307,7 +340,7 @@ export default function CartValidationScreen({ route, navigation }: any) {
                 style={validationStyles.modalCloseButton}
                 onPress={() => setShowCustomerModal(false)}
               >
-                <Text style={validationStyles.modalCloseText}>✕</Text>
+                <Ionicons name="close" size={24} color="#666" />
               </TouchableOpacity>
             </View>
 
@@ -315,7 +348,7 @@ export default function CartValidationScreen({ route, navigation }: any) {
               // Mode Recherche
               <>
                 <View style={validationStyles.searchContainer}>
-                  <Text style={validationStyles.searchIcon}>🔍</Text>
+                  <Ionicons name="search" size={20} color="#8E8E93" style={validationStyles.searchIcon} />
                   <TextInput
                     style={validationStyles.searchInput}
                     value={searchQuery}
@@ -324,17 +357,27 @@ export default function CartValidationScreen({ route, navigation }: any) {
                     placeholderTextColor="#999"
                     autoFocus
                   />
+                  {searchQuery.length > 0 && (
+                    <TouchableOpacity
+                      style={validationStyles.clearSearchButton}
+                      onPress={() => setSearchQuery('')}
+                    >
+                      <Ionicons name="close-circle" size={20} color="#8E8E93" />
+                    </TouchableOpacity>
+                  )}
                 </View>
 
                 <ScrollView style={validationStyles.customerList}>
                   {filteredCustomers.length === 0 ? (
                     <View style={validationStyles.noResults}>
+                      <Ionicons name="search-outline" size={48} color="#D1D1D6" />
                       <Text style={validationStyles.noResultsText}>Aucun client trouvé</Text>
                       <TouchableOpacity
                         style={validationStyles.createFromSearchButton}
                         onPress={() => setModalMode('create')}
                       >
-                        <Text style={validationStyles.createFromSearchText}>+ Créer un nouveau client</Text>
+                        <Ionicons name="person-add" size={18} color="#007AFF" style={{ marginRight: 6 }} />
+                        <Text style={validationStyles.createFromSearchText}>Créer un nouveau client</Text>
                       </TouchableOpacity>
                     </View>
                   ) : (
@@ -345,13 +388,16 @@ export default function CartValidationScreen({ route, navigation }: any) {
                         onPress={() => selectCustomer(customer)}
                       >
                         <View style={validationStyles.customerItemIcon}>
-                          <Text style={validationStyles.customerItemIconText}>👤</Text>
+                          <Ionicons name="person" size={24} color="#007AFF" />
                         </View>
                         <View style={validationStyles.customerItemInfo}>
                           <Text style={validationStyles.customerItemName}>{customer.name}</Text>
-                          <Text style={validationStyles.customerItemPhone}>{customer.phone}</Text>
+                          <View style={validationStyles.customerItemPhoneContainer}>
+                            <Ionicons name="call" size={12} color="#8E8E93" style={{ marginRight: 4 }} />
+                            <Text style={validationStyles.customerItemPhone}>{customer.phone}</Text>
+                          </View>
                         </View>
-                        <Text style={validationStyles.customerItemArrow}>›</Text>
+                        <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
                       </TouchableOpacity>
                     ))
                   )}
@@ -362,26 +408,32 @@ export default function CartValidationScreen({ route, navigation }: any) {
               <View style={validationStyles.createForm}>
                 <View style={validationStyles.formGroup}>
                   <Text style={validationStyles.formLabel}>Nom complet *</Text>
-                  <TextInput
-                    style={validationStyles.formInput}
-                    value={newCustomer.name}
-                    onChangeText={(value) => setNewCustomer({ ...newCustomer, name: value })}
-                    placeholder="Ex: Jean Dupont"
-                    placeholderTextColor="#999"
-                    autoFocus
-                  />
+                  <View style={validationStyles.formInputContainer}>
+                    <Ionicons name="person" size={20} color="#8E8E93" style={validationStyles.formInputIcon} />
+                    <TextInput
+                      style={validationStyles.formInput}
+                      value={newCustomer.name}
+                      onChangeText={(value) => setNewCustomer({ ...newCustomer, name: value })}
+                      placeholder="Ex: Jean Dupont"
+                      placeholderTextColor="#999"
+                      autoFocus
+                    />
+                  </View>
                 </View>
 
                 <View style={validationStyles.formGroup}>
                   <Text style={validationStyles.formLabel}>Téléphone</Text>
-                  <TextInput
-                    style={validationStyles.formInput}
-                    value={newCustomer.phone}
-                    onChangeText={(value) => setNewCustomer({ ...newCustomer, phone: value })}
-                    placeholder="+33 1 23 45 67 89"
-                    placeholderTextColor="#999"
-                    keyboardType="phone-pad"
-                  />
+                  <View style={validationStyles.formInputContainer}>
+                    <Ionicons name="call" size={20} color="#8E8E93" style={validationStyles.formInputIcon} />
+                    <TextInput
+                      style={validationStyles.formInput}
+                      value={newCustomer.phone}
+                      onChangeText={(value) => setNewCustomer({ ...newCustomer, phone: value })}
+                      placeholder="+33 1 23 45 67 89"
+                      placeholderTextColor="#999"
+                      keyboardType="phone-pad"
+                    />
+                  </View>
                 </View>
 
                 <View style={validationStyles.formButtons}>
@@ -389,7 +441,7 @@ export default function CartValidationScreen({ route, navigation }: any) {
                     style={validationStyles.formCancelButton}
                     onPress={() => setModalMode('search')}
                   >
-                    <Text style={validationStyles.formCancelText}>Annuler</Text>
+                    <Text style={validationStyles.formCancelText}>Retour</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -400,7 +452,8 @@ export default function CartValidationScreen({ route, navigation }: any) {
                     onPress={createCustomer}
                     disabled={!newCustomer.name.trim()}
                   >
-                    <Text style={validationStyles.formSubmitText}>Créer</Text>
+                    <Ionicons name="checkmark" size={20} color="#FFF" style={{ marginRight: 6 }} />
+                    <Text style={validationStyles.formSubmitText}>Créer le client</Text>
                   </TouchableOpacity>
                 </View>
               </View>
