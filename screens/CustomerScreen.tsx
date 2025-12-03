@@ -35,7 +35,7 @@ type Customer = {
   raison_social?: string;
 };
 
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE = 10;
 
 export default function CustomerScreen() {
   if (Platform.OS === "android") {
