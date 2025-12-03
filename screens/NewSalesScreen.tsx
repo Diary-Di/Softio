@@ -2,7 +2,6 @@ import { Picker } from '@react-native-picker/picker';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Platform,
   SafeAreaView,
@@ -11,8 +10,11 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { cartSalesStyles } from '../styles/NewSalesStyles';
+import { Ionicons } from '@expo/vector-icons';
 
 // Types
 type Product = {
@@ -69,18 +71,46 @@ const MOCK_PRODUCTS: Product[] = [
 
 export default function CartSalesScreen({ navigation }: any) {
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [reference, setReference] = useState<string>('');
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantityToAdd, setQuantityToAdd] = useState<string>('1');
+  const [searchError, setSearchError] = useState<string>('');
+  const [searchLoading, setSearchLoading] = useState<boolean>(false);
 
-  // Ajouter un produit au panier
-  const addToCart = useCallback(() => {
-    if (!selectedProductId) {
-      Alert.alert('Erreur', 'Veuillez sélectionner un produit');
+  // Rechercher un produit par référence
+  const searchProduct = useCallback(() => {
+    if (!reference.trim()) {
+      setSearchError('Veuillez entrer une référence');
       return;
     }
 
-    const product = MOCK_PRODUCTS.find(p => p.id === selectedProductId);
-    if (!product) return;
+    setSearchLoading(true);
+    setSearchError('');
+
+    // Simuler un délai de recherche
+    setTimeout(() => {
+      const product = MOCK_PRODUCTS.find(
+        p => p.reference.toLowerCase() === reference.trim().toLowerCase()
+      );
+      
+      if (!product) {
+        setSearchError('Produit non trouvé');
+        setSelectedProduct(null);
+      } else {
+        setSelectedProduct(product);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      setSearchLoading(false);
+      Keyboard.dismiss();
+    }, 500);
+  }, [reference]);
+
+  // Ajouter un produit au panier
+  const addToCart = useCallback(() => {
+    if (!selectedProduct) {
+      Alert.alert('Erreur', 'Veuillez rechercher et sélectionner un produit');
+      return;
+    }
 
     const qty = parseInt(quantityToAdd) || 1;
     
@@ -89,39 +119,41 @@ export default function CartSalesScreen({ navigation }: any) {
       return;
     }
 
-    if (qty > product.quantiteDisponible) {
-      Alert.alert('Erreur', `Seulement ${product.quantiteDisponible} unités disponibles`);
+    if (qty > selectedProduct.quantiteDisponible) {
+      Alert.alert('Erreur', `Stock insuffisant: ${selectedProduct.quantiteDisponible} unités disponibles`);
       return;
     }
 
     // Vérifier si le produit existe déjà dans le panier
-    const existingItemIndex = cart.findIndex(item => item.id === product.id);
+    const existingItemIndex = cart.findIndex(item => item.id === selectedProduct.id);
     
     if (existingItemIndex !== -1) {
       const updatedCart = [...cart];
       const newQty = updatedCart[existingItemIndex].quantiteAcheter + qty;
       
-      if (newQty > product.quantiteDisponible) {
-        Alert.alert('Erreur', `Maximum ${product.quantiteDisponible} unités disponibles`);
+      if (newQty > selectedProduct.quantiteDisponible) {
+        Alert.alert('Erreur', `Maximum ${selectedProduct.quantiteDisponible} unités disponibles`);
         return;
       }
       
       updatedCart[existingItemIndex].quantiteAcheter = newQty;
-      updatedCart[existingItemIndex].montant = newQty * product.prixUnitaire;
+      updatedCart[existingItemIndex].montant = newQty * selectedProduct.prixUnitaire;
       setCart(updatedCart);
     } else {
       const cartItem: CartItem = {
-        ...product,
+        ...selectedProduct,
         quantiteAcheter: qty,
-        montant: qty * product.prixUnitaire,
+        montant: qty * selectedProduct.prixUnitaire,
       };
       setCart([...cart, cartItem]);
     }
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSelectedProductId('');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectedProduct(null);
+    setReference('');
     setQuantityToAdd('1');
-  }, [selectedProductId, quantityToAdd, cart]);
+    setSearchError('');
+  }, [selectedProduct, quantityToAdd, cart]);
 
   // Supprimer un article du panier
   const removeFromCart = useCallback((productId: string) => {
@@ -131,7 +163,7 @@ export default function CartSalesScreen({ navigation }: any) {
 
   // Modifier la quantité dans le panier
   const updateCartQuantity = useCallback((productId: string, newQty: number) => {
-    const product = MOCK_PRODUCTS.find(p => p.id === productId);
+    const product = cart.find(item => item.id === productId);
     if (!product) return;
 
     if (newQty <= 0) {
@@ -139,8 +171,11 @@ export default function CartSalesScreen({ navigation }: any) {
       return;
     }
 
-    if (newQty > product.quantiteDisponible) {
-      Alert.alert('Erreur', `Maximum ${product.quantiteDisponible} unités disponibles`);
+    const originalProduct = MOCK_PRODUCTS.find(p => p.id === productId);
+    if (!originalProduct) return;
+
+    if (newQty > originalProduct.quantiteDisponible) {
+      Alert.alert('Erreur', `Maximum ${originalProduct.quantiteDisponible} unités disponibles`);
       return;
     }
 
@@ -172,13 +207,29 @@ export default function CartSalesScreen({ navigation }: any) {
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    // Naviguer vers CartValidationScreen avec les données du panier
     navigation.navigate('CartValidation', {
       cart,
       totalAmount,
       totalItems,
     });
   }, [cart, totalAmount, totalItems, navigation]);
+
+  // Incrémenter/Décrémenter la quantité
+  const handleQuantityChange = useCallback((type: 'increment' | 'decrement') => {
+    const currentQty = parseInt(quantityToAdd) || 1;
+    const newQty = type === 'increment' ? currentQty + 1 : Math.max(1, currentQty - 1);
+    setQuantityToAdd(newQty.toString());
+  }, [quantityToAdd]);
+
+  // Gérer la soumission du champ de référence (touche Entrée)
+  const handleReferenceSubmit = useCallback(() => {
+    if (reference.trim()) {
+      searchProduct();
+    }
+  }, [reference, searchProduct]);
+
+  // Focus sur le champ de référence
+  const [isReferenceFocused, setIsReferenceFocused] = useState(false);
 
   return (
     <SafeAreaView style={cartSalesStyles.safeArea}>
@@ -188,128 +239,240 @@ export default function CartSalesScreen({ navigation }: any) {
           style={cartSalesStyles.cancelButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={cartSalesStyles.cancelButtonText}>Annuler</Text>
+          <Ionicons name="close" size={24} color="#666" />
         </TouchableOpacity>
 
-        <Text style={cartSalesStyles.headerTitle}>Nouvelle Vente</Text>
+        <View style={cartSalesStyles.headerTitleContainer}>
+          <Text style={cartSalesStyles.headerTitle}>Nouvelle Vente</Text>
+          {cart.length > 0 && (
+            <View style={cartSalesStyles.headerBadge}>
+              <Text style={cartSalesStyles.headerBadgeText}>{totalItems}</Text>
+            </View>
+          )}
+        </View>
 
-        {cart.length > 0 && (
-          <View style={cartSalesStyles.headerBadge}>
-            <Text style={cartSalesStyles.headerBadgeText}>{totalItems}</Text>
-          </View>
+        {cart.length > 0 ? (
+          <TouchableOpacity
+            style={cartSalesStyles.emptyCartButton}
+            onPress={() => setCart([])}
+          >
+            <Ionicons name="trash-outline" size={20} color="#666" />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 40 }} />
         )}
-        {cart.length === 0 && <View style={{ width: 40 }} />}
       </View>
 
       <ScrollView
         style={cartSalesStyles.container}
         contentContainerStyle={cartSalesStyles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* SECTION AJOUTER PRODUIT */}
+        {/* SECTION RECHERCHE PRODUIT */}
         <View style={cartSalesStyles.section}>
-          <Text style={cartSalesStyles.sectionTitle}>AJOUTER AU PANIER</Text>
+          <Text style={cartSalesStyles.sectionTitle}>AJOUTER UN PRODUIT</Text>
           
-          <View style={cartSalesStyles.picker}>
-            <Picker
-              selectedValue={selectedProductId}
-              onValueChange={setSelectedProductId}
-              style={Platform.OS === 'ios' ? cartSalesStyles.pickerIOS : cartSalesStyles.pickerAndroid}
+          {/* Zone de recherche */}
+          <View style={cartSalesStyles.searchContainer}>
+            <View style={[
+              cartSalesStyles.searchInputContainer,
+              isReferenceFocused && cartSalesStyles.searchInputContainerFocused
+            ]}>
+              <Ionicons name="search" size={20} color="#999" style={cartSalesStyles.searchIcon} />
+              <TextInput
+                style={cartSalesStyles.searchInput}
+                value={reference}
+                onChangeText={(text) => {
+                  setReference(text);
+                  if (selectedProduct) setSelectedProduct(null);
+                  if (searchError) setSearchError('');
+                }}
+                placeholder="Entrer la référence du produit"
+                placeholderTextColor="#999"
+                onSubmitEditing={handleReferenceSubmit}
+                autoCapitalize="characters"
+                returnKeyType="search"
+                editable={true} // S'assurer que c'est éditable
+                selectTextOnFocus={true} // Sélectionner tout le texte au focus
+                onFocus={() => setIsReferenceFocused(true)}
+                onBlur={() => setIsReferenceFocused(false)}
+                // Props spécifiques pour le Web
+                {...(Platform.OS === 'web' && {
+                  // Ces props aident à résoudre les problèmes d'édition sur le Web
+                  disableFullscreenUI: true,
+                  accessibilityRole: 'text',
+                  tabIndex: 0,
+                })}
+              />
+              {reference.length > 0 && (
+                <TouchableOpacity
+                  style={cartSalesStyles.clearButton}
+                  onPress={() => {
+                    setReference('');
+                    setSelectedProduct(null);
+                    setSearchError('');
+                  }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close-circle" size={20} color="#999" />
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            <TouchableOpacity
+              style={[
+                cartSalesStyles.searchButton,
+                (!reference.trim() || searchLoading) && cartSalesStyles.searchButtonDisabled
+              ]}
+              onPress={searchProduct}
+              disabled={!reference.trim() || searchLoading}
+              activeOpacity={0.7}
             >
-              <Picker.Item label="Sélectionnez un produit" value="" />
-              {MOCK_PRODUCTS.map((product) => (
-                <Picker.Item 
-                  key={product.id} 
-                  label={`${product.reference} - ${product.designation} (€${product.prixUnitaire})`}
-                  value={product.id} 
-                />
-              ))}
-            </Picker>
+              {searchLoading ? (
+                <Ionicons name="reload" size={20} color="#FFF" />
+              ) : (
+                <Ionicons name="arrow-forward" size={20} color="#FFF" />
+              )}
+            </TouchableOpacity>
           </View>
 
-          {selectedProductId && (
-            <>
-              <View style={cartSalesStyles.productDetail}>
-                {(() => {
-                  const product = MOCK_PRODUCTS.find(p => p.id === selectedProductId);
-                  if (!product) return null;
-                  return (
-                    <>
-                      <View style={cartSalesStyles.productRow}>
-                        <Text style={cartSalesStyles.productLabel}>Référence:</Text>
-                        <Text style={cartSalesStyles.productValue}>{product.reference}</Text>
-                      </View>
-                      <View style={cartSalesStyles.productRow}>
-                        <Text style={cartSalesStyles.productLabel}>Prix unitaire:</Text>
-                        <Text style={cartSalesStyles.productValue}>€ {product.prixUnitaire.toFixed(2)}</Text>
-                      </View>
-                      <View style={cartSalesStyles.productRow}>
-                        <Text style={cartSalesStyles.productLabel}>Stock disponible:</Text>
-                        <Text style={[cartSalesStyles.productValue, { color: product.quantiteDisponible > 10 ? '#10b981' : '#f59e0b' }]}>
-                          {product.quantiteDisponible} unités
-                        </Text>
-                      </View>
-                    </>
-                  );
-                })()}
-              </View>
+          {searchError ? (
+            <View style={cartSalesStyles.errorContainer}>
+              <Ionicons name="alert-circle" size={20} color="#FF3B30" />
+              <Text style={cartSalesStyles.errorText}>{searchError}</Text>
+            </View>
+          ) : null}
 
-              <View style={cartSalesStyles.addToCartRow}>
-                <View style={cartSalesStyles.quantityInput}>
-                  <Text style={cartSalesStyles.label}>Quantité</Text>
-                  <TextInput
-                    style={cartSalesStyles.textInput}
-                    value={quantityToAdd}
-                    onChangeText={(value) => setQuantityToAdd(value.replace(/[^0-9]/g, ''))}
-                    placeholder="1"
-                    keyboardType="number-pad"
-                  />
+          {/* Affichage du produit trouvé */}
+          {selectedProduct && (
+            <View style={cartSalesStyles.productCard}>
+              <View style={cartSalesStyles.productHeader}>
+                <View>
+                  <Text style={cartSalesStyles.productRef}>{selectedProduct.reference}</Text>
+                  <Text style={cartSalesStyles.productName}>{selectedProduct.designation}</Text>
                 </View>
-
                 <TouchableOpacity
-                  style={cartSalesStyles.addButton}
-                  onPress={addToCart}
+                  onPress={() => {
+                    setSelectedProduct(null);
+                    setReference('');
+                  }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <Text style={cartSalesStyles.addButtonText}>Ajouter</Text>
+                  <Ionicons name="close" size={20} color="#666" />
                 </TouchableOpacity>
               </View>
-            </>
+
+              <View style={cartSalesStyles.productDetails}>
+                <View style={cartSalesStyles.productDetailRow}>
+                  <View style={cartSalesStyles.productDetailItem}>
+                    <Text style={cartSalesStyles.productDetailLabel}>Prix unitaire</Text>
+                    <Text style={cartSalesStyles.productDetailValue}>
+                      € {selectedProduct.prixUnitaire.toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={cartSalesStyles.productDetailItem}>
+                    <Text style={cartSalesStyles.productDetailLabel}>Stock disponible</Text>
+                    <Text style={[
+                      cartSalesStyles.productDetailValue,
+                      { color: selectedProduct.quantiteDisponible > 10 ? '#34C759' : '#FF9500' }
+                    ]}>
+                      {selectedProduct.quantiteDisponible} unités
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Contrôle de quantité */}
+                <View style={cartSalesStyles.quantitySection}>
+                  <Text style={cartSalesStyles.quantityLabel}>Quantité</Text>
+                  <View style={cartSalesStyles.quantityControls}>
+                    <TouchableOpacity
+                      style={cartSalesStyles.quantityButton}
+                      onPress={() => handleQuantityChange('decrement')}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="remove" size={20} color="#007AFF" />
+                    </TouchableOpacity>
+                    
+                    <TextInput
+                      style={cartSalesStyles.quantityInput}
+                      value={quantityToAdd}
+                      onChangeText={(value) => {
+                        // Permettre uniquement des nombres
+                        const numValue = value.replace(/[^0-9]/g, '');
+                        setQuantityToAdd(numValue || '1');
+                      }}
+                      keyboardType="number-pad"
+                      textAlign="center"
+                      editable={true}
+                      selectTextOnFocus={true}
+                      {...(Platform.OS === 'web' && {
+                        disableFullscreenUI: true,
+                        accessibilityRole: 'text',
+                        tabIndex: 0,
+                      })}
+                    />
+                    
+                    <TouchableOpacity
+                      style={cartSalesStyles.quantityButton}
+                      onPress={() => handleQuantityChange('increment')}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="add" size={20} color="#007AFF" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Bouton Ajouter au panier */}
+                <TouchableOpacity
+                  style={cartSalesStyles.addToCartButton}
+                  onPress={addToCart}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="cart" size={20} color="#FFF" style={{ marginRight: 8 }} />
+                  <Text style={cartSalesStyles.addToCartButtonText}>
+                    Ajouter au panier - € {(selectedProduct.prixUnitaire * (parseInt(quantityToAdd) || 1)).toFixed(2)}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           )}
         </View>
 
-        {/* PANIER */}
+        {/* SECTION PANIER */}
         <View style={cartSalesStyles.section}>
           <View style={cartSalesStyles.cartHeader}>
             <Text style={cartSalesStyles.sectionTitle}>PANIER</Text>
             {cart.length > 0 && (
-              <View style={cartSalesStyles.badge}>
-                <Text style={cartSalesStyles.badgeText}>{totalItems}</Text>
+              <View style={cartSalesStyles.cartCountBadge}>
+                <Text style={cartSalesStyles.cartCountText}>{totalItems} article(s)</Text>
               </View>
             )}
           </View>
 
           {cart.length === 0 ? (
             <View style={cartSalesStyles.emptyCart}>
-              <Text style={cartSalesStyles.emptyCartIcon}>🛒</Text>
-              <Text style={cartSalesStyles.emptyCartText}>Le panier est vide</Text>
+              <Ionicons name="cart-outline" size={64} color="#D1D1D6" />
+              <Text style={cartSalesStyles.emptyCartText}>Votre panier est vide</Text>
               <Text style={cartSalesStyles.emptyCartSubtext}>
-                Sélectionnez des produits pour commencer
+                Recherchez des produits pour les ajouter
               </Text>
             </View>
           ) : (
             <>
               {cart.map((item) => (
-                <View key={item.id} style={cartSalesStyles.cartItem}>
+                <View key={item.id} style={cartSalesStyles.cartItemCard}>
                   <View style={cartSalesStyles.cartItemHeader}>
-                    <View style={cartSalesStyles.cartItemTitle}>
+                    <View>
                       <Text style={cartSalesStyles.cartItemRef}>{item.reference}</Text>
                       <Text style={cartSalesStyles.cartItemName}>{item.designation}</Text>
                     </View>
                     <TouchableOpacity
                       onPress={() => removeFromCart(item.id)}
-                      style={cartSalesStyles.removeButton}
+                      style={cartSalesStyles.cartItemRemove}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
-                      <Text style={cartSalesStyles.removeButtonText}>✕</Text>
+                      <Ionicons name="trash-outline" size={20} color="#FF3B30" />
                     </TouchableOpacity>
                   </View>
 
@@ -318,34 +481,31 @@ export default function CartSalesScreen({ navigation }: any) {
                       <Text style={cartSalesStyles.cartItemLabel}>Prix unitaire:</Text>
                       <Text style={cartSalesStyles.cartItemValue}>€ {item.prixUnitaire.toFixed(2)}</Text>
                     </View>
-                    
-                    <View style={cartSalesStyles.cartItemRow}>
-                      <Text style={cartSalesStyles.cartItemLabel}>Disponible:</Text>
-                      <Text style={cartSalesStyles.cartItemValue}>{item.quantiteDisponible} unités</Text>
-                    </View>
 
                     <View style={cartSalesStyles.cartItemRow}>
                       <Text style={cartSalesStyles.cartItemLabel}>Quantité:</Text>
-                      <View style={cartSalesStyles.quantityControls}>
+                      <View style={cartSalesStyles.cartQuantityControls}>
                         <TouchableOpacity
-                          style={cartSalesStyles.qtyButton}
+                          style={cartSalesStyles.cartQtyButton}
                           onPress={() => updateCartQuantity(item.id, item.quantiteAcheter - 1)}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         >
-                          <Text style={cartSalesStyles.qtyButtonText}>−</Text>
+                          <Ionicons name="remove" size={16} color="#007AFF" />
                         </TouchableOpacity>
-                        <Text style={cartSalesStyles.qtyValue}>{item.quantiteAcheter}</Text>
+                        <Text style={cartSalesStyles.cartQtyValue}>{item.quantiteAcheter}</Text>
                         <TouchableOpacity
-                          style={cartSalesStyles.qtyButton}
+                          style={cartSalesStyles.cartQtyButton}
                           onPress={() => updateCartQuantity(item.id, item.quantiteAcheter + 1)}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         >
-                          <Text style={cartSalesStyles.qtyButtonText}>+</Text>
+                          <Ionicons name="add" size={16} color="#007AFF" />
                         </TouchableOpacity>
                       </View>
                     </View>
 
-                    <View style={[cartSalesStyles.cartItemRow, cartSalesStyles.totalRow]}>
-                      <Text style={cartSalesStyles.cartItemTotal}>Montant:</Text>
-                      <Text style={cartSalesStyles.cartItemTotalValue}>€ {item.montant.toFixed(2)}</Text>
+                    <View style={cartSalesStyles.cartItemRow}>
+                      <Text style={cartSalesStyles.cartItemLabel}>Total:</Text>
+                      <Text style={cartSalesStyles.cartItemTotal}>€ {item.montant.toFixed(2)}</Text>
                     </View>
                   </View>
                 </View>
@@ -354,12 +514,13 @@ export default function CartSalesScreen({ navigation }: any) {
               {/* Total général */}
               <View style={cartSalesStyles.totalCard}>
                 <View style={cartSalesStyles.totalRow}>
-                  <Text style={cartSalesStyles.totalLabel}>Total articles:</Text>
+                  <Text style={cartSalesStyles.totalLabel}>Total articles</Text>
                   <Text style={cartSalesStyles.totalValue}>{totalItems}</Text>
                 </View>
-                <View style={[cartSalesStyles.totalRow, { marginTop: 8 }]}>
-                  <Text style={cartSalesStyles.totalLabelMain}>TOTAL:</Text>
-                  <Text style={cartSalesStyles.totalValueMain}>€ {totalAmount.toFixed(2)}</Text>
+                <View style={cartSalesStyles.totalSeparator} />
+                <View style={cartSalesStyles.totalRow}>
+                  <Text style={cartSalesStyles.totalMainLabel}>TOTAL À PAYER</Text>
+                  <Text style={cartSalesStyles.totalMainValue}>€ {totalAmount.toFixed(2)}</Text>
                 </View>
               </View>
             </>
@@ -370,17 +531,17 @@ export default function CartSalesScreen({ navigation }: any) {
       {/* Footer avec bouton continuer */}
       {cart.length > 0 && (
         <View style={cartSalesStyles.footer}>
+          <View style={cartSalesStyles.footerTotal}>
+            <Text style={cartSalesStyles.footerTotalLabel}>Total</Text>
+            <Text style={cartSalesStyles.footerTotalAmount}>€ {totalAmount.toFixed(2)}</Text>
+          </View>
           <TouchableOpacity
             style={cartSalesStyles.continueButton}
             onPress={goToValidation}
+            activeOpacity={0.7}
           >
-            <View style={cartSalesStyles.continueButtonContent}>
-              <View>
-                <Text style={cartSalesStyles.continueButtonLabel}>Continuer</Text>
-                <Text style={cartSalesStyles.continueButtonSubtext}>{totalItems} article(s)</Text>
-              </View>
-              <Text style={cartSalesStyles.continueButtonPrice}>€ {totalAmount.toFixed(2)}</Text>
-            </View>
+            <Text style={cartSalesStyles.continueButtonText}>Continuer</Text>
+            <Ionicons name="arrow-forward" size={20} color="#FFF" />
           </TouchableOpacity>
         </View>
       )}
