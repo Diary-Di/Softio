@@ -11,6 +11,9 @@ export default StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 8,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
   },
   title: {
     fontSize: 24,
@@ -22,9 +25,44 @@ export default StyleSheet.create({
     color: '#6B7280',
     marginTop: 4,
   },
+  // Barre de recherche
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    height: 44,
+  },
+  searchInputFocused: {
+    borderColor: '#4F46E5',
+    backgroundColor: '#fff',
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#111827',
+    paddingVertical: 8,
+  },
+  clearButton: {
+    padding: 4,
+  },
+  // Filtres
   filterContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 12,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
@@ -51,9 +89,10 @@ export default StyleSheet.create({
   filterButtonTextActive: {
     color: '#fff',
   },
+  // Liste
   listContainer: {
     padding: 16,
-    paddingBottom: 100, // Espace pour la pagination et FAB
+    paddingBottom: 100,
   },
   card: {
     backgroundColor: '#fff',
@@ -150,7 +189,7 @@ export default StyleSheet.create({
   actionButton: {
     padding: 8,
   },
-  // Pagination styles
+  // Pagination
   paginationContainer: {
     backgroundColor: '#fff',
     borderTopWidth: 1,
@@ -219,7 +258,7 @@ export default StyleSheet.create({
     color: '#9CA3AF',
     marginHorizontal: 4,
   },
-  // Empty state
+  // État vide
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -240,7 +279,19 @@ export default StyleSheet.create({
     textAlign: 'center',
     maxWidth: 300,
   },
-  // Loading & Error
+  clearFiltersButton: {
+    marginTop: 16,
+    backgroundColor: '#E0E7FF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  clearFiltersButtonText: {
+    color: '#4F46E5',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  // Chargement & Erreur
   centerContainer: {
     justifyContent: 'center',
     alignItems: 'center',

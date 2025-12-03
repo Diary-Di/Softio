@@ -1,7 +1,21 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useState, useEffect, useCallback } from "react";
-import { Alert, FlatList, LayoutAnimation, Linking, Platform, Pressable, Text, TouchableOpacity, UIManager, View, RefreshControl, ActivityIndicator } from "react-native";
+import { 
+  Alert, 
+  FlatList, 
+  LayoutAnimation, 
+  Linking, 
+  Platform, 
+  Pressable, 
+  Text, 
+  TouchableOpacity, 
+  UIManager, 
+  View, 
+  RefreshControl, 
+  ActivityIndicator,
+  TextInput 
+} from "react-native";
 import FloatingBottomBarCustomer from '../components/FloatingBottomBarCustomer';
 import styles from "../styles/CustomerScreenStyles";
 import { productScreenStyles as productStyles } from '../styles/productScreenStyles';
@@ -21,7 +35,7 @@ type Customer = {
   raison_social?: string;
 };
 
-const ITEMS_PER_PAGE = 5; // 5 clients par page
+const ITEMS_PER_PAGE = 5;
 
 export default function CustomerScreen() {
   if (Platform.OS === "android") {
@@ -37,9 +51,10 @@ export default function CustomerScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [customerType, setCustomerType] = useState<'all' | 'particulier' | 'entreprise'>('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchFocused, setSearchFocused] = useState(false);
   const navigation = useNavigation<any>();
 
-  // Filtrer et paginer les clients
+  // Filtrer les clients
   useEffect(() => {
     let filtered = [...customers];
     
@@ -51,7 +66,8 @@ export default function CustomerScreen() {
         (customer.prenom?.toLowerCase().includes(query)) ||
         (customer.sigle?.toLowerCase().includes(query)) ||
         (customer.email?.toLowerCase().includes(query)) ||
-        (customer.telephone?.includes(query))
+        (customer.telephone?.includes(query)) ||
+        (customer.adresse?.toLowerCase().includes(query))
       );
     }
     
@@ -61,10 +77,10 @@ export default function CustomerScreen() {
     }
     
     setFilteredCustomers(filtered);
-    setCurrentPage(1); // Reset à la première page quand le filtre change
+    setCurrentPage(1);
   }, [customers, searchQuery, customerType]);
 
-  // Calculer les données paginées
+  // Pagination
   const totalPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
@@ -79,7 +95,6 @@ export default function CustomerScreen() {
     } catch (error: any) {
       console.error('❌ Erreur chargement clients:', error);
       setError(error.message || 'Impossible de charger les clients');
-      Alert.alert('Erreur', error.message || 'Impossible de charger les clients');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -128,7 +143,7 @@ export default function CustomerScreen() {
     setExpandedId((prev) => (prev === email ? null : email));
   };
 
-  // Gestion de la pagination
+  // Pagination
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
@@ -196,7 +211,12 @@ export default function CustomerScreen() {
     return pages;
   };
 
-  // Render item pour FlatList
+  // Effacer la recherche
+  const clearSearch = () => {
+    setSearchQuery("");
+  };
+
+  // Render item
   const renderItem = ({ item }: { item: Customer }) => {
     const isExpanded = expandedId === item.email;
     const fullName = getFullName(item);
@@ -302,7 +322,7 @@ export default function CustomerScreen() {
     );
   };
 
-  // Gestion des actions
+  // Actions
   const handleDeleteCustomer = async (email: string, name: string) => {
     Alert.alert(
       "Supprimer",
@@ -342,13 +362,45 @@ export default function CustomerScreen() {
 
   return (
     <View style={styles.container}>
-      {/* En-tête avec titre et statistiques */}
+      {/* En-tête avec titre */}
       <View style={styles.header}>
         <Text style={styles.title}>Clients</Text>
         <Text style={styles.subtitle}>
           {filteredCustomers.length} client{filteredCustomers.length > 1 ? 's' : ''}
           {customerType !== 'all' && ` (${customerType}s)`}
         </Text>
+      </View>
+
+      {/* Barre de recherche */}
+      <View style={styles.searchContainer}>
+        <View style={[styles.searchInputContainer, searchFocused && styles.searchInputFocused]}>
+          <Ionicons 
+            name="search" 
+            size={20} 
+            color={searchFocused ? "#4F46E5" : "#9CA3AF"} 
+            style={styles.searchIcon}
+          />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Rechercher un client..."
+            placeholderTextColor="#9CA3AF"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              style={styles.clearButton}
+              onPress={clearSearch}
+              accessibilityLabel="Effacer la recherche"
+            >
+              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Filtres */}
@@ -386,17 +438,34 @@ export default function CustomerScreen() {
       {/* Liste des clients */}
       {paginatedCustomers.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="people-outline" size={64} color="#9CA3AF" />
+          <Ionicons 
+            name={searchQuery ? "search-outline" : "people-outline"} 
+            size={64} 
+            color="#9CA3AF" 
+          />
           <Text style={styles.emptyText}>
             {searchQuery || customerType !== 'all' 
               ? "Aucun client ne correspond aux critères" 
               : "Aucun client pour le moment"}
           </Text>
           <Text style={styles.emptySubtext}>
-            {searchQuery || customerType !== 'all' 
-              ? "Essayez de modifier vos filtres" 
-              : "Ajoutez votre premier client en cliquant sur le bouton +"}
+            {searchQuery 
+              ? "Essayez avec d'autres mots-clés" 
+              : customerType !== 'all'
+                ? "Essayez de modifier vos filtres"
+                : "Ajoutez votre premier client en cliquant sur le bouton +"}
           </Text>
+          {(searchQuery || customerType !== 'all') && (
+            <TouchableOpacity
+              style={styles.clearFiltersButton}
+              onPress={() => {
+                setSearchQuery("");
+                setCustomerType('all');
+              }}
+            >
+              <Text style={styles.clearFiltersButtonText}>Effacer les filtres</Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : (
         <>
