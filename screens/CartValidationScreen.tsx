@@ -1,24 +1,23 @@
+// screens/CartValidationScreen.tsx
 import * as Haptics from 'expo-haptics';
-import { useCallback, useState, useEffect, useRef } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Modal,
-  Platform,
   SafeAreaView,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
-  Dimensions,
 } from 'react-native';
 import { validationStyles } from '../styles/CartValidationStyles';
 import { Ionicons } from '@expo/vector-icons';
 import { cartService, CartItem } from '../services/cartService';
 import { customerService } from '../services/customerService';
+//import CustomerSearchModal from '../components/CustomerSearchModal';
+import CustomerCreateModal from '../components/CustomerCreateModal';
+import CustomerSearchModal from '@/components/customerSearchModal';
 
-// Types
 type Customer = {
   type: 'particulier' | 'entreprise';
   email: string;
@@ -27,19 +26,9 @@ type Customer = {
   prenoms?: string;
   adresse?: string;
   telephone?: string;
-  nif?: string;
-  stat?: string;
 };
 
-type NewCustomerForm = {
-  type: 'particulier' | 'entreprise';
-  email: string;
-  sigle?: string;
-  nom?: string;
-  prenoms?: string;
-  adresse?: string;
-  telephone?: string;
-};
+type PaymentMethod = 'cash' | 'card' | 'mobile' | 'transfer' | 'check';
 
 // Fonction utilitaire pour formater les prix
 const formatPrice = (price: number | undefined): string => {
@@ -70,252 +59,156 @@ const getCustomerDisplayName = (customer: Customer): string => {
     return customer.prenoms;
   }
   
-  return customer.email; // Fallback à l'email
+  return customer.email;
 };
 
-// Obtenir la hauteur de l'écran
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+// Configuration des méthodes de paiement
+const PAYMENT_METHODS = [
+  {
+    id: 'cash' as PaymentMethod,
+    name: 'Espèces',
+    icon: 'cash-outline',
+    color: '#34C759',
+    description: 'Paiement en espèces'
+  },
+  {
+    id: 'card' as PaymentMethod,
+    name: 'Carte bancaire',
+    icon: 'card-outline',
+    color: '#007AFF',
+    description: 'Paiement par carte'
+  },
+  {
+    id: 'mobile' as PaymentMethod,
+    name: 'Mobile',
+    icon: 'phone-portrait-outline',
+    color: '#5856D6',
+    description: 'Paiement mobile'
+  },
+  {
+    id: 'transfer' as PaymentMethod,
+    name: 'Virement',
+    icon: 'swap-horizontal-outline',
+    color: '#FF9500',
+    description: 'Virement bancaire'
+  },
+  {
+    id: 'check' as PaymentMethod,
+    name: 'Chèque',
+    icon: 'document-text-outline',
+    color: '#FF3B30',
+    description: 'Paiement par chèque'
+  }
+];
 
 export default function CartValidationScreen({ route, navigation }: any) {
-  // Ajouter des valeurs par défaut
   const { cart = [], totalAmount = 0, totalItems = 0 } = route.params || {};
-
+  
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [showCustomerModal, setShowCustomerModal] = useState(false);
-  const [modalMode, setModalMode] = useState<'search' | 'create'>('search');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [newCustomer, setNewCustomer] = useState<NewCustomerForm>({ 
-    type: 'particulier',
-    email: '', 
-    sigle: '',
-    nom: '',
-    prenoms: '',
-    adresse: '',
-    telephone: '',
-  });
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [showCustomerSearchModal, setShowCustomerSearchModal] = useState(false);
+  const [showCustomerCreateModal, setShowCustomerCreateModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [totalCustomers, setTotalCustomers] = useState(0);
-  
-  // CORRECTION ICI : Utiliser ReturnType<typeof setTimeout> au lieu de NodeJS.Timeout
-  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  
-  const scrollViewRef = useRef<ScrollView>(null);
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
 
   // S'assurer que cart est un tableau
   const safeCart: CartItem[] = Array.isArray(cart) ? cart : [];
 
-  // Charger les clients au démarrage du modal
+  // Charger les clients au démarrage
   useEffect(() => {
-    if (showCustomerModal && modalMode === 'search') {
-      loadCustomers(1, true);
-    }
-  }, [showCustomerModal, modalMode]);
-
-  // Nettoyer le timeout lors du démontage du composant
-  useEffect(() => {
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
+    loadCustomers();
   }, []);
 
   // Charger les clients depuis l'API
-  const loadCustomers = async (pageNumber: number, reset: boolean = false) => {
-    if (isLoadingCustomers || (isLoadingMore && !reset)) return;
-
-    if (reset) {
-      setIsLoadingCustomers(true);
-      setPage(1);
-      setHasMore(true);
-    } else {
-      setIsLoadingMore(true);
-    }
-
+  const loadCustomers = async () => {
     try {
-      // Note: Votre API actuelle ne semble pas supporter la pagination
-      // Vous devrez adapter l'API ou charger tous les clients
+      setIsLoadingCustomers(true);
       const allCustomers = await customerService.getCustomers();
-      
-      // Simuler la pagination côté client (10 par page)
-      const startIndex = (pageNumber - 1) * 10;
-      const endIndex = startIndex + 10;
-      const paginatedCustomers = allCustomers.slice(startIndex, endIndex);
-      
-      if (reset) {
-        setCustomers(paginatedCustomers);
-      } else {
-        setCustomers(prev => [...prev, ...paginatedCustomers]);
-      }
-      
-      // Vérifier s'il reste des clients à charger
-      setHasMore(endIndex < allCustomers.length);
-      setTotalCustomers(allCustomers.length);
-      setPage(pageNumber);
-      
-    } catch (error: any) {
+      setCustomers(allCustomers);
+    } catch (error) {
       console.error('Erreur chargement clients:', error);
-      Alert.alert('Erreur', 'Impossible de charger les clients');
     } finally {
       setIsLoadingCustomers(false);
-      setIsLoadingMore(false);
     }
   };
 
-  // Filtrer les clients selon la recherche (nom, prénom, sigle ou email)
-  const filteredCustomers = customers.filter(customer => {
-    if (!searchQuery.trim()) return true;
-    
-    const searchLower = searchQuery.toLowerCase();
-    const displayName = getCustomerDisplayName(customer).toLowerCase();
-    const email = customer.email.toLowerCase();
-    
-    return displayName.includes(searchLower) || 
-           email.includes(searchLower) ||
-           (customer.nom && customer.nom.toLowerCase().includes(searchLower)) ||
-           (customer.prenoms && customer.prenoms.toLowerCase().includes(searchLower)) ||
-           (customer.sigle && customer.sigle.toLowerCase().includes(searchLower));
-  });
-
-  // Recherche avec debounce
-  const handleSearchChange = (text: string) => {
-    setSearchQuery(text);
-    
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-    
-    if (text.trim()) {
-      searchTimeoutRef.current = setTimeout(() => {
-        // Recherche côté client dans la liste déjà chargée
-        // Pour une recherche API complète, vous devrez adapter customerService
-      }, 300);
-    }
-  };
-
-  // Charger plus de clients (scroll infini)
-  const handleLoadMore = () => {
-    if (!isLoadingMore && hasMore && !searchQuery.trim()) {
-      loadCustomers(page + 1);
-    }
-  };
-
-  // Ouvrir modal en mode recherche
+  // Ouvrir modal de recherche
   const openSearchModal = useCallback(() => {
-    setModalMode('search');
-    setSearchQuery('');
-    setShowCustomerModal(true);
+    setShowCustomerSearchModal(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, []);
 
-  // Ouvrir modal en mode création
+  // Ouvrir modal de création
   const openCreateModal = useCallback(() => {
-    setModalMode('create');
-    setNewCustomer({ 
-      type: 'particulier',
-      email: '', 
-      sigle: '',
-      nom: '',
-      prenoms: '',
-      adresse: '',
-      telephone: '',
-    });
-    setShowCustomerModal(true);
+    setShowCustomerCreateModal(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, []);
 
-  // Sélectionner un client
-  const selectCustomer = useCallback((customer: Customer) => {
-    setSelectedCustomer(customer);
-    setShowCustomerModal(false);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  // Fermer tous les modals
+  const closeAllModals = useCallback(() => {
+    setShowCustomerSearchModal(false);
+    setShowCustomerCreateModal(false);
   }, []);
 
-  // Créer un nouveau client
-  const createCustomer = useCallback(async () => {
-    if (!newCustomer.email.trim()) {
-      Alert.alert('Erreur', 'L\'email du client est obligatoire');
-      return;
-    }
+  // Gérer la sélection d'un client
+  const handleSelectCustomer = useCallback((customer: Customer) => {
+    setSelectedCustomer(customer);
+    closeAllModals();
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [closeAllModals]);
 
-    // Validation basique d'email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(newCustomer.email)) {
-      Alert.alert('Erreur', 'Veuillez entrer une adresse email valide');
-      return;
-    }
+  // Gérer la création d'un client
+  const handleCustomerCreated = useCallback((customer: Customer) => {
+    setSelectedCustomer(customer);
+    // Ajouter le nouveau client à la liste existante
+    setCustomers(prev => {
+      // Vérifier si le client n'existe pas déjà
+      const exists = prev.some(c => c.email === customer.email);
+      if (exists) {
+        return prev.map(c => c.email === customer.email ? customer : c);
+      }
+      return [customer, ...prev];
+    });
+    closeAllModals();
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert('Succès', 'Client créé avec succès');
+  }, [closeAllModals]);
 
-    // Vérifier si le client existe déjà
-    const customerExists = customers.some(c => c.email.toLowerCase() === newCustomer.email.toLowerCase());
-    if (customerExists) {
-      Alert.alert('Erreur', 'Un client avec cet email existe déjà');
-      return;
-    }
+  // Gérer la sélection du mode de paiement
+  const handlePaymentMethodSelect = useCallback((method: PaymentMethod) => {
+    setSelectedPaymentMethod(method);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
 
-    try {
-      setIsLoadingCustomers(true);
-      
-      // Préparer les données pour l'API
-      const customerData = {
-        type: newCustomer.type,
-        email: newCustomer.email.trim(),
-        ...(newCustomer.type === 'entreprise' && { sigle: newCustomer.sigle?.trim() }),
-        ...(newCustomer.type === 'particulier' && { 
-          nom: newCustomer.nom?.trim(),
-          prenoms: newCustomer.prenoms?.trim()
-        }),
-        adresse: newCustomer.adresse?.trim(),
-        telephone: newCustomer.telephone?.trim(),
-      };
+  // Basculer vers la création
+  const switchToCreate = useCallback(() => {
+    setShowCustomerSearchModal(false);
+    setShowCustomerCreateModal(true);
+  }, []);
 
-      // Appeler l'API
-      const response = await customerService.createCustomer(customerData);
-      
-      // Créer l'objet client pour l'état local
-      const customer: Customer = {
-        type: newCustomer.type,
-        email: newCustomer.email.trim(),
-        sigle: newCustomer.sigle?.trim(),
-        nom: newCustomer.nom?.trim(),
-        prenoms: newCustomer.prenoms?.trim(),
-        adresse: newCustomer.adresse?.trim(),
-        telephone: newCustomer.telephone?.trim(),
-      };
+  // Basculer vers la recherche
+  const switchToSearch = useCallback(() => {
+    setShowCustomerCreateModal(false);
+    setShowCustomerSearchModal(true);
+  }, []);
 
-      // Mettre à jour la liste locale
-      setCustomers(prev => [customer, ...prev]);
-      setSelectedCustomer(customer);
-      setShowCustomerModal(false);
-      setNewCustomer({ 
-        type: 'particulier',
-        email: '', 
-        sigle: '',
-        nom: '',
-        prenoms: '',
-        adresse: '',
-        telephone: '',
-      });
-      
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Succès', 'Client créé avec succès');
-      
-    } catch (error: any) {
-      console.error('Erreur création client:', error);
-      Alert.alert('Erreur', error.message || 'Impossible de créer le client');
-    } finally {
-      setIsLoadingCustomers(false);
-    }
-  }, [newCustomer, customers]);
+  // Recharger les clients quand on ouvre le modal de recherche
+  const handleOpenSearchModal = useCallback(() => {
+    loadCustomers();
+    setShowCustomerSearchModal(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
 
   // Valider la commande finale
   const handleFinalSubmit = useCallback(async () => {
     if (!selectedCustomer) {
       Alert.alert('Client requis', 'Veuillez sélectionner ou créer un client');
+      return;
+    }
+
+    if (!selectedPaymentMethod) {
+      Alert.alert('Mode de paiement requis', 'Veuillez sélectionner un mode de paiement');
       return;
     }
 
@@ -328,7 +221,6 @@ export default function CartValidationScreen({ route, navigation }: any) {
     setIsSubmitting(true);
 
     try {
-      // Valider le stock d'abord
       const stockValidation = await cartService.validateStock(safeCart);
       
       if (!stockValidation.valid) {
@@ -342,11 +234,11 @@ export default function CartValidationScreen({ route, navigation }: any) {
         return;
       }
 
-      // Créer la vente
+      // Inclure le mode de paiement dans les données de vente
       const saleResponse = await cartService.createSale(
         safeCart, 
-        selectedCustomer.email, // Utiliser l'email comme ID client
-        '' // notes optionnelles
+        selectedCustomer.email,
+        `Mode de paiement: ${getPaymentMethodName(selectedPaymentMethod)}`
       );
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -355,7 +247,7 @@ export default function CartValidationScreen({ route, navigation }: any) {
         'Succès',
         `Vente enregistrée avec succès\n` +
         `Client: ${getCustomerDisplayName(selectedCustomer)}\n` +
-        `Email: ${selectedCustomer.email}\n` +
+        `Mode de paiement: ${getPaymentMethodName(selectedPaymentMethod)}\n` +
         `Total: ${formatPrice(totalAmount)}\n` +
         `Référence: ${saleResponse.data?.id || 'N/A'}`,
         [
@@ -365,7 +257,10 @@ export default function CartValidationScreen({ route, navigation }: any) {
           },
           {
             text: 'Voir le reçu',
-            onPress: () => navigation.navigate('Receipt', { saleId: saleResponse.data?.id })
+            onPress: () => navigation.navigate('Receipt', { 
+              saleId: saleResponse.data?.id,
+              paymentMethod: selectedPaymentMethod 
+            })
           }
         ]
       );
@@ -376,61 +271,57 @@ export default function CartValidationScreen({ route, navigation }: any) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [selectedCustomer, safeCart, totalAmount, navigation]);
+  }, [selectedCustomer, selectedPaymentMethod, safeCart, totalAmount, navigation]);
 
-  // Effacer la recherche
-  const clearSearch = useCallback(() => {
-    setSearchQuery('');
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-  }, []);
+  // Obtenir le nom du mode de paiement
+  const getPaymentMethodName = (method: PaymentMethod | null): string => {
+    if (!method) return 'Non spécifié';
+    const payment = PAYMENT_METHODS.find(p => p.id === method);
+    return payment?.name || 'Non spécifié';
+  };
 
-  // Rendre un client dans la liste
-  const renderCustomerItem = ({ item, index }: { item: Customer; index: number }) => (
+  // Rendu d'une méthode de paiement
+  const renderPaymentMethod = (method: typeof PAYMENT_METHODS[0]) => (
     <TouchableOpacity
-      key={item.email}
-      style={validationStyles.customerItem}
-      onPress={() => selectCustomer(item)}
+      key={method.id}
+      style={[
+        validationStyles.paymentMethodItem,
+        selectedPaymentMethod === method.id && validationStyles.paymentMethodItemSelected
+      ]}
+      onPress={() => handlePaymentMethodSelect(method.id)}
+      activeOpacity={0.7}
     >
-      <View style={validationStyles.customerItemIcon}>
+      <View style={[
+        validationStyles.paymentMethodIconContainer,
+        { backgroundColor: selectedPaymentMethod === method.id ? method.color : '#F2F2F7' }
+      ]}>
         <Ionicons 
-          name={item.type === 'entreprise' ? 'business' : 'person'} 
+          name={method.icon as any} 
           size={24} 
-          color="#007AFF" 
+          color={selectedPaymentMethod === method.id ? '#FFFFFF' : method.color} 
         />
       </View>
-      <View style={validationStyles.customerItemInfo}>
-        <Text style={validationStyles.customerItemName}>
-          {getCustomerDisplayName(item)}
+      <View style={validationStyles.paymentMethodInfo}>
+        <Text style={[
+          validationStyles.paymentMethodName,
+          selectedPaymentMethod === method.id && { color: method.color }
+        ]}>
+          {method.name}
         </Text>
-        <View style={validationStyles.customerItemDetails}>
-          <View style={validationStyles.customerDetailRow}>
-            <Ionicons name="mail" size={12} color="#8E8E93" style={validationStyles.customerDetailIcon} />
-            <Text style={validationStyles.customerItemEmail}>{item.email}</Text>
-          </View>
-          {item.telephone && (
-            <View style={validationStyles.customerDetailRow}>
-              <Ionicons name="call" size={12} color="#8E8E93" style={validationStyles.customerDetailIcon} />
-              <Text style={validationStyles.customerItemPhone}>{item.telephone}</Text>
-            </View>
-          )}
-        </View>
+        <Text style={validationStyles.paymentMethodDescription}>
+          {method.description}
+        </Text>
       </View>
-      <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+      {selectedPaymentMethod === method.id && (
+        <View style={[
+          validationStyles.paymentMethodCheckmark,
+          { backgroundColor: method.color }
+        ]}>
+          <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+        </View>
+      )}
     </TouchableOpacity>
   );
-
-  // Rendu du footer de chargement
-  const renderFooter = () => {
-    if (!isLoadingMore) return null;
-    
-    return (
-      <View style={{ paddingVertical: 20 }}>
-        <ActivityIndicator size="small" color="#007AFF" />
-      </View>
-    );
-  };
 
   return (
     <SafeAreaView style={validationStyles.safeArea}>
@@ -466,7 +357,7 @@ export default function CartValidationScreen({ route, navigation }: any) {
           <View style={validationStyles.clientButtonsContainer}>
             <TouchableOpacity
               style={validationStyles.clientButton}
-              onPress={openSearchModal}
+              onPress={handleOpenSearchModal}
               disabled={isSubmitting}
             >
               <Ionicons name="search" size={24} color="#007AFF" />
@@ -487,11 +378,14 @@ export default function CartValidationScreen({ route, navigation }: any) {
           {selectedCustomer ? (
             <View style={validationStyles.selectedClientCard}>
               <View style={validationStyles.selectedClientHeader}>
-                <View style={validationStyles.clientAvatar}>
+                <View style={[
+                  validationStyles.clientAvatar,
+                  { backgroundColor: selectedCustomer.type === 'entreprise' ? '#E8F4FF' : '#F0F8FF' }
+                ]}>
                   <Ionicons 
                     name={selectedCustomer.type === 'entreprise' ? 'business' : 'person'} 
                     size={24} 
-                    color="#007AFF" 
+                    color={selectedCustomer.type === 'entreprise' ? '#0056B3' : '#007AFF'} 
                   />
                 </View>
                 <View style={validationStyles.selectedClientInfo}>
@@ -509,17 +403,11 @@ export default function CartValidationScreen({ route, navigation }: any) {
                         <Text style={validationStyles.selectedClientPhone}>{selectedCustomer.telephone}</Text>
                       </View>
                     )}
-                    {selectedCustomer.type === 'entreprise' && selectedCustomer.sigle && (
-                      <View style={validationStyles.clientDetailRow}>
-                        <Ionicons name="business" size={14} color="#8E8E93" style={{ marginRight: 4 }} />
-                        <Text style={validationStyles.selectedClientPhone}>Entreprise</Text>
-                      </View>
-                    )}
                   </View>
                 </View>
                 <TouchableOpacity
                   style={validationStyles.changeClientButton}
-                  onPress={openSearchModal}
+                  onPress={handleOpenSearchModal}
                 >
                   <Ionicons name="create" size={18} color="#007AFF" />
                 </TouchableOpacity>
@@ -607,19 +495,46 @@ export default function CartValidationScreen({ route, navigation }: any) {
           </View>
         </View>
 
-        {/* Notes optionnelles */}
+        {/* Section Mode de paiement */}
         <View style={validationStyles.section}>
-          <Text style={validationStyles.sectionTitle}>NOTES (OPTIONNEL)</Text>
-          <View style={validationStyles.notesCard}>
-            <TextInput
-              style={validationStyles.notesInput}
-              placeholder="Ajouter une note pour cette vente..."
-              placeholderTextColor="#8E8E93"
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
-            />
+          <View style={validationStyles.sectionHeader}>
+            <Text style={validationStyles.sectionTitle}>MODE DE PAIEMENT *</Text>
           </View>
+
+          <View style={validationStyles.paymentMethodsContainer}>
+            {PAYMENT_METHODS.map(renderPaymentMethod)}
+          </View>
+
+          {selectedPaymentMethod && (
+            <View style={validationStyles.selectedPaymentCard}>
+              <View style={validationStyles.selectedPaymentHeader}>
+                <View style={[
+                  validationStyles.selectedPaymentIcon,
+                  { backgroundColor: PAYMENT_METHODS.find(p => p.id === selectedPaymentMethod)?.color || '#007AFF' }
+                ]}>
+                  <Ionicons 
+                    name={PAYMENT_METHODS.find(p => p.id === selectedPaymentMethod)?.icon as any || 'card-outline'} 
+                    size={20} 
+                    color="#FFFFFF" 
+                  />
+                </View>
+                <View style={validationStyles.selectedPaymentInfo}>
+                  <Text style={validationStyles.selectedPaymentName}>
+                    {getPaymentMethodName(selectedPaymentMethod)} sélectionné
+                  </Text>
+                  <Text style={validationStyles.selectedPaymentDescription}>
+                    {PAYMENT_METHODS.find(p => p.id === selectedPaymentMethod)?.description}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={validationStyles.changePaymentButton}
+                  onPress={() => setSelectedPaymentMethod(null)}
+                >
+                  <Ionicons name="close" size={18} color="#FF3B30" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -634,11 +549,11 @@ export default function CartValidationScreen({ route, navigation }: any) {
         <TouchableOpacity
           style={[
             validationStyles.validateButton,
-            (!selectedCustomer || isSubmitting || safeCart.length === 0) && 
+            (!selectedCustomer || !selectedPaymentMethod || isSubmitting || safeCart.length === 0) && 
             validationStyles.validateButtonDisabled
           ]}
           onPress={handleFinalSubmit}
-          disabled={!selectedCustomer || isSubmitting || safeCart.length === 0}
+          disabled={!selectedCustomer || !selectedPaymentMethod || isSubmitting || safeCart.length === 0}
         >
           {isSubmitting ? (
             <ActivityIndicator color="white" size="small" />
@@ -651,313 +566,23 @@ export default function CartValidationScreen({ route, navigation }: any) {
         </TouchableOpacity>
       </View>
 
-      {/* Modal Client */}
-      <Modal
-        visible={showCustomerModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCustomerModal(false)}
-      >
-        <View style={validationStyles.modalOverlay}>
-          <View style={validationStyles.modalContent}>
-            {/* Header Modal */}
-            <View style={validationStyles.modalHeader}>
-              <View style={validationStyles.modalHandle}>
-                <View style={validationStyles.modalHandle} />
-              </View>
-              
-              <Text style={validationStyles.modalTitle}>
-                {modalMode === 'search' ? 'Rechercher un client' : 'Nouveau client'}
-              </Text>
-              <TouchableOpacity
-                style={validationStyles.modalCloseButton}
-                onPress={() => setShowCustomerModal(false)}
-              >
-                <Ionicons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
+      {/* Modals séparés */}
+      <CustomerSearchModal
+        visible={showCustomerSearchModal}
+        onClose={closeAllModals}
+        onSelectCustomer={handleSelectCustomer}
+        onSwitchToCreate={switchToCreate}
+        initialCustomers={customers}
+        isLoading={isLoadingCustomers}
+      />
 
-            {modalMode === 'search' ? (
-              // Mode Recherche
-              <>
-                <View style={validationStyles.searchContainer}>
-                  <Ionicons name="search" size={20} color="#8E8E93" style={validationStyles.searchIcon} />
-                  <TextInput
-                    style={validationStyles.searchInput}
-                    value={searchQuery}
-                    onChangeText={handleSearchChange}
-                    placeholder="Rechercher par nom, email ou téléphone..."
-                    placeholderTextColor="#999"
-                    autoFocus
-                    autoCapitalize="none"
-                  />
-                  {searchQuery.length > 0 && (
-                    <TouchableOpacity
-                      style={validationStyles.clearSearchButton}
-                      onPress={clearSearch}
-                    >
-                      <Ionicons name="close-circle" size={20} color="#8E8E93" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                <ScrollView 
-                  ref={scrollViewRef}
-                  style={validationStyles.customerList}
-                  showsVerticalScrollIndicator={true}
-                  onScroll={({ nativeEvent }) => {
-                    const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
-                    const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 50;
-                    
-                    if (isCloseToBottom && !searchQuery.trim()) {
-                      handleLoadMore();
-                    }
-                  }}
-                  scrollEventThrottle={400}
-                >
-                  {isLoadingCustomers ? (
-                    <View style={validationStyles.loadingContainer}>
-                      <ActivityIndicator size="large" color="#007AFF" />
-                      <Text style={validationStyles.loadingText}>Chargement des clients...</Text>
-                    </View>
-                  ) : filteredCustomers.length === 0 ? (
-                    <View style={validationStyles.noResults}>
-                      <Ionicons name="search-outline" size={48} color="#D1D1D6" />
-                      <Text style={validationStyles.noResultsText}>
-                        {searchQuery ? 'Aucun client trouvé' : 'Aucun client disponible'}
-                      </Text>
-                      {searchQuery && (
-                        <Text style={validationStyles.noResultsSubtext}>
-                          Essayez avec un nom, email ou téléphone différent
-                        </Text>
-                      )}
-                      <TouchableOpacity
-                        style={validationStyles.createFromSearchButton}
-                        onPress={() => setModalMode('create')}
-                      >
-                        <Ionicons name="person-add" size={18} color="#007AFF" style={{ marginRight: 6 }} />
-                        <Text style={validationStyles.createFromSearchText}>Créer un nouveau client</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <>
-                      {filteredCustomers.map((customer, index) => renderCustomerItem({ item: customer, index }))}
-                      {renderFooter()}
-                      {!hasMore && filteredCustomers.length > 0 && (
-                        <View style={{ paddingVertical: 16, alignItems: 'center' }}>
-                          <Text style={{ fontSize: 13, color: '#8E8E93' }}>
-                            {totalCustomers} client(s) au total
-                          </Text>
-                        </View>
-                      )}
-                    </>
-                  )}
-                </ScrollView>
-              </>
-            ) : (
-              // Mode Création
-              <ScrollView style={validationStyles.createForm} keyboardShouldPersistTaps="handled">
-                <View style={validationStyles.formGroup}>
-                  <Text style={validationStyles.formLabel}>Type de client *</Text>
-                  <View style={{ flexDirection: 'row', gap: 12, marginBottom: 8 }}>
-                    <TouchableOpacity
-                      style={[
-                        { 
-                          flex: 1, 
-                          flexDirection: 'row', 
-                          alignItems: 'center', 
-                          justifyContent: 'center',
-                          backgroundColor: '#F8F8F8',
-                          borderRadius: 10,
-                          borderWidth: 1,
-                          borderColor: newCustomer.type === 'particulier' ? '#007AFF' : '#E5E5EA',
-                          paddingVertical: 12,
-                          paddingHorizontal: 16,
-                          gap: 8,
-                        }
-                      ]}
-                      onPress={() => setNewCustomer({ ...newCustomer, type: 'particulier' })}
-                    >
-                      <Ionicons 
-                        name="person" 
-                        size={20} 
-                        color={newCustomer.type === 'particulier' ? '#007AFF' : '#8E8E93'} 
-                      />
-                      <Text style={{ 
-                        fontSize: 15, 
-                        fontWeight: '500', 
-                        color: newCustomer.type === 'particulier' ? '#007AFF' : '#8E8E93' 
-                      }}>
-                        Particulier
-                      </Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity
-                      style={[
-                        { 
-                          flex: 1, 
-                          flexDirection: 'row', 
-                          alignItems: 'center', 
-                          justifyContent: 'center',
-                          backgroundColor: '#F8F8F8',
-                          borderRadius: 10,
-                          borderWidth: 1,
-                          borderColor: newCustomer.type === 'entreprise' ? '#007AFF' : '#E5E5EA',
-                          paddingVertical: 12,
-                          paddingHorizontal: 16,
-                          gap: 8,
-                        }
-                      ]}
-                      onPress={() => setNewCustomer({ ...newCustomer, type: 'entreprise' })}
-                    >
-                      <Ionicons 
-                        name="business" 
-                        size={20} 
-                        color={newCustomer.type === 'entreprise' ? '#007AFF' : '#8E8E93'} 
-                      />
-                      <Text style={{ 
-                        fontSize: 15, 
-                        fontWeight: '500', 
-                        color: newCustomer.type === 'entreprise' ? '#007AFF' : '#8E8E93' 
-                      }}>
-                        Entreprise
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <View style={validationStyles.formGroup}>
-                  <Text style={validationStyles.formLabel}>Email *</Text>
-                  <View style={validationStyles.formInputContainer}>
-                    <Ionicons name="mail" size={20} color="#8E8E93" style={validationStyles.formInputIcon} />
-                    <TextInput
-                      style={validationStyles.formInput}
-                      value={newCustomer.email}
-                      onChangeText={(value) => setNewCustomer({ ...newCustomer, email: value })}
-                      placeholder="client@exemple.com"
-                      placeholderTextColor="#999"
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                    />
-                  </View>
-                  <Text style={validationStyles.formHelpText}>
-                    L'email sera utilisé comme identifiant unique
-                  </Text>
-                </View>
-
-                {newCustomer.type === 'entreprise' ? (
-                  <View style={validationStyles.formGroup}>
-                    <Text style={validationStyles.formLabel}>Sigle de l'entreprise *</Text>
-                    <View style={validationStyles.formInputContainer}>
-                      <Ionicons name="business" size={20} color="#8E8E93" style={validationStyles.formInputIcon} />
-                      <TextInput
-                        style={validationStyles.formInput}
-                        value={newCustomer.sigle}
-                        onChangeText={(value) => setNewCustomer({ ...newCustomer, sigle: value })}
-                        placeholder="Ex: ACME Corp"
-                        placeholderTextColor="#999"
-                      />
-                    </View>
-                  </View>
-                ) : (
-                  <>
-                    <View style={validationStyles.formGroup}>
-                      <Text style={validationStyles.formLabel}>Nom</Text>
-                      <View style={validationStyles.formInputContainer}>
-                        <Ionicons name="person" size={20} color="#8E8E93" style={validationStyles.formInputIcon} />
-                        <TextInput
-                          style={validationStyles.formInput}
-                          value={newCustomer.nom}
-                          onChangeText={(value) => setNewCustomer({ ...newCustomer, nom: value })}
-                          placeholder="Ex: Dupont"
-                          placeholderTextColor="#999"
-                        />
-                      </View>
-                    </View>
-
-                    <View style={validationStyles.formGroup}>
-                      <Text style={validationStyles.formLabel}>Prénoms</Text>
-                      <View style={validationStyles.formInputContainer}>
-                        <Ionicons name="person" size={20} color="#8E8E93" style={validationStyles.formInputIcon} />
-                        <TextInput
-                          style={validationStyles.formInput}
-                          value={newCustomer.prenoms}
-                          onChangeText={(value) => setNewCustomer({ ...newCustomer, prenoms: value })}
-                          placeholder="Ex: Jean"
-                          placeholderTextColor="#999"
-                        />
-                      </View>
-                    </View>
-                  </>
-                )}
-
-                <View style={validationStyles.formGroup}>
-                  <Text style={validationStyles.formLabel}>Téléphone</Text>
-                  <View style={validationStyles.formInputContainer}>
-                    <Ionicons name="call" size={20} color="#8E8E93" style={validationStyles.formInputIcon} />
-                    <TextInput
-                      style={validationStyles.formInput}
-                      value={newCustomer.telephone}
-                      onChangeText={(value) => setNewCustomer({ ...newCustomer, telephone: value })}
-                      placeholder="+33 1 23 45 67 89"
-                      placeholderTextColor="#999"
-                      keyboardType="phone-pad"
-                    />
-                  </View>
-                </View>
-
-                <View style={validationStyles.formGroup}>
-                  <Text style={validationStyles.formLabel}>Adresse</Text>
-                  <View style={validationStyles.formInputContainer}>
-                    <Ionicons name="location" size={20} color="#8E8E93" style={validationStyles.formInputIcon} />
-                    <TextInput
-                      style={validationStyles.formInput}
-                      value={newCustomer.adresse}
-                      onChangeText={(value) => setNewCustomer({ ...newCustomer, adresse: value })}
-                      placeholder="123 Rue de Paris, 75001 Paris"
-                      placeholderTextColor="#999"
-                      multiline
-                      numberOfLines={2}
-                      textAlignVertical="top"
-                    />
-                  </View>
-                </View>
-
-                <View style={validationStyles.formButtons}>
-                  <TouchableOpacity
-                    style={validationStyles.formCancelButton}
-                    onPress={() => setModalMode('search')}
-                  >
-                    <Text style={validationStyles.formCancelText}>Retour</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[
-                      validationStyles.formSubmitButton,
-                      (!newCustomer.email.trim() || 
-                       (newCustomer.type === 'entreprise' && !newCustomer.sigle?.trim())) && 
-                      validationStyles.formSubmitButtonDisabled
-                    ]}
-                    onPress={createCustomer}
-                    disabled={!newCustomer.email.trim() || 
-                             (newCustomer.type === 'entreprise' && !newCustomer.sigle?.trim())}
-                  >
-                    {isLoadingCustomers ? (
-                      <ActivityIndicator color="white" size="small" />
-                    ) : (
-                      <>
-                        <Ionicons name="checkmark" size={20} color="#FFF" style={{ marginRight: 6 }} />
-                        <Text style={validationStyles.formSubmitText}>Créer le client</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </ScrollView>
-            )}
-          </View>
-        </View>
-      </Modal>
+      <CustomerCreateModal
+        visible={showCustomerCreateModal}
+        onClose={closeAllModals}
+        onCustomerCreated={handleCustomerCreated}
+        onSwitchToSearch={switchToSearch}
+        existingCustomers={customers}
+      />
     </SafeAreaView>
   );
 }

@@ -629,4 +629,103 @@ export const validationStyles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 2,
   },
+
+  // Ajoutez ces styles à validationStyles dans CartValidationStyles.ts
+
+paymentMethodsContainer: {
+  gap: 12,
+  marginBottom: 16,
+},
+
+paymentMethodItem: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: '#FFFFFF',
+  borderRadius: 12,
+  padding: 16,
+  borderWidth: 1,
+  borderColor: '#E5E5EA',
+},
+
+paymentMethodItemSelected: {
+  borderWidth: 1.5,
+  borderColor: '#007AFF',
+  backgroundColor: '#F8F9FF',
+},
+
+paymentMethodIconContainer: {
+  width: 48,
+  height: 48,
+  borderRadius: 12,
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginRight: 12,
+},
+
+paymentMethodInfo: {
+  flex: 1,
+},
+
+paymentMethodName: {
+  fontSize: 16,
+  fontWeight: '600',
+  color: '#000',
+  marginBottom: 2,
+},
+
+paymentMethodDescription: {
+  fontSize: 13,
+  color: '#8E8E93',
+},
+
+paymentMethodCheckmark: {
+  width: 24,
+  height: 24,
+  borderRadius: 12,
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginLeft: 8,
+},
+
+selectedPaymentCard: {
+  backgroundColor: '#FFFFFF',
+  borderRadius: 12,
+  padding: 16,
+  borderWidth: 1,
+  borderColor: '#34C759',
+},
+
+selectedPaymentHeader: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+
+selectedPaymentIcon: {
+  width: 40,
+  height: 40,
+  borderRadius: 10,
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginRight: 12,
+},
+
+selectedPaymentInfo: {
+  flex: 1,
+},
+
+selectedPaymentName: {
+  fontSize: 16,
+  fontWeight: '600',
+  color: '#000',
+  marginBottom: 2,
+},
+
+selectedPaymentDescription: {
+  fontSize: 13,
+  color: '#8E8E93',
+},
+
+changePaymentButton: {
+  padding: 4,
+},
 });
