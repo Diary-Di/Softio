@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -18,20 +18,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { productScreenStyles as styles } from '../styles/productScreenStyles';
+import { categoryService } from '../services/categoryService';
 
 type Category = {
-  id: string;
-  name: string;
+  categorie: string;
   description: string;
 };
-
-const MOCK_CATEGORIES: Category[] = [
-  { id: '1', name: 'Informatique', description: 'PC, laptops, accessoires' },
-  { id: '2', name: 'Téléphonie', description: 'Smartphones, coques, chargeurs' },
-  { id: '3', name: 'Gaming', description: 'Consoles, jeux, manettes' },
-  { id: '4', name: 'Audio', description: 'Casques, enceintes, micros' },
-  { id: '5', name: 'Bureautique', description: 'Imprimantes, papeterie, fournitures' },
-];
 
 type Props = { onScroll?: any };
 
@@ -51,12 +43,12 @@ export default function CategoryScreen({ onScroll }: Props) {
   const fetchCategories = useCallback(async (isRefreshing = false) => {
     if (!isRefreshing) setLoading(true);
     try {
-      await new Promise((r) => setTimeout(r, 900));
-      setCategories(MOCK_CATEGORIES);
+      const data = await categoryService.getCategories();
+      setCategories(data);
       if (isRefreshing) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {
+    } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Erreur', 'Impossible de charger les catégories');
+      Alert.alert('Erreur', error.message || 'Impossible de charger les catégories');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -68,7 +60,16 @@ export default function CategoryScreen({ onScroll }: Props) {
     fetchCategories(true);
   }, [fetchCategories]);
 
-  useEffect(() => { fetchCategories(); }, [fetchCategories]);
+  // Recharger les données quand l'écran redevient actif
+  useFocusEffect(
+    useCallback(() => {
+      fetchCategories();
+    }, [fetchCategories])
+  );
+
+  useEffect(() => { 
+    fetchCategories(); 
+  }, [fetchCategories]);
 
   const toggle = useCallback((id: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -77,27 +78,51 @@ export default function CategoryScreen({ onScroll }: Props) {
 
   const handleRowPress = useCallback((category: Category) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    toggle(category.id);
+    toggle(category.categorie);
   }, [toggle]);
 
-  const handleMenu = (category: Category, e: any) => {
-    e.stopPropagation();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Alert.alert(
-      'Options catégorie',
-      `${category.name}`,
-      [
-        { text: 'Modifier', onPress: () => Alert.alert('Modifier', category.name) },
-        { text: 'Supprimer', style: 'destructive', onPress: () => setCategories((prev) => prev.filter((x) => x.id !== category.id)) },
-        { text: 'Annuler', style: 'cancel' },
-      ]
-    );
-  };
+  const handleDeleteCategory = useCallback(async (categorie: string) => {
+    try {
+      await categoryService.deleteCategory(categorie);
+      setCategories((prev) => prev.filter((x) => x.categorie !== categorie));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Succès', 'Catégorie supprimée avec succès');
+    } catch (error: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Erreur', error.message || 'Erreur lors de la suppression');
+    }
+  }, []);
+
+  const handleUpdateCategory = useCallback(async (categorie: string, newData: { categorie?: string; description: string }) => {
+    try {
+      await categoryService.updateCategory(categorie, newData);
+      
+      // Mettre à jour localement
+      setCategories((prev) => 
+        prev.map((cat) => 
+          cat.categorie === categorie 
+            ? { ...cat, ...newData }
+            : cat
+        )
+      );
+      
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Succès', 'Catégorie mise à jour avec succès');
+      setExpandedId(null); // Fermer l'expansion après modification
+    } catch (error: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Erreur', error.message || 'Erreur lors de la mise à jour');
+    }
+  }, []);
 
   const handleAddCategory = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    navigation.navigate('CreateCategory');
-  }, [navigation]);
+    navigation.navigate('CreateCategory', { 
+      onCategoryAdded: () => {
+        fetchCategories(); // Recharger après ajout
+      }
+    });
+  }, [navigation, fetchCategories]);
 
   const clearSearch = useCallback(() => {
     setSearchQuery("");
@@ -108,7 +133,7 @@ export default function CategoryScreen({ onScroll }: Props) {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     return (
-      category.name.toLowerCase().includes(query) ||
+      category.categorie.toLowerCase().includes(query) ||
       category.description.toLowerCase().includes(query)
     );
   });
@@ -121,14 +146,14 @@ export default function CategoryScreen({ onScroll }: Props) {
   /* --------------------  RENDER ITEM  -------------------- */
   const renderItem = useCallback(
     ({ item }: { item: Category }) => {
-      const isExpanded = expandedId === item.id;
-      const initials = getCategoryInitials(item.name);
+      const isExpanded = expandedId === item.categorie;
+      const initials = getCategoryInitials(item.categorie);
 
       return (
         <Pressable
           onPress={() => handleRowPress(item)}
           style={styles.card}
-          accessibilityLabel={`Catégorie ${item.name}`}
+          accessibilityLabel={`Catégorie ${item.categorie}`}
         >
           <View style={styles.headerRow}>
             {/* Category icon container */}
@@ -144,7 +169,7 @@ export default function CategoryScreen({ onScroll }: Props) {
             {/* Category info */}
             <View style={styles.nameContainer}>
               <Text style={styles.name} numberOfLines={1}>
-                {item.name}
+                {item.categorie}
               </Text>
               <Text style={styles.brand} numberOfLines={2}>
                 {item.description}
@@ -153,7 +178,7 @@ export default function CategoryScreen({ onScroll }: Props) {
 
             {/* Chevron button */}
             <Pressable
-              onPress={() => toggle(item.id)}
+              onPress={() => toggle(item.categorie)}
               style={({ pressed }) => [
                 styles.chevronButton,
                 { opacity: pressed ? 0.85 : 1, transform: [{ rotate: isExpanded ? '180deg' : '0deg' }] },
@@ -164,7 +189,7 @@ export default function CategoryScreen({ onScroll }: Props) {
             </Pressable>
           </View>
 
-          {/* Expanded details - Version simplifiée */}
+          {/* Expanded details */}
           {isExpanded && (
             <View style={styles.expanded}>
               {/* Description détaillée */}
@@ -197,7 +222,25 @@ export default function CategoryScreen({ onScroll }: Props) {
                       justifyContent: 'center'
                     }
                   ]}
-                  onPress={() => Alert.alert('Modifier', `Modifier la catégorie "${item.name}"`)}
+                  onPress={() => {
+                    Alert.prompt(
+                      'Modifier la catégorie',
+                      'Entrez la nouvelle description:',
+                      [
+                        { text: 'Annuler', style: 'cancel' },
+                        { 
+                          text: 'Mettre à jour', 
+                          onPress: (description?: string) => {
+                            if (description && description.trim()) {
+                              handleUpdateCategory(item.categorie, { description: description.trim() });
+                            }
+                          }
+                        }
+                      ],
+                      'plain-text',
+                      item.description
+                    );
+                  }}
                 >
                   <Ionicons name="create" size={20} color="#D97706" style={{ marginRight: 6 }} />
                   <Text style={{ color: '#92400E', fontWeight: '600', fontSize: 14 }}>
@@ -223,16 +266,13 @@ export default function CategoryScreen({ onScroll }: Props) {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
                     Alert.alert(
                       'Supprimer la catégorie',
-                      `Êtes-vous sûr de vouloir supprimer "${item.name}" ?`,
+                      `Êtes-vous sûr de vouloir supprimer "${item.categorie}" ?`,
                       [
                         { text: 'Annuler', style: 'cancel' },
                         { 
                           text: 'Supprimer', 
                           style: 'destructive',
-                          onPress: () => {
-                            setCategories((prev) => prev.filter((x) => x.id !== item.id));
-                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                          }
+                          onPress: () => handleDeleteCategory(item.categorie)
                         },
                       ]
                     );
@@ -249,7 +289,7 @@ export default function CategoryScreen({ onScroll }: Props) {
         </Pressable>
       );
     },
-    [expandedId, handleRowPress, toggle, getCategoryInitials]
+    [expandedId, handleRowPress, toggle, getCategoryInitials, handleUpdateCategory, handleDeleteCategory]
   );
 
   /* --------------------  EMPTY / HEADER  -------------------- */
@@ -347,7 +387,7 @@ export default function CategoryScreen({ onScroll }: Props) {
       <FlatList
         data={filteredCategories}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.categorie}
         contentContainerStyle={
           filteredCategories.length ? styles.listContainer : styles.listContainerCenter
         }

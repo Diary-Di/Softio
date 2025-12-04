@@ -17,28 +17,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { productScreenStyles as styles } from '../styles/productScreenStyles';
-
-type PriceItem = {
-  id: string;
-  ref: string;
-  designation: string;
-  lastUpdate: string; // ISO
-  unitPrice: number;
-  previousPrice?: number;
-};
-
-const MOCK_PRICES: PriceItem[] = [
-  { id: '1', ref: 'REF001', designation: 'Laptop Dell XPS 13', lastUpdate: '2025-11-20', unitPrice: 1299.99, previousPrice: 1349.99 },
-  { id: '2', ref: 'REF002', designation: 'iPhone 14 Pro 256 GB', lastUpdate: '2025-11-22', unitPrice: 1159.99, previousPrice: 1199.99 },
-  { id: '3', ref: 'REF003', designation: 'Galaxy S23 Ultra', lastUpdate: '2025-11-18', unitPrice: 899.99, previousPrice: 949.99 },
-  { id: '4', ref: 'REF004', designation: 'MacBook Air M2 13"', lastUpdate: '2025-11-24', unitPrice: 1499.99, previousPrice: 1599.99 },
-  { id: '5', ref: 'REF005', designation: 'PlayStation 5 Digital', lastUpdate: '2025-11-15', unitPrice: 499.99, previousPrice: 449.99 },
-];
+import { productService, Product } from '../services/productService';
 
 type Props = { onScroll?: any };
 
+// Interface locale pour garantir les types numériques
+interface LocalProduct extends Omit<Product, 'prix_actuel' | 'prix_precedent' | 'qte_disponible'> {
+  prix_actuel: number;
+  prix_precedent: number | null;
+  qte_disponible: number;
+}
+
 export default function PriceScreen({ onScroll }: Props) {
-  const [prices, setPrices] = useState<PriceItem[]>([]);
+  const [prices, setPrices] = useState<LocalProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -49,15 +40,29 @@ export default function PriceScreen({ onScroll }: Props) {
     UIManager.setLayoutAnimationEnabledExperimental?.(true);
   }
 
+  // Fonction pour convertir les chaînes en nombres et gérer les null
+  const convertProductToNumber = (product: Product): LocalProduct => {
+    return {
+      ...product,
+      prix_actuel: typeof product.prix_actuel === 'string' ? parseFloat(product.prix_actuel) : (product.prix_actuel || 0),
+      prix_precedent: product.prix_precedent !== null && product.prix_precedent !== undefined 
+        ? (typeof product.prix_precedent === 'string' ? parseFloat(product.prix_precedent) : product.prix_precedent)
+        : null,
+      qte_disponible: typeof product.qte_disponible === 'string' ? parseInt(product.qte_disponible) : (product.qte_disponible || 0)
+    };
+  };
+
   const fetchPrices = useCallback(async (isRefreshing = false) => {
     if (!isRefreshing) setLoading(true);
     try {
-      await new Promise((r) => setTimeout(r, 1000));
-      setPrices(MOCK_PRICES);
+      const data = await productService.getProducts();
+      // Convertir les chaînes en nombres
+      const convertedData = data.map(convertProductToNumber);
+      setPrices(convertedData);
       if (isRefreshing) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {
+    } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Erreur', 'Impossible de charger les prix');
+      Alert.alert('Erreur', error.message || 'Impossible de charger les prix');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -76,57 +81,76 @@ export default function PriceScreen({ onScroll }: Props) {
     setExpandedId((prev) => (prev === id ? null : id));
   }, []);
 
-  const handleRowPress = useCallback((price: PriceItem) => {
+  const handleRowPress = useCallback((price: LocalProduct) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    toggle(price.id);
+    toggle(price.ref_produit);
   }, [toggle]);
 
-  const handleMenu = (price: PriceItem, e: any) => {
-    e.stopPropagation();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Alert.alert(
-      'Options prix',
-      `${price.designation}`,
-      [
-        { text: 'Modifier', onPress: () => Alert.alert('Modifier', price.ref) },
-        { text: 'Supprimer', style: 'destructive', onPress: () => setPrices((prev) => prev.filter((x) => x.id !== price.id)) },
-        { text: 'Annuler', style: 'cancel' },
-      ]
-    );
-  };
+  const handleDeletePrice = useCallback(async (ref_produit: string) => {
+    try {
+      await productService.deleteProduct(ref_produit);
+      setPrices((prev) => prev.filter((x) => x.ref_produit !== ref_produit));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Succès', 'Prix supprimé avec succès');
+    } catch (error: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Erreur', error.message || 'Erreur lors de la suppression');
+    }
+  }, []);
+
+  const handleUpdatePrice = useCallback(async (ref_produit: string, newData: Partial<Product>) => {
+    try {
+      await productService.updateProduct(ref_produit, newData);
+      
+      setPrices((prev) => 
+        prev.map((item) => 
+          item.ref_produit === ref_produit 
+            ? convertProductToNumber({ ...item, ...newData } as Product)
+            : item
+        )
+      );
+      
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Succès', 'Prix mis à jour avec succès');
+      setExpandedId(null);
+    } catch (error: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Erreur', error.message || 'Erreur lors de la mise à jour');
+    }
+  }, []);
 
   const clearSearch = useCallback(() => {
     setSearchQuery("");
   }, []);
 
-  // Filter prices based on search
   const filteredPrices = prices.filter(price => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     return (
       price.designation.toLowerCase().includes(query) ||
-      price.ref.toLowerCase().includes(query)
+      price.ref_produit.toLowerCase().includes(query)
     );
   });
 
-  // Get initials for icon
   const getPriceInitials = useCallback((designation: string) => {
     return designation.charAt(0).toUpperCase() || 'P';
   }, []);
 
-  // Format date
   const formatDate = useCallback((dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch {
+      return dateString;
+    }
   }, []);
 
-  // Calculate price change
-  const getPriceChange = useCallback((current: number, previous?: number) => {
-    if (!previous) return { text: 'Nouveau', color: '#4F46E5', icon: 'add-circle' };
+  const getPriceChange = useCallback((current: number, previous: number | null) => {
+    if (!previous || previous === 0) return { text: 'Nouveau', color: '#4F46E5', icon: 'add-circle' };
     
     const change = current - previous;
     const percentChange = (change / previous) * 100;
@@ -154,12 +178,12 @@ export default function PriceScreen({ onScroll }: Props) {
 
   /* --------------------  RENDER ITEM  -------------------- */
   const renderItem = useCallback(
-    ({ item }: { item: PriceItem }) => {
-      const isExpanded = expandedId === item.id;
+    ({ item }: { item: LocalProduct }) => {
+      const isExpanded = expandedId === item.ref_produit;
       const initials = getPriceInitials(item.designation);
-      const formattedDate = formatDate(item.lastUpdate);
-      const priceChange = getPriceChange(item.unitPrice, item.previousPrice);
-      const hasPreviousPrice = item.previousPrice !== undefined;
+      const formattedDate = formatDate(item.date_mise_a_jour_prix);
+      const priceChange = getPriceChange(item.prix_actuel, item.prix_precedent);
+      const hasPreviousPrice = item.prix_precedent !== null && item.prix_precedent !== undefined && item.prix_precedent !== 0;
 
       return (
         <Pressable
@@ -168,7 +192,6 @@ export default function PriceScreen({ onScroll }: Props) {
           accessibilityLabel={`Prix ${item.designation}`}
         >
           <View style={styles.headerRow}>
-            {/* Price icon container */}
             <View style={styles.imageContainer}>
               <View style={[styles.iconContainer, { backgroundColor: '#e0f2fe' }]}>
                 <Ionicons name="pricetag-outline" size={32} color="#0284c7" />
@@ -178,16 +201,15 @@ export default function PriceScreen({ onScroll }: Props) {
               </View>
             </View>
 
-            {/* Price info */}
             <View style={styles.nameContainer}>
               <Text style={styles.name} numberOfLines={2}>
                 {item.designation}
               </Text>
-              <Text style={styles.reference}>Ref: {item.ref}</Text>
+              <Text style={styles.reference}>Ref: {item.ref_produit}</Text>
               
               <View style={styles.brandRow}>
                 <View style={styles.priceContainer}>
-                  <Text style={styles.price}>{item.unitPrice.toFixed(2)} €</Text>
+                  <Text style={styles.price}>{item.prix_actuel.toFixed(2)} €</Text>
                 </View>
                 <View style={[styles.stockContainer, { marginTop: 0 }]}>
                   <Ionicons 
@@ -203,9 +225,8 @@ export default function PriceScreen({ onScroll }: Props) {
               </View>
             </View>
 
-            {/* Chevron button */}
             <Pressable
-              onPress={() => toggle(item.id)}
+              onPress={() => toggle(item.ref_produit)}
               style={({ pressed }) => [
                 styles.chevronButton,
                 { opacity: pressed ? 0.85 : 1, transform: [{ rotate: isExpanded ? '180deg' : '0deg' }] },
@@ -216,14 +237,12 @@ export default function PriceScreen({ onScroll }: Props) {
             </Pressable>
           </View>
 
-          {/* Expanded details */}
           {isExpanded && (
             <View style={styles.expanded}>
-              {/* Details grid */}
               <View style={styles.detailsGrid}>
                 <View style={styles.detailItem}>
                   <Text style={styles.detailLabel}>Référence</Text>
-                  <Text style={styles.detailValue}>{item.ref}</Text>
+                  <Text style={styles.detailValue}>{item.ref_produit}</Text>
                 </View>
                 <View style={styles.detailItem}>
                   <Text style={styles.detailLabel}>Dernière mise à jour</Text>
@@ -231,18 +250,19 @@ export default function PriceScreen({ onScroll }: Props) {
                 </View>
                 <View style={styles.detailItem}>
                   <Text style={styles.detailLabel}>Prix actuel</Text>
-                  <Text style={[styles.detailValue, styles.priceValue]}>{item.unitPrice.toFixed(2)} €</Text>
+                  <Text style={[styles.detailValue, styles.priceValue]}>{item.prix_actuel.toFixed(2)} €</Text>
                 </View>
                 <View style={styles.detailItem}>
                   <Text style={styles.detailLabel}>Prix précédent</Text>
                   <Text style={styles.detailValue}>
-                    {hasPreviousPrice ? `${item.previousPrice?.toFixed(2)} €` : 'N/A'}
+                    {hasPreviousPrice && item.prix_precedent !== null 
+                      ? `${item.prix_precedent.toFixed(2)} €` 
+                      : 'N/A'}
                   </Text>
                 </View>
               </View>
 
-              {/* Price evolution */}
-              {hasPreviousPrice && (
+              {hasPreviousPrice && item.prix_precedent !== null && (
                 <View style={{ 
                   marginTop: 12, 
                   padding: 12, 
@@ -260,14 +280,13 @@ export default function PriceScreen({ onScroll }: Props) {
                       </Text>
                     </View>
                     <Text style={[styles.fieldValue, { fontSize: 14 }]}>
-                      {item.unitPrice > (item.previousPrice || 0) ? 'Augmentation' : 
-                       item.unitPrice < (item.previousPrice || 0) ? 'Baisse' : 'Stable'}
+                      {item.prix_actuel > item.prix_precedent ? 'Augmentation' : 
+                       item.prix_actuel < item.prix_precedent ? 'Baisse' : 'Stable'}
                     </Text>
                   </View>
                 </View>
               )}
 
-              {/* Action buttons alignés à droite */}
               <View style={{ 
                 flexDirection: 'row', 
                 justifyContent: 'flex-end',
@@ -289,7 +308,34 @@ export default function PriceScreen({ onScroll }: Props) {
                       justifyContent: 'center'
                     }
                   ]}
-                  onPress={() => Alert.alert('Modifier', `Modifier le prix pour ${item.designation}`)}
+                  onPress={() => {
+                    Alert.prompt(
+                      'Modifier le prix',
+                      'Entrez le nouveau prix:',
+                      [
+                        { text: 'Annuler', style: 'cancel' },
+                        { 
+                          text: 'Mettre à jour', 
+                          onPress: (newPrice?: string) => {
+                            if (newPrice && newPrice.trim()) {
+                              const priceValue = parseFloat(newPrice);
+                              if (!isNaN(priceValue) && priceValue > 0) {
+                                handleUpdatePrice(item.ref_produit, { 
+                                  prix_actuel: priceValue,
+                                  prix_precedent: item.prix_actuel,
+                                  date_mise_a_jour_prix: new Date().toISOString().slice(0, 19).replace('T', ' ')
+                                });
+                              } else {
+                                Alert.alert('Erreur', 'Veuillez entrer un prix valide');
+                              }
+                            }
+                          }
+                        }
+                      ],
+                      'plain-text',
+                      item.prix_actuel.toString()
+                    );
+                  }}
                 >
                   <Ionicons name="create" size={20} color="#D97706" style={{ marginRight: 6 }} />
                   <Text style={{ color: '#92400E', fontWeight: '600', fontSize: 14 }}>
@@ -321,10 +367,7 @@ export default function PriceScreen({ onScroll }: Props) {
                         { 
                           text: 'Supprimer', 
                           style: 'destructive',
-                          onPress: () => {
-                            setPrices((prev) => prev.filter((x) => x.id !== item.id));
-                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                          }
+                          onPress: () => handleDeletePrice(item.ref_produit)
                         },
                       ]
                     );
@@ -341,7 +384,7 @@ export default function PriceScreen({ onScroll }: Props) {
         </Pressable>
       );
     },
-    [expandedId, handleRowPress, toggle, getPriceInitials, formatDate, getPriceChange]
+    [expandedId, handleRowPress, toggle, getPriceInitials, formatDate, getPriceChange, handleUpdatePrice, handleDeletePrice]
   );
 
   /* --------------------  EMPTY / HEADER  -------------------- */
@@ -385,7 +428,6 @@ export default function PriceScreen({ onScroll }: Props) {
     </View>
   ), [filteredPrices.length]);
 
-  /* --------------------  LOADING  -------------------- */
   if (loading && !refreshing && prices.length === 0) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -398,12 +440,10 @@ export default function PriceScreen({ onScroll }: Props) {
     );
   }
 
-  /* --------------------  MAIN RENDER  -------------------- */
   return (
     <SafeAreaView style={styles.safeArea}>
       {renderHeader()}
 
-      {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={[styles.searchInputContainer, searchFocused && styles.searchInputFocused]}>
           <Ionicons 
@@ -435,11 +475,10 @@ export default function PriceScreen({ onScroll }: Props) {
         </View>
       </View>
 
-      {/* Price List */}
       <FlatList
         data={filteredPrices}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.ref_produit}
         contentContainerStyle={
           filteredPrices.length ? styles.listContainer : styles.listContainerCenter
         }
