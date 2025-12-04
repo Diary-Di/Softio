@@ -1,6 +1,5 @@
-import { Picker } from '@react-native-picker/picker';
 import * as Haptics from 'expo-haptics';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import {
   Alert,
   Platform,
@@ -11,18 +10,26 @@ import {
   TouchableOpacity,
   View,
   Keyboard,
-  TouchableWithoutFeedback,
+  ActivityIndicator,
 } from 'react-native';
 import { cartSalesStyles } from '../styles/NewSalesStyles';
 import { Ionicons } from '@expo/vector-icons';
+import { productService, Product as ApiProduct } from '../services/productService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Types
 type Product = {
   id: string;
-  reference: string;
+  ref_produit: string;
   designation: string;
-  prixUnitaire: number;
-  quantiteDisponible: number;
+  prix_actuel: number;
+  prix_unitaire?: number;
+  qte_disponible: number;
+  quantiteDisponible?: number;
+  categorie?: string;
+  prix_precedent?: number;
+  date_mise_a_jour_prix?: string;
+  image_url?: string;
 };
 
 type CartItem = Product & {
@@ -30,44 +37,48 @@ type CartItem = Product & {
   montant: number;
 };
 
-// Mock data
-const MOCK_PRODUCTS: Product[] = [
-  {
-    id: '1',
-    reference: 'REF001',
-    designation: 'Bouquet de Roses',
-    prixUnitaire: 25.00,
-    quantiteDisponible: 50,
-  },
-  {
-    id: '2',
-    reference: 'REF002',
-    designation: 'Pain Complet',
-    prixUnitaire: 2.50,
-    quantiteDisponible: 100,
-  },
-  {
-    id: '3',
-    reference: 'REF003',
-    designation: 'Laptop Dell XPS 13',
-    prixUnitaire: 1299.99,
-    quantiteDisponible: 15,
-  },
-  {
-    id: '4',
-    reference: 'REF004',
-    designation: 'iPhone 14 Pro',
-    prixUnitaire: 1199.00,
-    quantiteDisponible: 25,
-  },
-  {
-    id: '5',
-    reference: 'REF005',
-    designation: 'Samsung Galaxy S23',
-    prixUnitaire: 899.00,
-    quantiteDisponible: 30,
-  },
-];
+// Cache local pour les produits
+const PRODUCT_CACHE_KEY = 'products_cache';
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Fonction utilitaire pour obtenir le prix
+const getProductPrice = (product: Product): number => {
+  return product.prix_unitaire || product.prix_actuel || 0;
+};
+
+// Fonction utilitaire pour obtenir la quantité
+const getProductQuantity = (product: Product): number => {
+  return product.quantiteDisponible || product.qte_disponible || 0;
+};
+
+// Fonction utilitaire pour formater le prix
+const formatPrice = (price: number | undefined): string => {
+  if (price === undefined || price === null || isNaN(price)) {
+    return '€ 0.00';
+  }
+  return `€ ${price.toFixed(2)}`;
+};
+
+// Fonction pour normaliser un produit API vers le format local
+const normalizeProduct = (apiProduct: ApiProduct): Product => {
+  return {
+    id: apiProduct.ref_produit, // Utiliser la référence comme ID
+    ref_produit: apiProduct.ref_produit || '',
+    designation: apiProduct.designation || 'Produit sans nom',
+    prix_actuel: typeof apiProduct.prix_actuel === 'number' ? apiProduct.prix_actuel : 
+                typeof apiProduct.prix_actuel === 'string' ? parseFloat(apiProduct.prix_actuel) : 0,
+    prix_unitaire: typeof apiProduct.prix_actuel === 'number' ? apiProduct.prix_actuel : 
+                  typeof apiProduct.prix_actuel === 'string' ? parseFloat(apiProduct.prix_actuel) : 0,
+    qte_disponible: typeof apiProduct.qte_disponible === 'number' ? apiProduct.qte_disponible :
+                   typeof apiProduct.qte_disponible === 'string' ? parseInt(apiProduct.qte_disponible, 10) : 0,
+    quantiteDisponible: typeof apiProduct.qte_disponible === 'number' ? apiProduct.qte_disponible :
+                       typeof apiProduct.qte_disponible === 'string' ? parseInt(apiProduct.qte_disponible, 10) : 0,
+    categorie: apiProduct.categorie,
+    prix_precedent: apiProduct.prix_precedent,
+    date_mise_a_jour_prix: apiProduct.date_mise_a_jour_prix,
+    image_url: apiProduct.image_url
+  };
+};
 
 export default function CartSalesScreen({ navigation }: any) {
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -76,34 +87,145 @@ export default function CartSalesScreen({ navigation }: any) {
   const [quantityToAdd, setQuantityToAdd] = useState<string>('1');
   const [searchError, setSearchError] = useState<string>('');
   const [searchLoading, setSearchLoading] = useState<boolean>(false);
+  const [productsCache, setProductsCache] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(true);
+  const searchTimeoutRef = useRef<any>(null);
+  const [isReferenceFocused, setIsReferenceFocused] = useState(false);
 
-  // Rechercher un produit par référence
-  const searchProduct = useCallback(() => {
+  // Charger le cache au démarrage
+  useEffect(() => {
+    loadCachedProducts();
+    fetchProducts();
+  }, []);
+
+  // Charger les produits depuis le cache
+  const loadCachedProducts = async () => {
+    try {
+      const cachedData = await AsyncStorage.getItem(PRODUCT_CACHE_KEY);
+      if (cachedData) {
+        const { timestamp, products } = JSON.parse(cachedData);
+        const now = Date.now();
+        
+        // Utiliser le cache si moins de 5 minutes
+        if (now - timestamp < CACHE_DURATION) {
+          setProductsCache(products);
+        }
+      }
+    } catch (error) {
+      console.error('Erreur chargement cache:', error);
+    }
+  };
+
+  // Récupérer tous les produits depuis l'API
+  const fetchProducts = async () => {
+    try {
+      setIsLoadingProducts(true);
+      const apiProducts = await productService.getProducts();
+      
+      // Normaliser et valider les produits
+      const normalizedProducts: Product[] = apiProducts
+        .map(normalizeProduct)
+        .filter((product: Product) => product.ref_produit); // Filtrer les produits sans référence
+
+      setProductsCache(normalizedProducts);
+      
+      // Mettre à jour le cache
+      await AsyncStorage.setItem(PRODUCT_CACHE_KEY, JSON.stringify({
+        timestamp: Date.now(),
+        products: normalizedProducts
+      }));
+    } catch (error: any) {
+      console.error('Erreur chargement produits:', error);
+      Alert.alert('Erreur', error.message || 'Impossible de charger les produits');
+    } finally {
+      setIsLoadingProducts(false);
+    }
+  };
+
+  // Rechercher un produit par référence avec debounce
+  const searchProduct = useCallback(async () => {
     if (!reference.trim()) {
       setSearchError('Veuillez entrer une référence');
       return;
     }
 
+    // Nettoyer le timeout précédent
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
     setSearchLoading(true);
     setSearchError('');
 
-    // Simuler un délai de recherche
-    setTimeout(() => {
-      const product = MOCK_PRODUCTS.find(
-        p => p.reference.toLowerCase() === reference.trim().toLowerCase()
-      );
-      
-      if (!product) {
-        setSearchError('Produit non trouvé');
-        setSelectedProduct(null);
-      } else {
-        setSelectedProduct(product);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+    // Recherche locale d'abord dans le cache
+    const cachedProduct = productsCache.find(
+      p => p.ref_produit.toLowerCase() === reference.trim().toLowerCase()
+    );
+
+    if (cachedProduct) {
+      setSelectedProduct(cachedProduct);
       setSearchLoading(false);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       Keyboard.dismiss();
+      return;
+    }
+
+    // Si non trouvé dans le cache, recherche API
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const apiProduct = await productService.getProduct(reference.trim());
+        
+        if (!apiProduct) {
+          setSearchError('Produit non trouvé');
+          setSelectedProduct(null);
+        } else {
+          // Normaliser le produit
+          const normalizedProduct = normalizeProduct(apiProduct);
+          
+          // Vérifier que le produit est valide
+          if (!normalizedProduct.ref_produit) {
+            setSearchError('Référence produit invalide');
+            setSelectedProduct(null);
+            return;
+          }
+          
+          setSelectedProduct(normalizedProduct);
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          
+          // Ajouter à la cache
+          if (!productsCache.find(p => p.ref_produit === normalizedProduct.ref_produit)) {
+            const updatedCache = [...productsCache, normalizedProduct];
+            setProductsCache(updatedCache);
+            await AsyncStorage.setItem(PRODUCT_CACHE_KEY, JSON.stringify({
+              timestamp: Date.now(),
+              products: updatedCache
+            }));
+          }
+        }
+      } catch (error: any) {
+        console.error('Erreur recherche produit:', error);
+        if (error.code === 404) {
+          setSearchError('Produit non trouvé');
+        } else {
+          setSearchError(error.message || 'Erreur lors de la recherche');
+        }
+        setSelectedProduct(null);
+      } finally {
+        setSearchLoading(false);
+        Keyboard.dismiss();
+      }
     }, 500);
-  }, [reference]);
+  }, [reference, productsCache]);
+
+  // Calculer le montant pour l'affichage
+  const calculateDisplayAmount = useCallback(() => {
+    if (!selectedProduct) return 0;
+    
+    const price = getProductPrice(selectedProduct);
+    const quantity = parseInt(quantityToAdd) || 1;
+    
+    return price * quantity;
+  }, [selectedProduct, quantityToAdd]);
 
   // Ajouter un produit au panier
   const addToCart = useCallback(() => {
@@ -119,31 +241,35 @@ export default function CartSalesScreen({ navigation }: any) {
       return;
     }
 
-    if (qty > selectedProduct.quantiteDisponible) {
-      Alert.alert('Erreur', `Stock insuffisant: ${selectedProduct.quantiteDisponible} unités disponibles`);
+    const availableQuantity = getProductQuantity(selectedProduct);
+    
+    if (qty > availableQuantity) {
+      Alert.alert('Erreur', `Stock insuffisant: ${availableQuantity} unités disponibles`);
       return;
     }
 
     // Vérifier si le produit existe déjà dans le panier
-    const existingItemIndex = cart.findIndex(item => item.id === selectedProduct.id);
+    const existingItemIndex = cart.findIndex(item => item.ref_produit === selectedProduct.ref_produit);
     
     if (existingItemIndex !== -1) {
       const updatedCart = [...cart];
       const newQty = updatedCart[existingItemIndex].quantiteAcheter + qty;
       
-      if (newQty > selectedProduct.quantiteDisponible) {
-        Alert.alert('Erreur', `Maximum ${selectedProduct.quantiteDisponible} unités disponibles`);
+      if (newQty > availableQuantity) {
+        Alert.alert('Erreur', `Maximum ${availableQuantity} unités disponibles`);
         return;
       }
       
+      const price = getProductPrice(selectedProduct);
       updatedCart[existingItemIndex].quantiteAcheter = newQty;
-      updatedCart[existingItemIndex].montant = newQty * selectedProduct.prixUnitaire;
+      updatedCart[existingItemIndex].montant = newQty * price;
       setCart(updatedCart);
     } else {
+      const price = getProductPrice(selectedProduct);
       const cartItem: CartItem = {
         ...selectedProduct,
         quantiteAcheter: qty,
-        montant: qty * selectedProduct.prixUnitaire,
+        montant: qty * price,
       };
       setCart([...cart, cartItem]);
     }
@@ -171,20 +297,22 @@ export default function CartSalesScreen({ navigation }: any) {
       return;
     }
 
-    const originalProduct = MOCK_PRODUCTS.find(p => p.id === productId);
-    if (!originalProduct) return;
+    // Vérifier le stock disponible (depuis le cache)
+    const originalProduct = productsCache.find(p => p.id === productId);
+    const maxStock = originalProduct ? getProductQuantity(originalProduct) : 0;
 
-    if (newQty > originalProduct.quantiteDisponible) {
-      Alert.alert('Erreur', `Maximum ${originalProduct.quantiteDisponible} unités disponibles`);
+    if (newQty > maxStock) {
+      Alert.alert('Erreur', `Maximum ${maxStock} unités disponibles`);
       return;
     }
 
     const updatedCart = cart.map(item => {
       if (item.id === productId) {
+        const price = getProductPrice(item);
         return {
           ...item,
           quantiteAcheter: newQty,
-          montant: newQty * item.prixUnitaire,
+          montant: newQty * price,
         };
       }
       return item;
@@ -192,11 +320,11 @@ export default function CartSalesScreen({ navigation }: any) {
     
     setCart(updatedCart);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, [cart, removeFromCart]);
+  }, [cart, productsCache, removeFromCart]);
 
   // Calculer le total
-  const totalAmount = cart.reduce((sum, item) => sum + item.montant, 0);
-  const totalItems = cart.reduce((sum, item) => sum + item.quantiteAcheter, 0);
+  const totalAmount = cart.reduce((sum, item) => sum + (item.montant || 0), 0);
+  const totalItems = cart.reduce((sum, item) => sum + (item.quantiteAcheter || 0), 0);
 
   // Naviguer vers l'écran de validation
   const goToValidation = useCallback(() => {
@@ -221,15 +349,37 @@ export default function CartSalesScreen({ navigation }: any) {
     setQuantityToAdd(newQty.toString());
   }, [quantityToAdd]);
 
-  // Gérer la soumission du champ de référence (touche Entrée)
+  // Gérer la soumission du champ de référence
   const handleReferenceSubmit = useCallback(() => {
     if (reference.trim()) {
       searchProduct();
     }
   }, [reference, searchProduct]);
 
-  // Focus sur le champ de référence
-  const [isReferenceFocused, setIsReferenceFocused] = useState(false);
+  // Effacer la recherche
+  const clearSearch = useCallback(() => {
+    setReference('');
+    setSelectedProduct(null);
+    setSearchError('');
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+  }, []);
+
+  // Rendu de l'indicateur de chargement des produits
+  if (isLoadingProducts) {
+    return (
+      <SafeAreaView style={cartSalesStyles.safeArea}>
+        <View style={[cartSalesStyles.header, { justifyContent: 'center' }]}>
+          <Text style={cartSalesStyles.headerTitle}>Chargement...</Text>
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={{ marginTop: 16, color: '#8E8E93' }}>Chargement des produits</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={cartSalesStyles.safeArea}>
@@ -293,26 +443,20 @@ export default function CartSalesScreen({ navigation }: any) {
                 onSubmitEditing={handleReferenceSubmit}
                 autoCapitalize="characters"
                 returnKeyType="search"
-                editable={true} // S'assurer que c'est éditable
-                selectTextOnFocus={true} // Sélectionner tout le texte au focus
+                editable={true}
+                selectTextOnFocus={true}
                 onFocus={() => setIsReferenceFocused(true)}
                 onBlur={() => setIsReferenceFocused(false)}
-                // Props spécifiques pour le Web
-                {...(Platform.OS === 'web' && {
-                  // Ces props aident à résoudre les problèmes d'édition sur le Web
-                  disableFullscreenUI: true,
-                  accessibilityRole: 'text',
-                  tabIndex: 0,
-                })}
+                {...(Platform.OS === 'web' ? {
+                  autoCorrect: false,
+                  spellCheck: false,
+                  autoComplete: 'off' as any,
+                } : {})}
               />
               {reference.length > 0 && (
                 <TouchableOpacity
                   style={cartSalesStyles.clearButton}
-                  onPress={() => {
-                    setReference('');
-                    setSelectedProduct(null);
-                    setSearchError('');
-                  }}
+                  onPress={clearSearch}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <Ionicons name="close-circle" size={20} color="#999" />
@@ -330,7 +474,7 @@ export default function CartSalesScreen({ navigation }: any) {
               activeOpacity={0.7}
             >
               {searchLoading ? (
-                <Ionicons name="reload" size={20} color="#FFF" />
+                <ActivityIndicator color="#FFF" size="small" />
               ) : (
                 <Ionicons name="arrow-forward" size={20} color="#FFF" />
               )}
@@ -349,14 +493,11 @@ export default function CartSalesScreen({ navigation }: any) {
             <View style={cartSalesStyles.productCard}>
               <View style={cartSalesStyles.productHeader}>
                 <View>
-                  <Text style={cartSalesStyles.productRef}>{selectedProduct.reference}</Text>
+                  <Text style={cartSalesStyles.productRef}>{selectedProduct.ref_produit}</Text>
                   <Text style={cartSalesStyles.productName}>{selectedProduct.designation}</Text>
                 </View>
                 <TouchableOpacity
-                  onPress={() => {
-                    setSelectedProduct(null);
-                    setReference('');
-                  }}
+                  onPress={clearSearch}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <Ionicons name="close" size={20} color="#666" />
@@ -368,16 +509,16 @@ export default function CartSalesScreen({ navigation }: any) {
                   <View style={cartSalesStyles.productDetailItem}>
                     <Text style={cartSalesStyles.productDetailLabel}>Prix unitaire</Text>
                     <Text style={cartSalesStyles.productDetailValue}>
-                      € {selectedProduct.prixUnitaire.toFixed(2)}
+                      {formatPrice(getProductPrice(selectedProduct))}
                     </Text>
                   </View>
                   <View style={cartSalesStyles.productDetailItem}>
                     <Text style={cartSalesStyles.productDetailLabel}>Stock disponible</Text>
                     <Text style={[
                       cartSalesStyles.productDetailValue,
-                      { color: selectedProduct.quantiteDisponible > 10 ? '#34C759' : '#FF9500' }
+                      { color: getProductQuantity(selectedProduct) > 10 ? '#34C759' : '#FF9500' }
                     ]}>
-                      {selectedProduct.quantiteDisponible} unités
+                      {getProductQuantity(selectedProduct)} unités
                     </Text>
                   </View>
                 </View>
@@ -398,7 +539,6 @@ export default function CartSalesScreen({ navigation }: any) {
                       style={cartSalesStyles.quantityInput}
                       value={quantityToAdd}
                       onChangeText={(value) => {
-                        // Permettre uniquement des nombres
                         const numValue = value.replace(/[^0-9]/g, '');
                         setQuantityToAdd(numValue || '1');
                       }}
@@ -406,11 +546,11 @@ export default function CartSalesScreen({ navigation }: any) {
                       textAlign="center"
                       editable={true}
                       selectTextOnFocus={true}
-                      {...(Platform.OS === 'web' && {
-                        disableFullscreenUI: true,
-                        accessibilityRole: 'text',
-                        tabIndex: 0,
-                      })}
+                      {...(Platform.OS === 'web' ? {
+                        autoCorrect: false,
+                        spellCheck: false,
+                        autoComplete: 'off' as any,
+                      } : {})}
                     />
                     
                     <TouchableOpacity
@@ -431,7 +571,7 @@ export default function CartSalesScreen({ navigation }: any) {
                 >
                   <Ionicons name="cart" size={20} color="#FFF" style={{ marginRight: 8 }} />
                   <Text style={cartSalesStyles.addToCartButtonText}>
-                    Ajouter au panier - € {(selectedProduct.prixUnitaire * (parseInt(quantityToAdd) || 1)).toFixed(2)}
+                    Ajouter au panier - {formatPrice(calculateDisplayAmount())}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -464,7 +604,7 @@ export default function CartSalesScreen({ navigation }: any) {
                 <View key={item.id} style={cartSalesStyles.cartItemCard}>
                   <View style={cartSalesStyles.cartItemHeader}>
                     <View>
-                      <Text style={cartSalesStyles.cartItemRef}>{item.reference}</Text>
+                      <Text style={cartSalesStyles.cartItemRef}>{item.ref_produit}</Text>
                       <Text style={cartSalesStyles.cartItemName}>{item.designation}</Text>
                     </View>
                     <TouchableOpacity
@@ -479,7 +619,9 @@ export default function CartSalesScreen({ navigation }: any) {
                   <View style={cartSalesStyles.cartItemDetails}>
                     <View style={cartSalesStyles.cartItemRow}>
                       <Text style={cartSalesStyles.cartItemLabel}>Prix unitaire:</Text>
-                      <Text style={cartSalesStyles.cartItemValue}>€ {item.prixUnitaire.toFixed(2)}</Text>
+                      <Text style={cartSalesStyles.cartItemValue}>
+                        {formatPrice(getProductPrice(item))}
+                      </Text>
                     </View>
 
                     <View style={cartSalesStyles.cartItemRow}>
@@ -505,7 +647,7 @@ export default function CartSalesScreen({ navigation }: any) {
 
                     <View style={cartSalesStyles.cartItemRow}>
                       <Text style={cartSalesStyles.cartItemLabel}>Total:</Text>
-                      <Text style={cartSalesStyles.cartItemTotal}>€ {item.montant.toFixed(2)}</Text>
+                      <Text style={cartSalesStyles.cartItemTotal}>{formatPrice(item.montant)}</Text>
                     </View>
                   </View>
                 </View>

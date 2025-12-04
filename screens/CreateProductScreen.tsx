@@ -21,7 +21,7 @@ import { productService } from '../services/productService';
 import { categoryService } from '../services/categoryService';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-//import type { ApiError } from '../services/productService';
+import * as FileSystem from 'expo-file-system';
 
 // Interface pour les catégories
 interface Categorie {
@@ -36,16 +36,13 @@ interface ProductFormData {
   categorie: string;
   prix_actuel: string;
   qte_disponible: number;
-  illustration: string | null;
-  imageBase64?: string;
-  // Non inclus dans le formulaire mais gérés par le backend :
-  // prix_precedent: number | null
-  // date_mise_a_jour_prix: string | null
+  image_url: string | null;
+  imageFile?: any; // Fichier image temporaire
 }
 
-const ProductFormScreen: React.FC = () => {
-
+const CreateProductScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  
   // États du formulaire
   const [formData, setFormData] = useState<ProductFormData>({
     ref_produit: '',
@@ -53,8 +50,8 @@ const ProductFormScreen: React.FC = () => {
     categorie: '',
     prix_actuel: '',
     qte_disponible: 1,
-    illustration: null,
-    imageBase64: undefined,
+    image_url: null,
+    imageFile: undefined,
   });
   
   // États pour les catégories
@@ -65,14 +62,13 @@ const ProductFormScreen: React.FC = () => {
   // États UI
   const [modalVisible, setModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingReference, setIsCheckingReference] = useState(false);
-  const [referenceError, setReferenceError] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Références
   const inputRef = useRef<TextInput>(null);
 
   // Destructuration
-  const { ref_produit, designation, categorie, prix_actuel, qte_disponible, illustration, imageBase64 } = formData;
+  const { ref_produit, designation, categorie, prix_actuel, qte_disponible, image_url, imageFile } = formData;
 
   // Charger les catégories au démarrage
   useEffect(() => {
@@ -114,33 +110,6 @@ const ProductFormScreen: React.FC = () => {
     loadCategories();
   };
 
-  // Vérifier si la référence existe (avec debounce)
-  useEffect(() => {
-    const checkReference = async () => {
-      if (ref_produit.trim().length >= 2) {
-        setIsCheckingReference(true);
-        setReferenceError(null);
-        
-        try {
-          const exists = await productService.checkReferenceExists(ref_produit);
-          if (exists) {
-            setReferenceError('Cette référence existe déjà');
-          }
-        } catch (error) {
-          console.error('Erreur vérification référence:', error);
-        } finally {
-          setIsCheckingReference(false);
-        }
-      }
-    };
-
-    const timer = setTimeout(() => {
-      checkReference();
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [ref_produit]);
-
   // Mise à jour des champs
   const updateField = useCallback((field: keyof ProductFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -149,12 +118,12 @@ const ProductFormScreen: React.FC = () => {
   // Sélectionner une image depuis la galerie
   const selectImageFromGallery = async () => {
     try {
-      setIsLoading(true);
+      setUploadingImage(true);
       
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission requise', 'Nous avons besoin d\'accéder à votre galerie');
-        setIsLoading(false);
+        setUploadingImage(false);
         return;
       }
 
@@ -163,26 +132,25 @@ const ProductFormScreen: React.FC = () => {
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.7,
-        base64: true,
+        base64: false, // Pas besoin de base64
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
         
-        // Limiter la taille de l'image
-        if (asset.base64 && asset.base64.length > 5000000) {
-          Alert.alert('Image trop grande', 'Veuillez choisir une image de moins de 5MB');
-          return;
-        }
-        
-        updateField('illustration', asset.uri);
-        updateField('imageBase64', asset.base64);
+        // Stocker le fichier image temporairement
+        updateField('image_url', asset.uri);
+        updateField('imageFile', {
+          uri: asset.uri,
+          type: asset.mimeType || 'image/jpeg',
+          name: asset.fileName || `product_${Date.now()}.jpg`,
+        });
       }
     } catch (error) {
       console.error('❌ Erreur sélection image:', error);
       Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
     } finally {
-      setIsLoading(false);
+      setUploadingImage(false);
     }
   };
 
@@ -191,18 +159,8 @@ const ProductFormScreen: React.FC = () => {
     selectImageFromGallery();
   };
 
-  // Supprimer l'image - Version compatible web et mobile
-const handleImageDelete = () => {
-  // Pour le web
-  if (typeof window !== 'undefined' && window.confirm) {
-    const confirmDelete = window.confirm('Êtes-vous sûr de vouloir supprimer cette image ?');
-    if (confirmDelete) {
-      updateField('illustration', null);
-      updateField('imageBase64', undefined);
-    }
-  } 
-  // Pour React Native
-  else {
+  // Supprimer l'image
+  const handleImageDelete = () => {
     Alert.alert(
       'Supprimer l\'image',
       'Êtes-vous sûr de vouloir supprimer cette image ?',
@@ -212,14 +170,35 @@ const handleImageDelete = () => {
           text: 'Supprimer', 
           style: 'destructive',
           onPress: () => {
-            updateField('illustration', null);
-            updateField('imageBase64', undefined);
+            updateField('image_url', null);
+            updateField('imageFile', undefined);
           }
         },
       ]
     );
-  }
-};
+  };
+
+  // Uploader l'image vers le serveur
+  const uploadImageToServer = async (): Promise<string | null> => {
+    if (!imageFile) return null;
+
+    try {
+      // Dans React Native, vous pouvez utiliser FormData pour envoyer l'image
+      const formData = new FormData();
+      formData.append('image', imageFile as any);
+      
+      // Ici, vous devrez ajouter une fonction dans votre productService
+      // pour uploader l'image. Exemple:
+      // const response = await productService.uploadImage(formData);
+      // return response.image_url;
+      
+      // Pour l'instant, retournez l'URI local comme placeholder
+      return imageFile.uri;
+    } catch (error) {
+      console.error('Erreur upload image:', error);
+      return null;
+    }
+  };
 
   // Formatage du prix
   const formatPrix = useCallback((text: string) => {
@@ -269,8 +248,6 @@ const handleImageDelete = () => {
 
   // Validation du formulaire
   const validateForm = useCallback((): boolean => {
-    setReferenceError(null);
-
     if (!ref_produit.trim()) {
       Alert.alert('Erreur', 'La référence du produit est obligatoire');
       return false;
@@ -278,11 +255,6 @@ const handleImageDelete = () => {
 
     if (ref_produit.trim().length < 2) {
       Alert.alert('Erreur', 'La référence doit avoir au moins 2 caractères');
-      return false;
-    }
-
-    if (referenceError) {
-      Alert.alert('Erreur', referenceError);
       return false;
     }
 
@@ -313,73 +285,81 @@ const handleImageDelete = () => {
     }
 
     return true;
-  }, [ref_produit, designation, categorie, prix_actuel, qte_disponible, referenceError]);
+  }, [ref_produit, designation, categorie, prix_actuel, qte_disponible]);
 
   // Enregistrement du produit
   const handleSave = useCallback(async () => {
-  if (!validateForm()) return;
+    if (!validateForm()) return;
 
-  const categorieExists = categories.some(cat => cat.categorie === categorie);
-  if (!categorieExists) {
-    Alert.alert('Erreur', 'La catégorie sélectionnée n\'existe plus.');
-    setModalVisible(true);
-    return;
-  }
-
-  try {
-    setIsLoading(true);
-    
-    const prixClean = prix_actuel.replace(/\s/g, '').replace(',', '.');
-    const prixNumerique = parseFloat(prixClean);
-    
-    if (isNaN(prixNumerique) || prixNumerique <= 0) {
-      Alert.alert('Erreur', 'Le prix doit être supérieur à 0');
-      setIsLoading(false);
+    const categorieExists = categories.some(cat => cat.categorie === categorie);
+    if (!categorieExists) {
+      Alert.alert('Erreur', 'La catégorie sélectionnée n\'existe plus.');
+      setModalVisible(true);
       return;
     }
 
-    const productData = {
-      ref_produit: ref_produit.trim(),
-      designation: designation.trim(),
-      categorie: categorie.trim(),
-      prix_actuel: prixNumerique,
-      qte_disponible: Number(qte_disponible),
-      image: imageBase64 || null,
-    };
+    try {
+      setIsLoading(true);
+      
+      const prixClean = prix_actuel.replace(/\s/g, '').replace(',', '.');
+      const prixNumerique = parseFloat(prixClean);
+      
+      if (isNaN(prixNumerique) || prixNumerique <= 0) {
+        Alert.alert('Erreur', 'Le prix doit être supérieur à 0');
+        setIsLoading(false);
+        return;
+      }
 
-    const response = await productService.createProduct(productData);
+      // Préparer les données du produit
+      const productData: any = {
+        ref_produit: ref_produit.trim(),
+        designation: designation.trim(),
+        categorie: categorie.trim(),
+        prix_actuel: prixNumerique,
+        qte_disponible: Number(qte_disponible),
+      };
 
-    // VIDER IMMÉDIATEMENT LE FORMULAIRE
-    setFormData({
-      ref_produit: '',
-      designation: '',
-      categorie: '',
-      prix_actuel: '',
-      qte_disponible: 1,
-      illustration: null,
-      imageBase64: undefined,
-    });
-    setReferenceError(null);
-    setModalVisible(false);
+      // Ajouter l'URL de l'image si disponible
+      if (imageFile) {
+        // Ici, vous devrez uploader l'image et obtenir l'URL
+        // Pour l'instant, utilisez une URL temporaire
+        productData.image_url = imageFile.uri; // Remplacez par l'URL réelle après upload
+      } else if (image_url) {
+        productData.image_url = image_url;
+      }
 
-    // Afficher le message de succès
-    Alert.alert('Succès ✅', response.message);
+      const response = await productService.createProduct(productData);
 
-  } catch (error: any) {
-    console.error('❌ Erreur:', error);
-    
-    let errorMessage = 'Échec de l\'enregistrement';
-    if (error.code === 409) errorMessage = 'Cette référence existe déjà';
-    else if (error.code === 400) errorMessage = 'Données invalides';
-    else if (error.code === 404) errorMessage = 'Catégorie introuvable';
-    else if (error.code === 413) errorMessage = 'Image trop volumineuse';
-    else if (error.message) errorMessage = error.message;
+      // VIDER IMMÉDIATEMENT LE FORMULAIRE
+      setFormData({
+        ref_produit: '',
+        designation: '',
+        categorie: '',
+        prix_actuel: '',
+        qte_disponible: 1,
+        image_url: null,
+        imageFile: undefined,
+      });
+      setModalVisible(false);
 
-    Alert.alert('Erreur ❌', errorMessage);
-  } finally {
-    setIsLoading(false);
-  }
-}, [ref_produit, designation, categorie, prix_actuel, qte_disponible, imageBase64, validateForm, categories]);
+      // Afficher le message de succès
+      Alert.alert('Succès ✅', response.message);
+
+    } catch (error: any) {
+      console.error('❌ Erreur:', error);
+      
+      let errorMessage = 'Échec de l\'enregistrement';
+      if (error.code === 409) errorMessage = 'Cette référence existe déjà';
+      else if (error.code === 400) errorMessage = 'Données invalides';
+      else if (error.code === 404) errorMessage = 'Catégorie introuvable';
+      else if (error.code === 413) errorMessage = 'Image trop volumineuse';
+      else if (error.message) errorMessage = error.message;
+
+      Alert.alert('Erreur ❌', errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [ref_produit, designation, categorie, prix_actuel, qte_disponible, image_url, imageFile, validateForm, categories]);
 
   // Rendu d'un élément de catégorie
   const renderCategorieItem = useCallback(({ item }: { item: Categorie }) => (
@@ -464,7 +444,7 @@ const handleImageDelete = () => {
             <Ionicons name="arrow-back" size={24} color="#111" />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
-            <Text style={styles.title}>Ajouter un client</Text>
+            <Text style={styles.title}>Ajouter un produit</Text>
           </View>
           <View style={{ width: 32 }} />
         </View>
@@ -473,20 +453,11 @@ const handleImageDelete = () => {
         <View style={styles.inputContainer}>
           <View style={styles.labelContainer}>
             <Text style={styles.label}>Référence du produit *</Text>
-            {isCheckingReference && (
-              <ActivityIndicator size="small" color="#4A90E2" style={styles.loadingIndicator} />
-            )}
           </View>
           <TextInput
-            style={[
-              styles.input, 
-              referenceError && styles.inputError
-            ]}
+            style={styles.input}
             value={ref_produit}
-            onChangeText={(text) => {
-              updateField('ref_produit', text);
-              setReferenceError(null);
-            }}
+            onChangeText={(text) => updateField('ref_produit', text)}
             placeholder="Ex: PROD001"
             placeholderTextColor="#999"
             returnKeyType="next"
@@ -494,9 +465,6 @@ const handleImageDelete = () => {
             autoCapitalize="none"
             maxLength={50}
           />
-          {referenceError && (
-            <Text style={styles.errorText}>{referenceError}</Text>
-          )}
         </View>
 
         {/* Désignation */}
@@ -619,21 +587,27 @@ const handleImageDelete = () => {
           </View>
         </View>
 
-        {/* Illustration */}
+        {/* Image du produit */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Illustration</Text>
+          <Text style={styles.label}>Image du produit</Text>
           <View style={styles.imageContainer}>
-            {illustration ? (
+            {image_url ? (
               <>
-                <Image source={{ uri: illustration }} style={styles.imagePreview} />
+                <Image source={{ uri: image_url }} style={styles.imagePreview} />
                 <View style={styles.imageActions}>
                   <TouchableOpacity
-                    style={[styles.imageButton, styles.changeButton, isLoading && { opacity: 0.5 }]}
+                    style={[styles.imageButton, styles.changeButton, (isLoading || uploadingImage) && { opacity: 0.5 }]}
                     onPress={handleImageImport}
-                    disabled={isLoading}
+                    disabled={isLoading || uploadingImage}
                   >
-                    <Icon name="edit" size={20} color="#FFF" />
-                    <Text style={styles.imageButtonText}>Changer</Text>
+                    {uploadingImage ? (
+                      <ActivityIndicator size="small" color="#FFF" />
+                    ) : (
+                      <>
+                        <Icon name="edit" size={20} color="#FFF" />
+                        <Text style={styles.imageButtonText}>Changer</Text>
+                      </>
+                    )}
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.imageButton, styles.deleteButton, isLoading && { opacity: 0.5 }]}
@@ -647,19 +621,25 @@ const handleImageDelete = () => {
               </>
             ) : (
               <TouchableOpacity
-                style={[styles.uploadArea, isLoading && { opacity: 0.5 }]}
+                style={[styles.uploadArea, (isLoading || uploadingImage) && { opacity: 0.5 }]}
                 onPress={handleImageImport}
-                disabled={isLoading}
+                disabled={isLoading || uploadingImage}
               >
-                <Icon name="add-photo-alternate" size={50} color="#4A90E2" />
-                <Text style={styles.uploadText}>
-                  {isLoading ? 'Chargement...' : 'Importer une image'}
-                </Text>
-                <Text style={styles.uploadSubtext}>Appuyez pour sélectionner</Text>
+                {uploadingImage ? (
+                  <ActivityIndicator size="large" color="#4A90E2" />
+                ) : (
+                  <>
+                    <Icon name="add-photo-alternate" size={50} color="#4A90E2" />
+                    <Text style={styles.uploadText}>
+                      {isLoading ? 'Chargement...' : 'Importer une image'}
+                    </Text>
+                    <Text style={styles.uploadSubtext}>Appuyez pour sélectionner</Text>
+                  </>
+                )}
               </TouchableOpacity>
             )}
             <Text style={styles.imageHint}>
-              {imageBase64 ? `Taille: ${Math.round(imageBase64.length / 1024)} KB` : 'Optionnel'}
+              {imageFile ? `Fichier: ${imageFile.name}` : 'Optionnel - Formats: JPG, PNG, GIF'}
             </Text>
           </View>
         </View>
@@ -673,11 +653,11 @@ const handleImageDelete = () => {
         <TouchableOpacity 
           style={[
             styles.saveButton, 
-            (isLoading || isCheckingReference || !!referenceError || loadingCategories) && { opacity: 0.7 }
+            (isLoading || loadingCategories || uploadingImage) && { opacity: 0.7 }
           ]} 
           onPress={handleSave}
           activeOpacity={0.8}
-          disabled={isLoading || isCheckingReference || !!referenceError || loadingCategories}
+          disabled={isLoading || loadingCategories || uploadingImage}
         >
           {isLoading ? (
             <>
@@ -734,4 +714,4 @@ const handleImageDelete = () => {
   );
 };
 
-export default ProductFormScreen;
+export default CreateProductScreen;
