@@ -169,15 +169,6 @@ export default function Dashboard() {
         }}
       />
 
-      <Drawer.Screen
-        name="Proforma"
-        component={ProformaScreen}
-        options={{
-          drawerIcon: ({ color, size }) => (
-            <Ionicons name="receipt-outline" size={size} color={color} />
-          ),
-        }}
-      />
 
       {/* Profil caché dans le drawer */}
       <Drawer.Screen

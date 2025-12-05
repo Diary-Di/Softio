@@ -1,27 +1,50 @@
+// SalesStackNavigator.tsx
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import withFadeBar from '../components/withFadeBar';
-import NewSalesScreen from '../screens/NewSalesScreen';
+import FloatingBottomBarSales from '@/components/FloatingBottomBarSales';
 import SalesScreen from '../screens/SalesScreen';
-import CartValidationScreen from "../screens/CartValidationScreen";
+import ProformaScreen from '@/screens/ProformaScreen';
+import NewSalesScreen from '../screens/NewSalesScreen'; // Importer NewSalesScreen
+import React from 'react';
 
 export type SalesStackParamList = {
-  SaleList: undefined;
-  NewSale: undefined;
-  CartValidation: undefined;
+  SalesList: undefined;
+  proforma: undefined;
+  NewSales: undefined; // Ajouter cette ligne
 };
 
 const Stack = createNativeStackNavigator<SalesStackParamList>();
 
-export default function SalesStackNavigator() {
-  const SaleList = withFadeBar(SalesScreen, 'produit');
-  const NewSale = withFadeBar(NewSalesScreen, 'produit');
-    const CartValidation = withFadeBar(CartValidationScreen, 'produit');
+// Composants wrappers
+const SalesScreenWithBar = () => (
+  <>
+    <SalesScreen />
+    <FloatingBottomBarSales active="ventes" />
+  </>
+);
 
+const ProformaScreenWithBar = () => (
+  <>
+    <ProformaScreen />
+    <FloatingBottomBarSales active="proforma" />
+  </>
+);
+
+
+export default function SalesStackNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="SaleList" component={SaleList} />
-      <Stack.Screen name="NewSale" component={NewSale} />
-      <Stack.Screen name="CartValidation" component={CartValidation} />
+      <Stack.Screen 
+        name="SalesList" 
+        component={SalesScreenWithBar} 
+      />
+      <Stack.Screen 
+        name="proforma" 
+        component={ProformaScreenWithBar} 
+      />
+      <Stack.Screen 
+        name="NewSales" 
+        component={NewSalesScreen} 
+      />
     </Stack.Navigator>
   );
 }
