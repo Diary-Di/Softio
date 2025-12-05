@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
   Modal,
+  Animated,
 } from 'react-native';
 import { validationStyles } from '../styles/CartValidationStyles';
 import { Ionicons } from '@expo/vector-icons';
@@ -90,21 +91,26 @@ const PAYMENT_METHODS = [
 
 export default function CartValidationScreen({ route, navigation }: any) {
   // États
-  const { cart = [], totalAmount = 0, totalItems = 0 } = route.params || {};
+  const { cart = [], totalAmount = 0, totalItems = 0, onSaleCompleted } = route.params || {};
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
   const [discount, setDiscount] = useState<string>('');
   const [discountType, setDiscountType] = useState<'percent' | 'amount'>('percent');
   const [amountPaid, setAmountPaid] = useState<string>('');
-  const [condition, setCondition] = useState<string>(''); // Nouvel état pour la condition
+  const [condition, setCondition] = useState<string>('');
   const [showCustomerSearchModal, setShowCustomerSearchModal] = useState(false);
   const [showCustomerCreateModal, setShowCustomerCreateModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  
   const amountPaidInputRef = useRef<TextInput>(null);
-  const conditionInputRef = useRef<TextInput>(null); // Nouvelle ref pour le champ condition
+  const conditionInputRef = useRef<TextInput>(null);
 
   // Initialisation
   const safeCart: CartItem[] = Array.isArray(cart) ? cart : [];
@@ -126,6 +132,63 @@ export default function CartValidationScreen({ route, navigation }: any) {
   const changeAmount = Math.max(0, paidAmount - netAmount);
   const remainingAmount = Math.max(0, netAmount - paidAmount);
 
+  // Afficher le message de succès et préparer la navigation
+  const showSuccessPopup = useCallback((message: string) => {
+    setSuccessMessage(message);
+    setShowSuccessMessage(true);
+    
+    // Animation d'entrée
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      })
+    ]).start();
+
+    // Planifier la disparition du message et la navigation
+    setTimeout(() => {
+      hideSuccessPopupAndNavigate();
+    }, 2000); // 2 secondes
+  }, [fadeAnim, slideAnim]);
+
+  // Cacher le message de succès et naviguer
+  const hideSuccessPopupAndNavigate = useCallback(() => {
+    // Animation de sortie
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 50,
+        duration: 300,
+        useNativeDriver: true,
+      })
+    ]).start(() => {
+      setShowSuccessMessage(false);
+      
+      // Appeler le callback pour vider le panier
+      if (onSaleCompleted) {
+        onSaleCompleted();
+      }
+      
+      // Naviguer vers l'écran précédent (panier)
+      navigation.goBack();
+    });
+  }, [fadeAnim, slideAnim, navigation, onSaleCompleted]);
+
+  // Gérer la fermeture manuelle du message
+  const handleCloseSuccessPopup = useCallback(() => {
+    hideSuccessPopupAndNavigate();
+  }, [hideSuccessPopupAndNavigate]);
+
   // Charger les clients
   useEffect(() => {
     loadCustomers();
@@ -137,7 +200,6 @@ export default function CartValidationScreen({ route, navigation }: any) {
       setTimeout(() => {
         amountPaidInputRef.current?.focus();
         setAmountPaid(netAmount.toFixed(2));
-        // Définir une condition par défaut
         setCondition(paidAmount >= netAmount ? 'Payé comptant' : 'À crédit');
       }, 100);
     }
@@ -270,7 +332,7 @@ export default function CartValidationScreen({ route, navigation }: any) {
         return;
       }
 
-      // Notes de vente - uniquement les informations essentielles
+      // Notes de vente
       const notes = [
         `Condition: ${condition}`,
         paidAmount >= netAmount 
@@ -278,7 +340,7 @@ export default function CartValidationScreen({ route, navigation }: any) {
           : `Reste dû: ${formatPrice(remainingAmount)}`,
       ];
 
-      // Création des données de vente pour la base de données
+      // Création des données de vente
       const saleData: SaleCreationData = {
         cartItems: safeCart,
         clientEmail: selectedCustomer.email,
@@ -300,42 +362,9 @@ export default function CartValidationScreen({ route, navigation }: any) {
       const saleResponse = await cartService.createSale(saleData);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      // Récupérer la référence de facture
-      const ref_facture = saleResponse.data?.ref_facture || 'N/A';
+      // AFFICHER LE MESSAGE DE SUCCÈS POPUP UNIQUEMENT ICI
+      showSuccessPopup('Vente enregistrée avec succès!');
 
-      // Alerte succès
-      Alert.alert(
-        'Succès',
-        `Vente enregistrée avec succès\n` +
-        `Client: ${getCustomerDisplayName(selectedCustomer)}\n` +
-        `Mode de paiement: ${getPaymentMethodName(selectedPaymentMethod)}\n` +
-        `Montant payé: ${formatPrice(paidAmount)}\n` +
-        (paidAmount >= netAmount 
-          ? `Monnaie rendue: ${formatPrice(changeAmount)}\n`
-          : `Reste dû: ${formatPrice(remainingAmount)}\n`) +
-        `Condition: ${condition}\n` +
-        `Total: ${formatPrice(netAmount)}\n` +
-        `Référence facture: ${ref_facture}`,
-        [
-          { text: 'OK', onPress: () => navigation.navigate('Home') },
-          { 
-            text: 'Voir le reçu', 
-            onPress: () => navigation.navigate('Receipt', { 
-              ref_facture: ref_facture,
-              paymentMethod: selectedPaymentMethod,
-              amountPaid: paidAmount,
-              changeAmount: changeAmount,
-              remainingAmount: remainingAmount,
-              condition: condition,
-              customer: selectedCustomer,
-              cart: safeCart,
-              subtotal: subtotal,
-              discount: discountAmount,
-              netAmount: netAmount
-            }) 
-          }
-        ]
-      );
     } catch (error: any) {
       console.error('Erreur création vente:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -343,7 +372,7 @@ export default function CartValidationScreen({ route, navigation }: any) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [selectedCustomer, selectedPaymentMethod, safeCart, netAmount, paidAmount, changeAmount, remainingAmount, condition, navigation, subtotal, discountValue, discountType, discountAmount]);
+  }, [selectedCustomer, selectedPaymentMethod, safeCart, netAmount, paidAmount, changeAmount, remainingAmount, condition, subtotal, discountValue, discountType, showSuccessPopup]);
 
   // Modal paiement
   const renderPaymentModal = () => (
@@ -699,6 +728,32 @@ export default function CartValidationScreen({ route, navigation }: any) {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* Message de succès UNIQUEMENT après validation de vente */}
+      {showSuccessMessage && (
+        <Animated.View 
+          style={[
+            validationStyles.successToast,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+          <View style={validationStyles.successToastContent}>
+            <View style={validationStyles.successToastIcon}>
+              <Ionicons name="checkmark-circle" size={24} color="#FFF" />
+            </View>
+            <Text style={validationStyles.successToastText}>{successMessage}</Text>
+            <TouchableOpacity 
+              style={validationStyles.successToastClose}
+              onPress={handleCloseSuccessPopup}
+            >
+              <Ionicons name="close" size={20} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      )}
 
       {/* Modals */}
       <CustomerSearchModal

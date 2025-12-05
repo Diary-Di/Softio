@@ -1,3 +1,4 @@
+// screens/CartSalesScreen.tsx
 import * as Haptics from 'expo-haptics';
 import { useCallback, useState, useEffect, useRef } from 'react';
 import {
@@ -91,6 +92,10 @@ export default function CartSalesScreen({ navigation }: any) {
   const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(true);
   const searchTimeoutRef = useRef<any>(null);
   const [isReferenceFocused, setIsReferenceFocused] = useState(false);
+
+  // Calculer les totaux à partir du panier
+  const totalAmount = cart.reduce((sum, item) => sum + (item.montant || 0), 0);
+  const totalItems = cart.reduce((sum, item) => sum + (item.quantiteAcheter || 0), 0);
 
   // Charger le cache au démarrage
   useEffect(() => {
@@ -322,10 +327,6 @@ export default function CartSalesScreen({ navigation }: any) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [cart, productsCache, removeFromCart]);
 
-  // Calculer le total
-  const totalAmount = cart.reduce((sum, item) => sum + (item.montant || 0), 0);
-  const totalItems = cart.reduce((sum, item) => sum + (item.quantiteAcheter || 0), 0);
-
   // Naviguer vers l'écran de validation
   const goToValidation = useCallback(() => {
     if (cart.length === 0) {
@@ -339,8 +340,33 @@ export default function CartSalesScreen({ navigation }: any) {
       cart,
       totalAmount,
       totalItems,
+      onSaleCompleted: () => {
+        // Cette fonction sera appelée après validation réussie
+        setCart([]); // Vider le panier
+      }
     });
   }, [cart, totalAmount, totalItems, navigation]);
+
+  // Vider complètement le panier
+  const emptyCart = useCallback(() => {
+    if (cart.length === 0) return;
+    
+    Alert.alert(
+      'Vider le panier',
+      'Êtes-vous sûr de vouloir vider votre panier ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { 
+          text: 'Vider', 
+          style: 'destructive',
+          onPress: () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+            setCart([]);
+          }
+        }
+      ]
+    );
+  }, [cart]);
 
   // Incrémenter/Décrémenter la quantité
   const handleQuantityChange = useCallback((type: 'increment' | 'decrement') => {
@@ -404,7 +430,7 @@ export default function CartSalesScreen({ navigation }: any) {
         {cart.length > 0 ? (
           <TouchableOpacity
             style={cartSalesStyles.emptyCartButton}
-            onPress={() => setCart([])}
+            onPress={emptyCart}
           >
             <Ionicons name="trash-outline" size={20} color="#666" />
           </TouchableOpacity>

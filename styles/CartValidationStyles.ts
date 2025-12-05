@@ -861,4 +861,36 @@ export const validationStyles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFF',
   },
+
+  successToast: {
+    position: 'absolute',
+    top: 60, // Sous la barre de navigation
+    left: 16,
+    right: 16,
+    backgroundColor: '#34C759',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 1000,
+  },
+  successToastContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  successToastIcon: {
+    marginRight: 12,
+  },
+  successToastText: {
+    flex: 1,
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  successToastClose: {
+    padding: 4,
+  },
 });
