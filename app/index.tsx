@@ -4,7 +4,7 @@ import { useKeepAwake } from 'expo-keep-awake';
 
 export default function Index() {
   
-  useKeepAwake();
+  //useKeepAwake
   //return <Redirect href="/(auth)/login" />;
   return <Redirect href="/dashboard" />;
 }

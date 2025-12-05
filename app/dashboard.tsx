@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import {
   DrawerContentScrollView,
-  DrawerItemList,
   DrawerItem,
+  DrawerItemList,
   createDrawerNavigator,
 } from '@react-navigation/drawer';
-import { Image, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../hooks/useAuth';
 
 // ---------- Écrans ----------
@@ -15,6 +15,8 @@ import SalesStackNavigator from '../navigation/SalesStackNavigator';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ProformaScreen from '../screens/ProformaScreen';
+import CreateCompanyScreen from '../screens/CreateCompanyScreen';
+
 
 // ---------- Palette ----------
 const colors = {
@@ -183,6 +185,17 @@ export default function Dashboard() {
         component={ProfileScreen}
         options={{ drawerItemStyle: { height: 0 } }}
       />
+
+      <Drawer.Screen
+        name="Entreprise"
+        component={CreateCompanyScreen}
+        options={{
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="business-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
     </Drawer.Navigator>
   );
 }

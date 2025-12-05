@@ -160,4 +160,24 @@ initialsText: {
   fontSize: 32,
   fontWeight: 'bold',
 },
+
+companyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E8F0FE',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#D2E3FC',
+  },
+
+  companyButtonText: {
+    color: '#4285F4',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
 });

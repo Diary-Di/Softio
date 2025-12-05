@@ -1,23 +1,25 @@
 // screens/CartValidationScreen.tsx
 import * as Haptics from 'expo-haptics';
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
   SafeAreaView,
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
+  Modal,
 } from 'react-native';
 import { validationStyles } from '../styles/CartValidationStyles';
 import { Ionicons } from '@expo/vector-icons';
-import { cartService, CartItem } from '../services/cartService';
+import { cartService, CartItem, SaleCreationData, PaymentMethod } from '../services/cartService';
 import { customerService } from '../services/customerService';
-//import CustomerSearchModal from '../components/CustomerSearchModal';
 import CustomerCreateModal from '../components/CustomerCreateModal';
-import CustomerSearchModal from '@/components/customerSearchModal';
+import CustomerSearchModal from '../components/customerSearchModal';
 
+// Types
 type Customer = {
   type: 'particulier' | 'entreprise';
   email: string;
@@ -28,99 +30,129 @@ type Customer = {
   telephone?: string;
 };
 
-type PaymentMethod = 'cash' | 'card' | 'mobile' | 'transfer' | 'check';
-
-// Fonction utilitaire pour formater les prix
+// Fonction pour formater les prix avec séparateurs de milliers
 const formatPrice = (price: number | undefined): string => {
   const value = price || 0;
-  return `€ ${value.toFixed(2)}`;
+  const formattedValue = value.toLocaleString('fr-FR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+  return `€ ${formattedValue}`;
 };
 
-// Fonction pour obtenir le prix unitaire
+// Formater l'entrée numérique avec séparateurs
+const formatNumberInput = (value: string): string => {
+  if (!value) return '';
+  const cleanValue = value.replace(/[^0-9.]/g, '');
+  const numValue = parseFloat(cleanValue);
+  if (isNaN(numValue)) return '';
+  return numValue.toLocaleString('fr-FR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  });
+};
+
+// Nettoyer la valeur numérique
+const cleanNumberValue = (value: string): string => {
+  return value.replace(/[^0-9.]/g, '');
+};
+
+// Obtenir le prix unitaire
 const getItemPrice = (item: CartItem): number => {
   return item.prix_unitaire || item.prix_actuel || 0;
 };
 
-// Fonction pour obtenir le nom complet d'un client
+// Obtenir le nom d'affichage du client
 const getCustomerDisplayName = (customer: Customer): string => {
   if (customer.type === 'entreprise' && customer.sigle) {
     return customer.sigle;
   }
-  
   if (customer.nom && customer.prenoms) {
     return `${customer.prenoms} ${customer.nom}`;
   }
-  
   if (customer.nom) {
     return customer.nom;
   }
-  
   if (customer.prenoms) {
     return customer.prenoms;
   }
-  
   return customer.email;
 };
 
-// Configuration des méthodes de paiement
+// Méthodes de paiement
 const PAYMENT_METHODS = [
-  {
-    id: 'cash' as PaymentMethod,
-    name: 'Espèces',
-    icon: 'cash-outline',
-    color: '#34C759',
-    description: 'Paiement en espèces'
-  },
-  {
-    id: 'card' as PaymentMethod,
-    name: 'Carte bancaire',
-    icon: 'card-outline',
-    color: '#007AFF',
-    description: 'Paiement par carte'
-  },
-  {
-    id: 'mobile' as PaymentMethod,
-    name: 'Mobile',
-    icon: 'phone-portrait-outline',
-    color: '#5856D6',
-    description: 'Paiement mobile'
-  },
-  {
-    id: 'transfer' as PaymentMethod,
-    name: 'Virement',
-    icon: 'swap-horizontal-outline',
-    color: '#FF9500',
-    description: 'Virement bancaire'
-  },
-  {
-    id: 'check' as PaymentMethod,
-    name: 'Chèque',
-    icon: 'document-text-outline',
-    color: '#FF3B30',
-    description: 'Paiement par chèque'
-  }
+  { id: 'cash' as PaymentMethod, name: 'Espèces', icon: 'cash-outline', color: '#34C759', description: 'Paiement en espèces' },
+  { id: 'card' as PaymentMethod, name: 'Carte bancaire', icon: 'card-outline', color: '#007AFF', description: 'Paiement par carte' },
+  { id: 'mobile' as PaymentMethod, name: 'Mobile', icon: 'phone-portrait-outline', color: '#5856D6', description: 'Paiement mobile' },
+  { id: 'transfer' as PaymentMethod, name: 'Virement', icon: 'swap-horizontal-outline', color: '#FF9500', description: 'Virement bancaire' },
+  { id: 'check' as PaymentMethod, name: 'Chèque', icon: 'document-text-outline', color: '#FF3B30', description: 'Paiement par chèque' }
 ];
 
 export default function CartValidationScreen({ route, navigation }: any) {
+  // États
   const { cart = [], totalAmount = 0, totalItems = 0 } = route.params || {};
-  
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [discount, setDiscount] = useState<string>('');
+  const [discountType, setDiscountType] = useState<'percent' | 'amount'>('percent');
+  const [amountPaid, setAmountPaid] = useState<string>('');
+  const [condition, setCondition] = useState<string>(''); // Nouvel état pour la condition
   const [showCustomerSearchModal, setShowCustomerSearchModal] = useState(false);
   const [showCustomerCreateModal, setShowCustomerCreateModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
+  const amountPaidInputRef = useRef<TextInput>(null);
+  const conditionInputRef = useRef<TextInput>(null); // Nouvelle ref pour le champ condition
 
-  // S'assurer que cart est un tableau
+  // Initialisation
   const safeCart: CartItem[] = Array.isArray(cart) ? cart : [];
+  const subtotal = totalAmount || 0;
+  const discountValue = parseFloat(discount) || 0;
+  
+  // Calculs
+  const calculateDiscountAmount = () => {
+    if (discountType === 'percent') {
+      return subtotal * (discountValue / 100);
+    } else {
+      return Math.min(discountValue, subtotal);
+    }
+  };
 
-  // Charger les clients au démarrage
+  const discountAmount = calculateDiscountAmount();
+  const netAmount = Math.max(0, subtotal - discountAmount);
+  const paidAmount = parseFloat(amountPaid) || 0;
+  const changeAmount = Math.max(0, paidAmount - netAmount);
+  const remainingAmount = Math.max(0, netAmount - paidAmount);
+
+  // Charger les clients
   useEffect(() => {
     loadCustomers();
   }, []);
 
-  // Charger les clients depuis l'API
+  // Focus sur champ montant payé et condition
+  useEffect(() => {
+    if (selectedPaymentMethod && amountPaidInputRef.current && netAmount > 0) {
+      setTimeout(() => {
+        amountPaidInputRef.current?.focus();
+        setAmountPaid(netAmount.toFixed(2));
+        // Définir une condition par défaut
+        setCondition(paidAmount >= netAmount ? 'Payé comptant' : 'À crédit');
+      }, 100);
+    }
+  }, [selectedPaymentMethod, netAmount]);
+
+  // Mettre à jour la condition quand le montant payé change
+  useEffect(() => {
+    if (paidAmount >= netAmount) {
+      setCondition('Payé comptant');
+    } else {
+      setCondition('À crédit');
+    }
+  }, [paidAmount, netAmount]);
+
+  // Fonctions
   const loadCustomers = async () => {
     try {
       setIsLoadingCustomers(true);
@@ -133,41 +165,38 @@ export default function CartValidationScreen({ route, navigation }: any) {
     }
   };
 
-  // Ouvrir modal de recherche
   const openSearchModal = useCallback(() => {
     setShowCustomerSearchModal(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, []);
 
-  // Ouvrir modal de création
   const openCreateModal = useCallback(() => {
     setShowCustomerCreateModal(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, []);
 
-  // Fermer tous les modals
+  const openPaymentModal = useCallback(() => {
+    setShowPaymentModal(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
+
   const closeAllModals = useCallback(() => {
     setShowCustomerSearchModal(false);
     setShowCustomerCreateModal(false);
+    setShowPaymentModal(false);
   }, []);
 
-  // Gérer la sélection d'un client
   const handleSelectCustomer = useCallback((customer: Customer) => {
     setSelectedCustomer(customer);
     closeAllModals();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, [closeAllModals]);
 
-  // Gérer la création d'un client
   const handleCustomerCreated = useCallback((customer: Customer) => {
     setSelectedCustomer(customer);
-    // Ajouter le nouveau client à la liste existante
     setCustomers(prev => {
-      // Vérifier si le client n'existe pas déjà
       const exists = prev.some(c => c.email === customer.email);
-      if (exists) {
-        return prev.map(c => c.email === customer.email ? customer : c);
-      }
+      if (exists) return prev.map(c => c.email === customer.email ? customer : c);
       return [customer, ...prev];
     });
     closeAllModals();
@@ -175,45 +204,56 @@ export default function CartValidationScreen({ route, navigation }: any) {
     Alert.alert('Succès', 'Client créé avec succès');
   }, [closeAllModals]);
 
-  // Gérer la sélection du mode de paiement
   const handlePaymentMethodSelect = useCallback((method: PaymentMethod) => {
     setSelectedPaymentMethod(method);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowPaymentModal(false);
   }, []);
 
-  // Basculer vers la création
   const switchToCreate = useCallback(() => {
     setShowCustomerSearchModal(false);
     setShowCustomerCreateModal(true);
   }, []);
 
-  // Basculer vers la recherche
   const switchToSearch = useCallback(() => {
     setShowCustomerCreateModal(false);
     setShowCustomerSearchModal(true);
   }, []);
 
-  // Recharger les clients quand on ouvre le modal de recherche
   const handleOpenSearchModal = useCallback(() => {
     loadCustomers();
     setShowCustomerSearchModal(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, []);
 
-  // Valider la commande finale
+  const handleDiscountTypeChange = useCallback((type: 'percent' | 'amount') => {
+    setDiscountType(type);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setDiscount('');
+  }, []);
+
+  const getPaymentMethodName = (method: PaymentMethod | null): string => {
+    if (!method) return 'Non spécifié';
+    const payment = PAYMENT_METHODS.find(p => p.id === method);
+    return payment?.name || 'Non spécifié';
+  };
+
+  // Validation finale
   const handleFinalSubmit = useCallback(async () => {
     if (!selectedCustomer) {
       Alert.alert('Client requis', 'Veuillez sélectionner ou créer un client');
       return;
     }
-
     if (!selectedPaymentMethod) {
       Alert.alert('Mode de paiement requis', 'Veuillez sélectionner un mode de paiement');
       return;
     }
-
     if (safeCart.length === 0) {
       Alert.alert('Panier vide', 'Ajoutez des produits avant de valider');
+      return;
+    }
+    if (!condition.trim()) {
+      Alert.alert('Condition requise', 'Veuillez saisir la condition de paiement');
       return;
     }
 
@@ -221,46 +261,78 @@ export default function CartValidationScreen({ route, navigation }: any) {
     setIsSubmitting(true);
 
     try {
+      // Validation stock
       const stockValidation = await cartService.validateStock(safeCart);
-      
       if (!stockValidation.valid) {
-        const errorMessages = stockValidation.results
-          .filter(r => !r.valid)
-          .map(r => r.message)
-          .join('\n');
-        
+        const errorMessages = stockValidation.results.filter(r => !r.valid).map(r => r.message).join('\n');
         Alert.alert('Stock insuffisant', errorMessages);
         setIsSubmitting(false);
         return;
       }
 
-      // Inclure le mode de paiement dans les données de vente
-      const saleResponse = await cartService.createSale(
-        safeCart, 
-        selectedCustomer.email,
-        `Mode de paiement: ${getPaymentMethodName(selectedPaymentMethod)}`
-      );
+      // Notes de vente - uniquement les informations essentielles
+      const notes = [
+        `Condition: ${condition}`,
+        paidAmount >= netAmount 
+          ? `Monnaie rendue: ${formatPrice(changeAmount)}`
+          : `Reste dû: ${formatPrice(remainingAmount)}`,
+      ];
 
+      // Création des données de vente pour la base de données
+      const saleData: SaleCreationData = {
+        cartItems: safeCart,
+        clientEmail: selectedCustomer.email,
+        paymentInfo: {
+          method: selectedPaymentMethod,
+          amount_paid: paidAmount,
+          discount_amount: discountValue,
+          discount_type: discountType,
+          condition: condition,
+          change_amount: changeAmount,
+          remaining_amount: remainingAmount
+        },
+        notes: notes.join('\n'),
+        subtotal: subtotal,
+        net_amount: netAmount
+      };
+
+      // Création vente
+      const saleResponse = await cartService.createSale(saleData);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
+      // Récupérer la référence de facture
+      const ref_facture = saleResponse.data?.ref_facture || 'N/A';
+
+      // Alerte succès
       Alert.alert(
         'Succès',
         `Vente enregistrée avec succès\n` +
         `Client: ${getCustomerDisplayName(selectedCustomer)}\n` +
         `Mode de paiement: ${getPaymentMethodName(selectedPaymentMethod)}\n` +
-        `Total: ${formatPrice(totalAmount)}\n` +
-        `Référence: ${saleResponse.data?.id || 'N/A'}`,
+        `Montant payé: ${formatPrice(paidAmount)}\n` +
+        (paidAmount >= netAmount 
+          ? `Monnaie rendue: ${formatPrice(changeAmount)}\n`
+          : `Reste dû: ${formatPrice(remainingAmount)}\n`) +
+        `Condition: ${condition}\n` +
+        `Total: ${formatPrice(netAmount)}\n` +
+        `Référence facture: ${ref_facture}`,
         [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('Home')
-          },
-          {
-            text: 'Voir le reçu',
+          { text: 'OK', onPress: () => navigation.navigate('Home') },
+          { 
+            text: 'Voir le reçu', 
             onPress: () => navigation.navigate('Receipt', { 
-              saleId: saleResponse.data?.id,
-              paymentMethod: selectedPaymentMethod 
-            })
+              ref_facture: ref_facture,
+              paymentMethod: selectedPaymentMethod,
+              amountPaid: paidAmount,
+              changeAmount: changeAmount,
+              remainingAmount: remainingAmount,
+              condition: condition,
+              customer: selectedCustomer,
+              cart: safeCart,
+              subtotal: subtotal,
+              discount: discountAmount,
+              netAmount: netAmount
+            }) 
           }
         ]
       );
@@ -271,104 +343,76 @@ export default function CartValidationScreen({ route, navigation }: any) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [selectedCustomer, selectedPaymentMethod, safeCart, totalAmount, navigation]);
+  }, [selectedCustomer, selectedPaymentMethod, safeCart, netAmount, paidAmount, changeAmount, remainingAmount, condition, navigation, subtotal, discountValue, discountType, discountAmount]);
 
-  // Obtenir le nom du mode de paiement
-  const getPaymentMethodName = (method: PaymentMethod | null): string => {
-    if (!method) return 'Non spécifié';
-    const payment = PAYMENT_METHODS.find(p => p.id === method);
-    return payment?.name || 'Non spécifié';
-  };
-
-  // Rendu d'une méthode de paiement
-  const renderPaymentMethod = (method: typeof PAYMENT_METHODS[0]) => (
-    <TouchableOpacity
-      key={method.id}
-      style={[
-        validationStyles.paymentMethodItem,
-        selectedPaymentMethod === method.id && validationStyles.paymentMethodItemSelected
-      ]}
-      onPress={() => handlePaymentMethodSelect(method.id)}
-      activeOpacity={0.7}
-    >
-      <View style={[
-        validationStyles.paymentMethodIconContainer,
-        { backgroundColor: selectedPaymentMethod === method.id ? method.color : '#F2F2F7' }
-      ]}>
-        <Ionicons 
-          name={method.icon as any} 
-          size={24} 
-          color={selectedPaymentMethod === method.id ? '#FFFFFF' : method.color} 
-        />
-      </View>
-      <View style={validationStyles.paymentMethodInfo}>
-        <Text style={[
-          validationStyles.paymentMethodName,
-          selectedPaymentMethod === method.id && { color: method.color }
-        ]}>
-          {method.name}
-        </Text>
-        <Text style={validationStyles.paymentMethodDescription}>
-          {method.description}
-        </Text>
-      </View>
-      {selectedPaymentMethod === method.id && (
-        <View style={[
-          validationStyles.paymentMethodCheckmark,
-          { backgroundColor: method.color }
-        ]}>
-          <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+  // Modal paiement
+  const renderPaymentModal = () => (
+    <Modal visible={showPaymentModal} transparent animationType="slide" onRequestClose={() => setShowPaymentModal(false)}>
+      <View style={validationStyles.modalOverlay}>
+        <View style={validationStyles.modalContent}>
+          <View style={validationStyles.modalHeader}>
+            <View style={validationStyles.modalHandle}><View style={validationStyles.modalHandle} /></View>
+            <Text style={validationStyles.modalTitle}>Sélectionner le mode de paiement</Text>
+            <TouchableOpacity style={validationStyles.modalCloseButton} onPress={() => setShowPaymentModal(false)}>
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={validationStyles.paymentMethodsList}>
+            {PAYMENT_METHODS.map((method) => (
+              <TouchableOpacity
+                key={method.id}
+                style={[validationStyles.paymentMethodItem, selectedPaymentMethod === method.id && validationStyles.paymentMethodItemSelected]}
+                onPress={() => handlePaymentMethodSelect(method.id)}
+                activeOpacity={0.7}
+              >
+                <View style={[validationStyles.paymentMethodIconContainer, { backgroundColor: method.color }]}>
+                  <Ionicons name={method.icon as any} size={24} color="#FFFFFF" />
+                </View>
+                <View style={validationStyles.paymentMethodInfo}>
+                  <Text style={validationStyles.paymentMethodName}>{method.name}</Text>
+                  <Text style={validationStyles.paymentMethodDescription}>{method.description}</Text>
+                </View>
+                {selectedPaymentMethod === method.id && (
+                  <View style={validationStyles.paymentMethodCheckmark}>
+                    <Ionicons name="checkmark" size={20} color="#007AFF" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
-      )}
-    </TouchableOpacity>
+      </View>
+    </Modal>
   );
 
   return (
     <SafeAreaView style={validationStyles.safeArea}>
       {/* Header */}
       <View style={validationStyles.header}>
-        <TouchableOpacity
-          style={validationStyles.backButton}
-          onPress={() => navigation.goBack()}
-          disabled={isSubmitting}
-        >
+        <TouchableOpacity style={validationStyles.backButton} onPress={() => navigation.goBack()} disabled={isSubmitting}>
           <Ionicons name="arrow-back" size={24} color="#007AFF" />
         </TouchableOpacity>
-
         <View style={validationStyles.headerTitleContainer}>
           <Text style={validationStyles.headerTitle}>Validation</Text>
           <View style={validationStyles.headerBadge}>
             <Text style={validationStyles.headerBadgeText}>{totalItems}</Text>
           </View>
         </View>
-
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView
-        style={validationStyles.container}
-        contentContainerStyle={validationStyles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      {/* Contenu principal */}
+      <ScrollView style={validationStyles.container} contentContainerStyle={validationStyles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        
         {/* Section Client */}
         <View style={validationStyles.section}>
           <Text style={validationStyles.sectionTitle}>CLIENT</Text>
-          
           <View style={validationStyles.clientButtonsContainer}>
-            <TouchableOpacity
-              style={validationStyles.clientButton}
-              onPress={handleOpenSearchModal}
-              disabled={isSubmitting}
-            >
+            <TouchableOpacity style={validationStyles.clientButton} onPress={handleOpenSearchModal} disabled={isSubmitting}>
               <Ionicons name="search" size={24} color="#007AFF" />
               <Text style={validationStyles.clientButtonText}>Rechercher</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[validationStyles.clientButton, validationStyles.clientButtonPrimary]}
-              onPress={openCreateModal}
-              disabled={isSubmitting}
-            >
+            <TouchableOpacity style={[validationStyles.clientButton, validationStyles.clientButtonPrimary]} onPress={openCreateModal} disabled={isSubmitting}>
               <Ionicons name="person-add" size={24} color="#FFF" />
               <Text style={validationStyles.clientButtonTextPrimary}>Nouveau</Text>
             </TouchableOpacity>
@@ -378,20 +422,11 @@ export default function CartValidationScreen({ route, navigation }: any) {
           {selectedCustomer ? (
             <View style={validationStyles.selectedClientCard}>
               <View style={validationStyles.selectedClientHeader}>
-                <View style={[
-                  validationStyles.clientAvatar,
-                  { backgroundColor: selectedCustomer.type === 'entreprise' ? '#E8F4FF' : '#F0F8FF' }
-                ]}>
-                  <Ionicons 
-                    name={selectedCustomer.type === 'entreprise' ? 'business' : 'person'} 
-                    size={24} 
-                    color={selectedCustomer.type === 'entreprise' ? '#0056B3' : '#007AFF'} 
-                  />
+                <View style={[validationStyles.clientAvatar, { backgroundColor: selectedCustomer.type === 'entreprise' ? '#E8F4FF' : '#F0F8FF' }]}>
+                  <Ionicons name={selectedCustomer.type === 'entreprise' ? 'business' : 'person'} size={24} color={selectedCustomer.type === 'entreprise' ? '#0056B3' : '#007AFF'} />
                 </View>
                 <View style={validationStyles.selectedClientInfo}>
-                  <Text style={validationStyles.selectedClientName}>
-                    {getCustomerDisplayName(selectedCustomer)}
-                  </Text>
+                  <Text style={validationStyles.selectedClientName}>{getCustomerDisplayName(selectedCustomer)}</Text>
                   <View style={validationStyles.selectedClientDetails}>
                     <View style={validationStyles.clientDetailRow}>
                       <Ionicons name="mail" size={14} color="#8E8E93" style={{ marginRight: 4 }} />
@@ -405,10 +440,7 @@ export default function CartValidationScreen({ route, navigation }: any) {
                     )}
                   </View>
                 </View>
-                <TouchableOpacity
-                  style={validationStyles.changeClientButton}
-                  onPress={handleOpenSearchModal}
-                >
+                <TouchableOpacity style={validationStyles.changeClientButton} onPress={handleOpenSearchModal}>
                   <Ionicons name="create" size={18} color="#007AFF" />
                 </TouchableOpacity>
               </View>
@@ -419,14 +451,12 @@ export default function CartValidationScreen({ route, navigation }: any) {
                 <Ionicons name="person-outline" size={48} color="#D1D1D6" />
               </View>
               <Text style={validationStyles.noClientText}>Aucun client sélectionné</Text>
-              <Text style={validationStyles.noClientSubtext}>
-                Choisissez un client existant ou créez-en un nouveau
-              </Text>
+              <Text style={validationStyles.noClientSubtext}>Choisissez un client existant ou créez-en un nouveau</Text>
             </View>
           )}
         </View>
 
-        {/* Récapitulatif de la commande */}
+        {/* Section Récapitulatif */}
         <View style={validationStyles.section}>
           <View style={validationStyles.sectionHeader}>
             <Text style={validationStyles.sectionTitle}>RÉCAPITULATIF</Text>
@@ -435,6 +465,7 @@ export default function CartValidationScreen({ route, navigation }: any) {
             </View>
           </View>
 
+          {/* Articles */}
           <View style={validationStyles.summaryCard}>
             {safeCart.map((item: CartItem, index: number) => {
               const itemPrice = getItemPrice(item);
@@ -442,34 +473,18 @@ export default function CartValidationScreen({ route, navigation }: any) {
               const itemQuantity = item.quantiteAcheter || 0;
               
               return (
-                <View 
-                  key={item.id || index} 
-                  style={[
-                    validationStyles.summaryItem,
-                    index !== safeCart.length - 1 && validationStyles.summaryItemBorder
-                  ]}
-                >
+                <View key={item.id || index} style={[validationStyles.summaryItem, index !== safeCart.length - 1 && validationStyles.summaryItemBorder]}>
                   <View style={validationStyles.summaryItemMain}>
                     <View style={validationStyles.summaryItemHeader}>
-                      <Text style={validationStyles.summaryItemName} numberOfLines={1}>
-                        {item.designation || 'Produit sans nom'}
-                      </Text>
-                      <Text style={validationStyles.summaryItemPrice}>
-                        {formatPrice(itemAmount)}
-                      </Text>
+                      <Text style={validationStyles.summaryItemName} numberOfLines={1}>{item.designation || 'Produit sans nom'}</Text>
+                      <Text style={validationStyles.summaryItemPrice}>{formatPrice(itemAmount)}</Text>
                     </View>
-                    <Text style={validationStyles.summaryItemRef}>
-                      {item.ref_produit || 'N/A'}
-                    </Text>
+                    <Text style={validationStyles.summaryItemRef}>{item.ref_produit || 'N/A'}</Text>
                     <View style={validationStyles.summaryItemDetails}>
                       <View style={validationStyles.quantityBadge}>
-                        <Text style={validationStyles.quantityBadgeText}>
-                          {itemQuantity}
-                        </Text>
+                        <Text style={validationStyles.quantityBadgeText}>{itemQuantity.toLocaleString('fr-FR')}</Text>
                       </View>
-                      <Text style={validationStyles.summaryItemDetailText}>
-                        × {formatPrice(itemPrice)}
-                      </Text>
+                      <Text style={validationStyles.summaryItemDetailText}>× {formatPrice(itemPrice)}</Text>
                     </View>
                   </View>
                 </View>
@@ -477,96 +492,215 @@ export default function CartValidationScreen({ route, navigation }: any) {
             })}
           </View>
 
-          {/* Total */}
+          {/* Totaux avec remise */}
           <View style={validationStyles.totalCard}>
+            {/* Sous-total */}
             <View style={validationStyles.totalRow}>
               <Text style={validationStyles.totalLabel}>Sous-total</Text>
-              <Text style={validationStyles.totalValue}>
-                {formatPrice(totalAmount)}
-              </Text>
+              <Text style={validationStyles.totalValue}>{formatPrice(subtotal)}</Text>
             </View>
-            <View style={validationStyles.totalDivider} />
+
+            {/* Remise */}
             <View style={validationStyles.totalRow}>
-              <Text style={validationStyles.totalLabelMain}>TOTAL À PAYER</Text>
-              <Text style={validationStyles.totalValueMain}>
-                {formatPrice(totalAmount)}
-              </Text>
+              <View style={validationStyles.discountContainer}>
+                <Text style={validationStyles.totalLabel}>Remise</Text>
+                <View style={validationStyles.discountControls}>
+                  <View style={validationStyles.discountTypeButtons}>
+                    <TouchableOpacity style={[validationStyles.discountTypeButton, discountType === 'percent' && validationStyles.discountTypeButtonActive]} onPress={() => handleDiscountTypeChange('percent')}>
+                      <Text style={[validationStyles.discountTypeButtonText, discountType === 'percent' && validationStyles.discountTypeButtonTextActive]}>%</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[validationStyles.discountTypeButton, discountType === 'amount' && validationStyles.discountTypeButtonActive]} onPress={() => handleDiscountTypeChange('amount')}>
+                      <Text style={[validationStyles.discountTypeButtonText, discountType === 'amount' && validationStyles.discountTypeButtonTextActive]}>€</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <TextInput
+                    style={validationStyles.discountInput}
+                    value={formatNumberInput(discount)}
+                    onChangeText={(value) => {
+                      const numericValue = cleanNumberValue(value);
+                      const parts = numericValue.split('.');
+                      if (parts.length > 1) {
+                        parts[1] = parts[1].slice(0, 2);
+                        setDiscount(parts.join('.'));
+                      } else {
+                        setDiscount(numericValue);
+                      }
+                    }}
+                    placeholder={discountType === 'percent' ? "0,00" : "0,00"}
+                    keyboardType="decimal-pad"
+                    textAlign="right"
+                    maxLength={discountType === 'percent' ? 10 : 15}
+                  />
+                </View>
+              </View>
+              <Text style={[validationStyles.totalValue, { color: '#FF9500' }]}>-{formatPrice(discountAmount)}</Text>
+            </View>
+
+            {/* Séparateur */}
+            <View style={validationStyles.totalDivider} />
+
+            {/* Net à payer */}
+            <View style={validationStyles.totalRow}>
+              <Text style={validationStyles.totalLabelMain}>NET À PAYER</Text>
+              <Text style={[validationStyles.totalValueMain, { color: discountAmount > 0 ? '#FF9500' : '#007AFF' }]}>{formatPrice(netAmount)}</Text>
             </View>
           </View>
         </View>
 
-        {/* Section Mode de paiement */}
+        {/* Section Paiement */}
         <View style={validationStyles.section}>
           <View style={validationStyles.sectionHeader}>
-            <Text style={validationStyles.sectionTitle}>MODE DE PAIEMENT *</Text>
+            <Text style={validationStyles.sectionTitle}>PAIEMENT</Text>
           </View>
 
-          <View style={validationStyles.paymentMethodsContainer}>
-            {PAYMENT_METHODS.map(renderPaymentMethod)}
-          </View>
-
-          {selectedPaymentMethod && (
-            <View style={validationStyles.selectedPaymentCard}>
-              <View style={validationStyles.selectedPaymentHeader}>
-                <View style={[
-                  validationStyles.selectedPaymentIcon,
-                  { backgroundColor: PAYMENT_METHODS.find(p => p.id === selectedPaymentMethod)?.color || '#007AFF' }
-                ]}>
-                  <Ionicons 
-                    name={PAYMENT_METHODS.find(p => p.id === selectedPaymentMethod)?.icon as any || 'card-outline'} 
-                    size={20} 
-                    color="#FFFFFF" 
-                  />
+          {/* Mode de paiement */}
+          <View style={validationStyles.paymentSection}>
+            <Text style={validationStyles.paymentLabel}>Mode de paiement *</Text>
+            {selectedPaymentMethod ? (
+              <TouchableOpacity style={validationStyles.selectedPaymentMethodCard} onPress={openPaymentModal} activeOpacity={0.7}>
+                <View style={[validationStyles.selectedPaymentIcon, { backgroundColor: PAYMENT_METHODS.find(p => p.id === selectedPaymentMethod)?.color || '#007AFF' }]}>
+                  <Ionicons name={PAYMENT_METHODS.find(p => p.id === selectedPaymentMethod)?.icon as any || 'card-outline'} size={20} color="#FFFFFF" />
                 </View>
                 <View style={validationStyles.selectedPaymentInfo}>
-                  <Text style={validationStyles.selectedPaymentName}>
-                    {getPaymentMethodName(selectedPaymentMethod)} sélectionné
-                  </Text>
-                  <Text style={validationStyles.selectedPaymentDescription}>
-                    {PAYMENT_METHODS.find(p => p.id === selectedPaymentMethod)?.description}
-                  </Text>
+                  <Text style={validationStyles.selectedPaymentName}>{getPaymentMethodName(selectedPaymentMethod)}</Text>
+                  <Text style={validationStyles.selectedPaymentDescription}>{PAYMENT_METHODS.find(p => p.id === selectedPaymentMethod)?.description}</Text>
                 </View>
-                <TouchableOpacity
-                  style={validationStyles.changePaymentButton}
-                  onPress={() => setSelectedPaymentMethod(null)}
-                >
-                  <Ionicons name="close" size={18} color="#FF3B30" />
-                </TouchableOpacity>
+                <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={validationStyles.selectPaymentMethodButton} onPress={openPaymentModal} activeOpacity={0.7}>
+                <Ionicons name="card-outline" size={24} color="#007AFF" style={{ marginRight: 8 }} />
+                <Text style={validationStyles.selectPaymentMethodText}>Sélectionner le mode de paiement</Text>
+                <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Montant payé par le client */}
+          {selectedPaymentMethod && netAmount > 0 && (
+            <View style={validationStyles.amountPaidSection}>
+              <Text style={validationStyles.amountPaidLabel}>Montant payé par le client *</Text>
+              <View style={validationStyles.amountPaidContainer}>
+                <Text style={validationStyles.amountPaidSymbol}>€</Text>
+                <TextInput
+                  ref={amountPaidInputRef}
+                  style={validationStyles.amountPaidInput}
+                  value={formatNumberInput(amountPaid)}
+                  onChangeText={(value) => {
+                    const numericValue = cleanNumberValue(value);
+                    const parts = numericValue.split('.');
+                    if (parts.length > 1) {
+                      parts[1] = parts[1].slice(0, 2);
+                      setAmountPaid(parts.join('.'));
+                    } else {
+                      setAmountPaid(numericValue);
+                    }
+                  }}
+                  placeholder="0,00"
+                  keyboardType="decimal-pad"
+                  textAlign="right"
+                  maxLength={15}
+                />
               </View>
+
+              {/* Monnaie à rendre ou Reste dû */}
+              {paidAmount > 0 && (
+                <View style={validationStyles.changeSection}>
+                  {paidAmount >= netAmount ? (
+                    // Cas 1: Client a payé suffisamment - Monnaie à rendre
+                    <>
+                      <View style={validationStyles.changeRow}>
+                        <Text style={validationStyles.changeLabel}>Monnaie à rendre</Text>
+                        <Text style={[validationStyles.changeValue, { color: '#34C759' }]}>
+                          {formatPrice(changeAmount)}
+                        </Text>
+                      </View>
+                      {changeAmount > 0 && (
+                        <View style={validationStyles.changeBreakdown}>
+                          <Text style={validationStyles.changeBreakdownText}>
+                            {`Client paye ${formatPrice(paidAmount)} - Net à payer ${formatPrice(netAmount)} = `}
+                            <Text style={{ color: '#34C759', fontWeight: '600' }}>
+                              {formatPrice(changeAmount)} à rendre
+                            </Text>
+                          </Text>
+                        </View>
+                      )}
+                    </>
+                  ) : (
+                    // Cas 2: Client n'a pas payé suffisamment - Reste dû
+                    <>
+                      <View style={validationStyles.changeRow}>
+                        <Text style={[validationStyles.changeLabel, { color: '#FF3B30' }]}>Reste dû</Text>
+                        <Text style={[validationStyles.changeValue, { color: '#FF3B30' }]}>
+                          {formatPrice(remainingAmount)}
+                        </Text>
+                      </View>
+                      <View style={validationStyles.changeBreakdown}>
+                        <Text style={[validationStyles.changeBreakdownText, { color: '#FF3B30' }]}>
+                          {`Net à payer ${formatPrice(netAmount)} - Client paye ${formatPrice(paidAmount)} = `}
+                          <Text style={{ color: '#FF3B30', fontWeight: '600' }}>
+                            {formatPrice(remainingAmount)} restant à payer
+                          </Text>
+                        </Text>
+                      </View>
+                    </>
+                  )}
+                  
+                  {/* Champ Condition - TextInput */}
+                  <View style={validationStyles.conditionSection}>
+                    <Text style={validationStyles.conditionLabel}>Condition *</Text>
+                    <TextInput
+                      ref={conditionInputRef}
+                      style={validationStyles.conditionInput}
+                      value={condition}
+                      onChangeText={setCondition}
+                      placeholder="Ex: Payé comptant, À crédit, 50% d'acompte..."
+                      multiline
+                      maxLength={200}
+                      textAlignVertical="top"
+                    />
+                    <Text style={validationStyles.conditionHelpText}>
+                      {paidAmount >= netAmount 
+                        ? 'Le client a réglé la totalité de la commande'
+                        : 'Le client devra régler le reste ultérieurement'}
+                    </Text>
+                  </View>
+                </View>
+              )}
             </View>
           )}
         </View>
       </ScrollView>
 
-      {/* Footer avec validation */}
+      {/* Footer */}
       <View style={validationStyles.footer}>
         <View style={validationStyles.footerTotal}>
-          <Text style={validationStyles.footerTotalLabel}>Total</Text>
-          <Text style={validationStyles.footerTotalAmount}>
-            {formatPrice(totalAmount)}
-          </Text>
+          <Text style={validationStyles.footerTotalLabel}>Net à payer</Text>
+          <Text style={validationStyles.footerTotalAmount}>{formatPrice(netAmount)}</Text>
         </View>
         <TouchableOpacity
           style={[
             validationStyles.validateButton,
-            (!selectedCustomer || !selectedPaymentMethod || isSubmitting || safeCart.length === 0) && 
+            (!selectedCustomer || !selectedPaymentMethod || !condition.trim() || isSubmitting || safeCart.length === 0) && 
             validationStyles.validateButtonDisabled
           ]}
           onPress={handleFinalSubmit}
-          disabled={!selectedCustomer || !selectedPaymentMethod || isSubmitting || safeCart.length === 0}
+          disabled={!selectedCustomer || !selectedPaymentMethod || !condition.trim() || isSubmitting || safeCart.length === 0}
         >
           {isSubmitting ? (
             <ActivityIndicator color="white" size="small" />
           ) : (
             <>
-              <Text style={validationStyles.validateButtonText}>Confirmer la vente</Text>
+              <Text style={validationStyles.validateButtonText}>
+                {paidAmount >= netAmount ? 'Confirmer la vente' : 'Confirmer le crédit'}
+              </Text>
               <Ionicons name="checkmark-circle" size={20} color="#FFF" style={{ marginLeft: 8 }} />
             </>
           )}
         </TouchableOpacity>
       </View>
 
-      {/* Modals séparés */}
+      {/* Modals */}
       <CustomerSearchModal
         visible={showCustomerSearchModal}
         onClose={closeAllModals}
@@ -583,6 +717,8 @@ export default function CartValidationScreen({ route, navigation }: any) {
         onSwitchToSearch={switchToSearch}
         existingCustomers={customers}
       />
+
+      {renderPaymentModal()}
     </SafeAreaView>
   );
 }

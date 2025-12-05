@@ -303,17 +303,57 @@ export const validationStyles = StyleSheet.create({
     marginVertical: 12,
   },
 
-  // Notes
-  notesCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 16,
+  // Section remise
+  discountContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  notesInput: {
+  discountControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  discountTypeButtons: {
+    flexDirection: 'row',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 8,
+    padding: 2,
+  },
+  discountTypeButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  discountTypeButtonActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  discountTypeButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8E8E93',
+  },
+  discountTypeButtonTextActive: {
+    color: '#007AFF',
+  },
+  discountInput: {
+    width: 80,
     fontSize: 16,
+    fontWeight: '500',
     color: '#000',
-    minHeight: 80,
-    padding: 0,
+    textAlign: 'right',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
   },
 
   // Footer
@@ -374,19 +414,188 @@ export const validationStyles = StyleSheet.create({
     color: '#FFF',
   },
 
-  // ========== MODAL CLIENT (COLLÉ EN BAS) ==========
+  // Section paiement
+  paymentSection: {
+    marginBottom: 16,
+  },
+  paymentLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#8E8E93',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  selectPaymentMethodButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    borderStyle: 'dashed',
+  },
+  selectPaymentMethodText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#007AFF',
+    marginLeft: 8,
+  },
+  selectedPaymentMethodCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#34C759',
+  },
+  selectedPaymentIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  selectedPaymentInfo: {
+    flex: 1,
+  },
+  selectedPaymentName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 2,
+  },
+  selectedPaymentDescription: {
+    fontSize: 13,
+    color: '#8E8E93',
+  },
+
+  // Montant payé
+  amountPaidSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  amountPaidLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#8E8E93',
+    marginBottom: 12,
+  },
+  amountPaidContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F8F8',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  amountPaidSymbol: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#007AFF',
+    marginRight: 8,
+  },
+  amountPaidInput: {
+    flex: 1,
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#000',
+    textAlign: 'right',
+    padding: 0,
+  },
+
+  // Monnaie à rendre / Reste dû
+  changeSection: {
+    backgroundColor: '#F8F9FF',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E8F4FF',
+  },
+  changeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  changeLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#000',
+  },
+  changeValue: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  changeBreakdown: {
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5EA',
+  },
+  changeBreakdownText: {
+    fontSize: 12,
+    color: '#8E8E93',
+    textAlign: 'center',
+  },
+
+  // Section Condition (NOUVEAU)
+  conditionSection: {
+    marginTop: 16,
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  conditionLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#8E8E93',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  conditionInput: {
+    fontSize: 16,
+    color: '#000',
+    minHeight: 60,
+    padding: 12,
+    backgroundColor: '#F8F8F8',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    textAlignVertical: 'top',
+  },
+  conditionHelpText: {
+    fontSize: 12,
+    color: '#8E8E93',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+
+  // Modal paiement
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end', // Collé en bas
+    justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: '#FFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     overflow: 'hidden',
-    maxHeight: SCREEN_HEIGHT * 0.85, // 85% max de l'écran
-    minHeight: SCREEN_HEIGHT * 0.5, // 50% min de l'écran
+    maxHeight: SCREEN_HEIGHT * 0.85,
+    minHeight: SCREEN_HEIGHT * 0.5,
   },
   modalHeader: {
     paddingHorizontal: 20,
@@ -417,7 +626,56 @@ export const validationStyles = StyleSheet.create({
     padding: 4,
   },
 
-  // Recherche dans le modal
+  // Méthodes de paiement dans modal
+  paymentMethodsList: {
+    padding: 16,
+  },
+  paymentMethodItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    marginBottom: 8,
+  },
+  paymentMethodItemSelected: {
+    borderWidth: 1.5,
+    borderColor: '#007AFF',
+    backgroundColor: '#F8F9FF',
+  },
+  paymentMethodIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  paymentMethodInfo: {
+    flex: 1,
+  },
+  paymentMethodName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 2,
+  },
+  paymentMethodDescription: {
+    fontSize: 13,
+    color: '#8E8E93',
+  },
+  paymentMethodCheckmark: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+
+  // Styles pour les modals client (conservés pour compatibilité)
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -491,11 +749,6 @@ export const validationStyles = StyleSheet.create({
     fontSize: 13,
     color: '#8E8E93',
   },
-  customerItemAddress: {
-    fontSize: 11,
-    color: '#8E8E93',
-    flex: 1,
-  },
 
   // État de chargement
   loadingContainer: {
@@ -531,25 +784,11 @@ export const validationStyles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
   },
-  createFromSearchButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F0F8FF',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  createFromSearchText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#007AFF',
-  },
 
   // Formulaire création client
   createForm: {
     padding: 20,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20, // Plus d'espace en bas sur iOS
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
   },
   formGroup: {
     marginBottom: 20,
@@ -622,110 +861,4 @@ export const validationStyles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFF',
   },
-
-  // Détails client dans la carte sélectionnée
-  clientPhoneContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-
-  // Ajoutez ces styles à validationStyles dans CartValidationStyles.ts
-
-paymentMethodsContainer: {
-  gap: 12,
-  marginBottom: 16,
-},
-
-paymentMethodItem: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: '#FFFFFF',
-  borderRadius: 12,
-  padding: 16,
-  borderWidth: 1,
-  borderColor: '#E5E5EA',
-},
-
-paymentMethodItemSelected: {
-  borderWidth: 1.5,
-  borderColor: '#007AFF',
-  backgroundColor: '#F8F9FF',
-},
-
-paymentMethodIconContainer: {
-  width: 48,
-  height: 48,
-  borderRadius: 12,
-  justifyContent: 'center',
-  alignItems: 'center',
-  marginRight: 12,
-},
-
-paymentMethodInfo: {
-  flex: 1,
-},
-
-paymentMethodName: {
-  fontSize: 16,
-  fontWeight: '600',
-  color: '#000',
-  marginBottom: 2,
-},
-
-paymentMethodDescription: {
-  fontSize: 13,
-  color: '#8E8E93',
-},
-
-paymentMethodCheckmark: {
-  width: 24,
-  height: 24,
-  borderRadius: 12,
-  justifyContent: 'center',
-  alignItems: 'center',
-  marginLeft: 8,
-},
-
-selectedPaymentCard: {
-  backgroundColor: '#FFFFFF',
-  borderRadius: 12,
-  padding: 16,
-  borderWidth: 1,
-  borderColor: '#34C759',
-},
-
-selectedPaymentHeader: {
-  flexDirection: 'row',
-  alignItems: 'center',
-},
-
-selectedPaymentIcon: {
-  width: 40,
-  height: 40,
-  borderRadius: 10,
-  justifyContent: 'center',
-  alignItems: 'center',
-  marginRight: 12,
-},
-
-selectedPaymentInfo: {
-  flex: 1,
-},
-
-selectedPaymentName: {
-  fontSize: 16,
-  fontWeight: '600',
-  color: '#000',
-  marginBottom: 2,
-},
-
-selectedPaymentDescription: {
-  fontSize: 13,
-  color: '#8E8E93',
-},
-
-changePaymentButton: {
-  padding: 4,
-},
 });

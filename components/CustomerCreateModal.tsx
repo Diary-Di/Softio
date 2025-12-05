@@ -403,7 +403,6 @@ export default function CustomerCreateModal({
                     style={validationStyles.formInput}
                     value={newCustomer.email}
                     onChangeText={(value) => setNewCustomer({ ...newCustomer, email: value })}
-                    placeholder="exemple@email.com"
                     placeholderTextColor="#999"
                     keyboardType="email-address"
                     autoCapitalize="none"
@@ -439,7 +438,6 @@ export default function CustomerCreateModal({
                         style={validationStyles.formInput}
                         value={newCustomer.sigle}
                         onChangeText={(value) => setNewCustomer({ ...newCustomer, sigle: value })}
-                        placeholder="Ex: ACME Corp"
                         placeholderTextColor="#999"
                         autoCapitalize="words"
                       />
@@ -456,7 +454,6 @@ export default function CustomerCreateModal({
                         style={validationStyles.formInput}
                         value={newCustomer.nom}
                         onChangeText={(value) => setNewCustomer({ ...newCustomer, nom: value })}
-                        placeholder="Nom du contact"
                         placeholderTextColor="#999"
                       />
                     </View>
@@ -482,7 +479,6 @@ export default function CustomerCreateModal({
                         style={validationStyles.formInput}
                         value={newCustomer.prenoms}
                         onChangeText={(value) => setNewCustomer({ ...newCustomer, prenoms: value })}
-                        placeholder="Ex: Jean"
                         placeholderTextColor="#999"
                         autoCapitalize="words"
                       />
@@ -507,7 +503,6 @@ export default function CustomerCreateModal({
                         style={validationStyles.formInput}
                         value={newCustomer.nom}
                         onChangeText={(value) => setNewCustomer({ ...newCustomer, nom: value })}
-                        placeholder="Ex: Dupont"
                         placeholderTextColor="#999"
                         autoCapitalize="words"
                       />
@@ -535,7 +530,6 @@ export default function CustomerCreateModal({
                     style={validationStyles.formInput}
                     value={newCustomer.telephone}
                     onChangeText={(value) => setNewCustomer({ ...newCustomer, telephone: value })}
-                    placeholder="+33 1 23 45 67 89"
                     placeholderTextColor="#999"
                     keyboardType="phone-pad"
                   />
@@ -564,7 +558,6 @@ export default function CustomerCreateModal({
                     style={[validationStyles.formInput, { height: 'auto', paddingTop: 8 }]}
                     value={newCustomer.adresse}
                     onChangeText={(value) => setNewCustomer({ ...newCustomer, adresse: value })}
-                    placeholder="123 Rue de Paris, 75001 Paris"
                     placeholderTextColor="#999"
                     multiline
                     numberOfLines={3}

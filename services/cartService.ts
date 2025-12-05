@@ -5,7 +5,10 @@ import { Product as ApiProduct, productService } from "./productService";
 
 const SALE_URL = `${API_BASE_URL}${API_ENDPOINTS.SALES}`;
 
-// Interfaces basées sur votre CartSalesScreen
+// Types de paiement cohérents avec l'écran
+export type PaymentMethod = 'cash' | 'card' | 'mobile' | 'transfer' | 'check';
+
+// Interfaces basées sur votre base de données
 export interface CartItem {
   id: string;
   ref_produit: string;
@@ -22,23 +25,18 @@ export interface CartItem {
   image_url?: string;
 }
 
-export interface SaleItem {
-  ref_produit: string;
-  designation: string;
-  prix_unitaire: number;
-  quantite_vendue: number;
-  montant_total: number;
-}
-
-export interface Sale {
-  id: string;
-  client_id: string;
-  client_name?: string;
-  items: SaleItem[];
+// Interface pour la vente selon votre schéma de base de données
+export interface DatabaseSale {
+  ref_facture: string;
+  ref_produit: string; // Format: "pdt1, pdt2, ..., pdtn"
+  qte_vendu: string;   // Format: "qte1, qte2, ..., qten"
+  email: string;
+  remise: string;      // Peut être "%" ou "€"
+  mode_paiement: PaymentMethod;
+  montant_paye: number;
+  condition: string;
   montant_total: number;
   date_vente: string;
-  notes?: string;
-  statut: 'pending' | 'completed' | 'cancelled';
 }
 
 export interface ApiResponse<T = any> {
@@ -62,7 +60,23 @@ export interface CartSummary {
   items: CartItem[];
   totalAmount: number;
   totalItems: number;
+  subtotal: number;
+  discountAmount: number;
+  netAmount: number;
 }
+
+// Fonction pour générer la référence de facture
+export const generateInvoiceRef = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  
+  return `${year}${month}${day}${hours}${minutes}${seconds}`;
+};
 
 // Fonction utilitaire pour obtenir le prix
 export const getProductPrice = (item: CartItem): number => {
@@ -74,41 +88,91 @@ export const getAvailableQuantity = (item: CartItem): number => {
   return item.quantiteDisponible || item.qte_disponible || 0;
 };
 
-// Transformations
-export const transformCartItemToSaleItem = (cartItem: CartItem): SaleItem => {
-  const prix_unitaire = getProductPrice(cartItem);
-  return {
-    ref_produit: cartItem.ref_produit,
-    designation: cartItem.designation,
-    prix_unitaire: prix_unitaire,
-    quantite_vendue: cartItem.quantiteAcheter || 0,
-    montant_total: cartItem.montant || 0
+export interface SaleCreationData {
+  cartItems: CartItem[];
+  clientEmail: string;
+  paymentInfo: {
+    method: PaymentMethod;
+    amount_paid: number;
+    discount_amount: number;
+    discount_type: 'percent' | 'amount';
+    condition: string;
+    change_amount?: number;
+    remaining_amount?: number;
   };
-};
+  notes?: string;
+  subtotal: number;
+  net_amount: number;
+}
 
-export const formatCartForAPI = (cartItems: CartItem[], clientId: string, notes?: string) => {
-  const items = cartItems.map(transformCartItemToSaleItem);
-  const montant_total = cartItems.reduce((sum, item) => sum + (item.montant || 0), 0);
+export const formatCartForDatabase = (data: SaleCreationData): DatabaseSale => {
+  // Générer la référence de facture
+  const ref_facture = generateInvoiceRef();
+  
+  // Formater les références produits: "pdt1, pdt2, ..., pdtn"
+  const ref_produit = data.cartItems.map(item => item.ref_produit).join(', ');
+  
+  // Formater les quantités vendues: "qte1, qte2, ..., qten"
+  const qte_vendu = data.cartItems.map(item => item.quantiteAcheter).join(', ');
+  
+  // Formater la remise selon le type
+  const remise = data.paymentInfo.discount_type === 'percent' 
+    ? `${data.paymentInfo.discount_amount}%`
+    : `€${data.paymentInfo.discount_amount.toFixed(2)}`;
   
   return {
-    client_id: clientId,
-    items: items,
-    montant_total: montant_total,
-    notes: notes || '',
-    date_vente: new Date().toISOString().slice(0, 19).replace('T', ' '),
-    statut: 'completed'
+    ref_facture,
+    ref_produit,
+    qte_vendu,
+    email: data.clientEmail,
+    remise,
+    mode_paiement: data.paymentInfo.method,
+    montant_paye: data.paymentInfo.amount_paid,
+    condition: data.paymentInfo.condition,
+    montant_total: data.net_amount,
+    date_vente: new Date().toISOString().slice(0, 19).replace('T', ' ')
   };
 };
 
 export const cartService = {
-  /** Créer une vente (validation du panier) */
-  createSale: async (cartItems: CartItem[], clientId: string, notes?: string) => {
+  /** Créer une vente dans la base de données */
+  createSale: async (data: SaleCreationData) => {
     try {
-      const saleData = formatCartForAPI(cartItems, clientId, notes);
-      console.log('Envoi vente:', saleData);
+      const dbSale = formatCartForDatabase(data);
+      console.log('Envoi vente à la base de données:', dbSale);
       
-      const response = await axios.post<ApiResponse<Sale>>(SALE_URL, saleData);
+      const response = await axios.post<ApiResponse<DatabaseSale>>(SALE_URL, dbSale);
       return response.data;
+    } catch (error: any) {
+      throw {
+        message: error.response?.data?.message || "Erreur création vente",
+        code: error.response?.status || 500,
+        data: error.response?.data
+      };
+    }
+  },
+
+  /** Créer une vente (version simplifiée pour compatibilité) */
+  createSaleSimple: async (cartItems: CartItem[], clientEmail: string, notes?: string) => {
+    try {
+      const subtotal = cartItems.reduce((sum, item) => sum + (item.montant || 0), 0);
+      const saleData: SaleCreationData = {
+        cartItems,
+        clientEmail,
+        paymentInfo: {
+          method: 'cash',
+          amount_paid: subtotal,
+          discount_amount: 0,
+          discount_type: 'amount',
+          condition: 'Payé comptant',
+          change_amount: 0
+        },
+        notes,
+        subtotal,
+        net_amount: subtotal
+      };
+      
+      return await cartService.createSale(saleData);
     } catch (error: any) {
       throw {
         message: error.response?.data?.message || "Erreur création vente",
@@ -169,13 +233,13 @@ export const cartService = {
   getSales: async (params?: { 
     startDate?: string; 
     endDate?: string; 
-    clientId?: string;
+    email?: string;
+    mode_paiement?: PaymentMethod;
     limit?: number;
     page?: number;
-    statut?: string;
   }) => {
     try {
-      const response = await axios.get<ApiResponse<Sale[]>>(SALE_URL, {
+      const response = await axios.get<ApiResponse<DatabaseSale[]>>(SALE_URL, {
         params: params
       });
       return response.data.data;
@@ -189,9 +253,9 @@ export const cartService = {
   },
 
   /** Récupérer une vente spécifique */
-  getSale: async (saleId: string) => {
+  getSale: async (ref_facture: string) => {
     try {
-      const response = await axios.get<ApiResponse<Sale>>(`${SALE_URL}/${saleId}`);
+      const response = await axios.get<ApiResponse<DatabaseSale>>(`${SALE_URL}/${ref_facture}`);
       return response.data.data;
     } catch (error: any) {
       throw {
@@ -202,38 +266,10 @@ export const cartService = {
     }
   },
 
-  /** Mettre à jour une vente (statut, notes, etc.) */
-  updateSale: async (saleId: string, saleData: Partial<Sale>) => {
-    try {
-      const response = await axios.put<ApiResponse<Sale>>(`${SALE_URL}/${saleId}`, saleData);
-      return response.data;
-    } catch (error: any) {
-      throw {
-        message: error.response?.data?.message || "Erreur mise à jour vente",
-        code: error.response?.status,
-        data: error.response?.data
-      };
-    }
-  },
-
-  /** Annuler une vente */
-  cancelSale: async (saleId: string) => {
-    try {
-      const response = await axios.patch<ApiResponse<Sale>>(`${SALE_URL}/${saleId}/cancel`);
-      return response.data;
-    } catch (error: any) {
-      throw {
-        message: error.response?.data?.message || "Erreur annulation vente",
-        code: error.response?.status,
-        data: error.response?.data
-      };
-    }
-  },
-
   /** Rechercher des ventes */
   searchSales: async (searchTerm: string) => {
     try {
-      const response = await axios.get<ApiResponse<Sale[]>>(`${SALE_URL}/search`, {
+      const response = await axios.get<ApiResponse<DatabaseSale[]>>(`${SALE_URL}/search`, {
         params: { q: searchTerm }
       });
       return response.data.data;
@@ -247,9 +283,9 @@ export const cartService = {
   },
 
   /** Récupérer les ventes par client */
-  getSalesByClient: async (clientId: string) => {
+  getSalesByClient: async (email: string) => {
     try {
-      const response = await axios.get<ApiResponse<Sale[]>>(`${SALE_URL}/client/${clientId}`);
+      const response = await axios.get<ApiResponse<DatabaseSale[]>>(`${SALE_URL}/client/${email}`);
       return response.data.data;
     } catch (error: any) {
       throw {
@@ -263,12 +299,41 @@ export const cartService = {
   /** Calculer le résumé d'un panier */
   calculateCartSummary: (cartItems: CartItem[]): CartSummary => {
     const totalItems = cartItems.reduce((sum, item) => sum + (item.quantiteAcheter || 0), 0);
-    const totalAmount = cartItems.reduce((sum, item) => sum + (item.montant || 0), 0);
+    const subtotal = cartItems.reduce((sum, item) => sum + (item.montant || 0), 0);
     
     return {
       items: cartItems,
-      totalAmount,
-      totalItems
+      totalAmount: subtotal,
+      totalItems,
+      subtotal,
+      discountAmount: 0,
+      netAmount: subtotal
+    };
+  },
+
+  /** Calculer le résumé avec remise */
+  calculateCartSummaryWithDiscount: (
+    cartItems: CartItem[], 
+    discountAmount: number, 
+    discountType: 'percent' | 'amount'
+  ): CartSummary => {
+    const totalItems = cartItems.reduce((sum, item) => sum + (item.quantiteAcheter || 0), 0);
+    const subtotal = cartItems.reduce((sum, item) => sum + (item.montant || 0), 0);
+    
+    let discount = discountAmount;
+    if (discountType === 'percent') {
+      discount = subtotal * (discountAmount / 100);
+    }
+    
+    const netAmount = Math.max(0, subtotal - discount);
+    
+    return {
+      items: cartItems,
+      totalAmount: netAmount,
+      totalItems,
+      subtotal,
+      discountAmount: discount,
+      netAmount
     };
   },
 
@@ -329,9 +394,9 @@ export const cartService = {
   },
 
   /** Générer un reçu PDF pour une vente */
-  generateReceipt: async (saleId: string) => {
+  generateReceipt: async (ref_facture: string) => {
     try {
-      const response = await axios.get<ApiResponse<{ pdf_url: string }>>(`${SALE_URL}/${saleId}/receipt`, {
+      const response = await axios.get<ApiResponse<{ pdf_url: string }>>(`${SALE_URL}/${ref_facture}/receipt`, {
         responseType: 'blob'
       });
       return response.data.data;
@@ -347,8 +412,7 @@ export const cartService = {
   /** Récupérer les ventes d'aujourd'hui */
   getTodaySales: async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const response = await axios.get<ApiResponse<Sale[]>>(`${SALE_URL}/today`);
+      const response = await axios.get<ApiResponse<DatabaseSale[]>>(`${SALE_URL}/today`);
       return response.data.data;
     } catch (error: any) {
       throw {
@@ -419,6 +483,58 @@ export const cartService = {
   formatAmount: (amount: number | undefined): string => {
     const value = amount || 0;
     return `€ ${value.toFixed(2)}`;
+  },
+
+  /** Obtenir le nom de la méthode de paiement */
+  getPaymentMethodName: (method: PaymentMethod): string => {
+    const methods: Record<PaymentMethod, string> = {
+      'cash': 'Espèces',
+      'card': 'Carte bancaire',
+      'mobile': 'Mobile',
+      'transfer': 'Virement',
+      'check': 'Chèque'
+    };
+    return methods[method] || 'Non spécifié';
+  },
+
+  /** Parser une vente de la base de données pour l'affichage */
+  parseDatabaseSale: (dbSale: DatabaseSale): {
+    ref_facture: string;
+    email: string;
+    products: Array<{
+      ref_produit: string;
+      qte_vendu: number;
+    }>;
+    remise: string;
+    mode_paiement: PaymentMethod;
+    montant_paye: number;
+    condition: string;
+    montant_total: number;
+    date_vente: string;
+  } => {
+    // Parser les références produits
+    const productRefs = dbSale.ref_produit.split(', ').map(ref => ref.trim());
+    
+    // Parser les quantités vendues
+    const quantities = dbSale.qte_vendu.split(', ').map(qte => parseInt(qte.trim()));
+    
+    // Créer le tableau de produits
+    const products = productRefs.map((ref, index) => ({
+      ref_produit: ref,
+      qte_vendu: quantities[index] || 0
+    }));
+    
+    return {
+      ref_facture: dbSale.ref_facture,
+      email: dbSale.email,
+      products,
+      remise: dbSale.remise,
+      mode_paiement: dbSale.mode_paiement,
+      montant_paye: dbSale.montant_paye,
+      condition: dbSale.condition,
+      montant_total: dbSale.montant_total,
+      date_vente: dbSale.date_vente
+    };
   }
 };
 
@@ -503,7 +619,19 @@ export const localCartService = {
   // Vérifier si le panier est vide
   isCartEmpty: (cartItems: CartItem[]): boolean => {
     return cartItems.length === 0;
-  }
+  },
+
+  // Calculer le montant net avec remise
+  calculateNetAmount: (subtotal: number, discountAmount: number, discountType: 'percent' | 'amount'): number => {
+    let discount = discountAmount;
+    if (discountType === 'percent') {
+      discount = subtotal * (discountAmount / 100);
+    }
+    return Math.max(0, subtotal - discount);
+  },
+
+  // Générer la référence de facture
+  generateInvoiceRef
 };
 
 export default cartService;
