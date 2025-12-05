@@ -13,7 +13,12 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialIcons, FontAwesome, Ionicons, Feather, Entypo } from '@expo/vector-icons';
+import axios from 'axios'; // Import axios directement si besoin
 import { CreateCompanyStyles } from '@/styles/CreateCompanyStyles';
+import { companyService, CompanyData } from '@/services/companyService';
+import { API_BASE_URL, API_ENDPOINTS } from '@/config/api'; // Import de la config
+
+const COMPANY_URL = `${API_BASE_URL}${API_ENDPOINTS.COMPANY || 'company'}`;
 
 interface CompanyForm {
   companyName: string;
@@ -48,6 +53,7 @@ const CreateCompanyScreen = () => {
   const [errors, setErrors] = useState<FormErrors>({});
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const handleInputChange = (field: keyof CompanyForm, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -101,9 +107,11 @@ const CreateCompanyScreen = () => {
       });
 
       if (!result.canceled && result.assets[0].uri) {
+        // Utiliser directement l'URI retournée par ImagePicker
         setFormData(prev => ({ ...prev, logo: result.assets[0].uri }));
       }
     } catch (error) {
+      console.error('Erreur sélection image:', error);
       Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
     }
   };
@@ -112,16 +120,122 @@ const CreateCompanyScreen = () => {
     setFormData(prev => ({ ...prev, logo: null }));
   };
 
-  const handleSubmit = () => {
+  // OPTION 1: Utiliser FormData pour envoyer tout en une requête (RECOMMANDÉ)
+  const handleSubmit = async () => {
     if (!validateForm()) {
       Alert.alert('Erreur', 'Veuillez corriger les erreurs dans le formulaire');
       return;
     }
 
     setIsLoading(true);
-    
-    setTimeout(() => {
+
+    try {
+      // Créer FormData pour l'envoi multipart
+      const formDataToSend = new FormData();
+      
+      // Ajouter les champs texte
+      formDataToSend.append('companyName', formData.companyName.trim());
+      formDataToSend.append('address', formData.address.trim());
+      formDataToSend.append('phone', formData.phone.trim());
+      formDataToSend.append('email', formData.email.trim());
+      formDataToSend.append('nif', formData.nif.trim());
+      formDataToSend.append('stat', formData.stat.trim());
+      formDataToSend.append('rcs', formData.rcs.trim());
+      
+      // Ajouter le logo si présent
+      if (formData.logo) {
+        const filename = formData.logo.split('/').pop() || 'logo.jpg';
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : 'image/jpeg';
+        
+        formDataToSend.append('logo', {
+          uri: formData.logo,
+          name: filename,
+          type,
+        } as any);
+      }
+
+      console.log('Envoi FormData à:', COMPANY_URL);
+      
+      // Option A: Utiliser axios directement
+      const response = await axios.post(COMPANY_URL, formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      // Option B: Ou utiliser le service si vous l'avez adapté pour FormData
+      // const response = await companyService.createCompanyWithFormData(formDataToSend);
+      
+      Alert.alert(
+        'Succès',
+        'Entreprise créée avec succès!',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Réinitialiser le formulaire
+              setFormData({
+                companyName: '',
+                address: '',
+                phone: '',
+                email: '',
+                nif: '',
+                stat: '',
+                rcs: '',
+                logo: null,
+              });
+            }
+          }
+        ]
+      );
+
+    } catch (error: any) {
+      console.error('Erreur création entreprise:', error);
+      
+      let errorMessage = 'Une erreur est survenue lors de la création de l\'entreprise';
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.messages) {
+        errorMessage = error.response.data.messages;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Erreur', errorMessage);
+    } finally {
       setIsLoading(false);
+    }
+  };
+
+  // OPTION 2: Utiliser le service companyService (si vous ne voulez pas de FormData)
+  const handleSubmitWithService = async () => {
+    if (!validateForm()) {
+      Alert.alert('Erreur', 'Veuillez corriger les erreurs dans le formulaire');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Préparer les données pour l'API
+      const companyData: CompanyData = {
+        companyName: formData.companyName.trim(),
+        address: formData.address.trim(),
+        phone: formData.phone.trim(),
+        email: formData.email.trim(),
+        nif: formData.nif.trim(),
+        stat: formData.stat.trim(),
+        rcs: formData.rcs.trim(),
+        logoUrl: formData.logo, // Envoyer l'URI comme chaîne
+      };
+
+      console.log('Envoi des données via service:', companyData);
+      
+      // Utiliser le service
+      const response = await companyService.createCompany(companyData);
+      
       Alert.alert(
         'Succès',
         'Entreprise créée avec succès!',
@@ -143,7 +257,20 @@ const CreateCompanyScreen = () => {
           }
         ]
       );
-    }, 1500);
+
+    } catch (error: any) {
+      console.error('Erreur création entreprise:', error);
+      
+      let errorMessage = 'Une erreur est survenue lors de la création de l\'entreprise';
+      
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Erreur', errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const renderInput = (
@@ -181,6 +308,7 @@ const CreateCompanyScreen = () => {
             numberOfLines={multiline ? 4 : 1}
             onFocus={() => setFocusedField(field)}
             onBlur={() => setFocusedField(null)}
+            editable={!isLoading && !uploadingLogo}
           />
         </View>
         {errors[field as keyof FormErrors] && (
@@ -200,7 +328,6 @@ const CreateCompanyScreen = () => {
         contentContainerStyle={CreateCompanyStyles.scrollContainer}
         showsVerticalScrollIndicator={true}
         keyboardShouldPersistTaps="handled"
-        // Désactive le défilement excessif
         alwaysBounceVertical={false}
         overScrollMode="never"
       >
@@ -209,12 +336,14 @@ const CreateCompanyScreen = () => {
           <TouchableOpacity
             style={[
               CreateCompanyStyles.uploadContainer,
-              focusedField === 'logo' && CreateCompanyStyles.uploadContainerActive
+              focusedField === 'logo' && CreateCompanyStyles.uploadContainerActive,
+              (isLoading || uploadingLogo) && { opacity: 0.7 }
             ]}
             onPress={pickImage}
             onPressIn={() => setFocusedField('logo')}
             onPressOut={() => setFocusedField(null)}
             activeOpacity={0.7}
+            disabled={isLoading || uploadingLogo}
           >
             {formData.logo ? (
               <View style={{ alignItems: 'center' }}>
@@ -225,6 +354,7 @@ const CreateCompanyScreen = () => {
                 <TouchableOpacity 
                   style={CreateCompanyStyles.removeLogoButton}
                   onPress={removeLogo}
+                  disabled={isLoading || uploadingLogo}
                 >
                   <MaterialIcons name="close" size={16} color="#fff" />
                 </TouchableOpacity>
@@ -303,15 +433,15 @@ const CreateCompanyScreen = () => {
             'Registre du Commerce et des Sociétés'
           )}
 
-          {/* Submit Button - c'est le dernier élément */}
+          {/* Submit Button */}
           <View style={CreateCompanyStyles.buttonContainer}>
             <TouchableOpacity
               style={[
                 CreateCompanyStyles.submitButton,
-                isLoading && CreateCompanyStyles.submitButtonDisabled
+                (isLoading || uploadingLogo) && CreateCompanyStyles.submitButtonDisabled
               ]}
-              onPress={handleSubmit}
-              disabled={isLoading}
+              onPress={handleSubmit} // Choisissez handleSubmit ou handleSubmitWithService
+              disabled={isLoading || uploadingLogo}
               activeOpacity={0.8}
             >
               {isLoading ? (
@@ -327,7 +457,7 @@ const CreateCompanyScreen = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Espacement minimal après le bouton pour éviter le défilement excessif */}
+          {/* Espacement minimal après le bouton */}
           <View style={{ height: 1 }} />
         </View>
       </ScrollView>
@@ -336,6 +466,9 @@ const CreateCompanyScreen = () => {
       {isLoading && (
         <View style={CreateCompanyStyles.loadingOverlay}>
           <ActivityIndicator size="large" color="#4a6cf7" />
+          <Text style={{ marginTop: 10, color: '#4a6cf7' }}>
+            Création en cours...
+          </Text>
         </View>
       )}
     </KeyboardAvoidingView>

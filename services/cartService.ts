@@ -105,32 +105,23 @@ export interface SaleCreationData {
   net_amount: number;
 }
 
-export const formatCartForDatabase = (data: SaleCreationData): DatabaseSale => {
-  // Générer la référence de facture
+export const formatCartForDatabase = (data: SaleCreationData): any => {
   const ref_facture = generateInvoiceRef();
-  
-  // Formater les références produits: "pdt1, pdt2, ..., pdtn"
   const ref_produit = data.cartItems.map(item => item.ref_produit).join(', ');
-  
-  // Formater les quantités vendues: "qte1, qte2, ..., qten"
   const qte_vendu = data.cartItems.map(item => item.quantiteAcheter).join(', ');
   
-  // Formater la remise selon le type
-  const remise = data.paymentInfo.discount_type === 'percent' 
-    ? `${data.paymentInfo.discount_amount}%`
-    : `€${data.paymentInfo.discount_amount.toFixed(2)}`;
-  
+  // Retourner les données minimales
   return {
     ref_facture,
     ref_produit,
     qte_vendu,
-    email: data.clientEmail,
-    remise,
+    email: data.clientEmail || '',
+    remise: data.paymentInfo.discount_type === 'percent' 
+      ? `${data.paymentInfo.discount_amount}%`
+      : `€${data.paymentInfo.discount_amount.toFixed(2)}`,
     mode_paiement: data.paymentInfo.method,
     montant_paye: data.paymentInfo.amount_paid,
-    condition: data.paymentInfo.condition,
-    montant_total: data.net_amount,
-    date_vente: new Date().toISOString().slice(0, 19).replace('T', ' ')
+    condition_paiement: data.paymentInfo.condition || 'Payé comptant'
   };
 };
 

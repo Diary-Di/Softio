@@ -20,6 +20,7 @@ export const API_ENDPOINTS = {
   PRODUCT: '/api/product',
   CUSTOMER: '/api/customer',
   SALES: '/api/sales',
+  COMPANY: '/api/company',
 } as const;
 
 export type ApiEndpoints = keyof typeof API_ENDPOINTS;
