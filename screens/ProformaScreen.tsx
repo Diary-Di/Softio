@@ -270,7 +270,6 @@ export default function ProformaScreen() {
     const initials = getInitials(item.email || '');
     const formattedDate = item.date_facture ? formatProformaDate(item.date_facture) : 'Date inconnue';
     const expired = isProformaExpired(item);
-    const daysUntilExpiration = getDaysUntilExpiration(item);
 
     return (
       <Pressable
@@ -306,12 +305,6 @@ export default function ProformaScreen() {
               {expired ? (
                 <View style={styles.expiredBadge}>
                   <Text style={styles.expiredBadgeText}>Expiré</Text>
-                </View>
-              ) : daysUntilExpiration <= 7 ? (
-                <View style={styles.expiringSoonBadge}>
-                  <Text style={styles.expiringSoonBadgeText}>
-                    {daysUntilExpiration}j
-                  </Text>
                 </View>
               ) : null}
             </View>
@@ -359,35 +352,6 @@ export default function ProformaScreen() {
             {item.qte_a_acheter && renderField("Quantités à acheter", item.qte_a_acheter)}
             {item.remise && renderField("Remise", item.remise)}
             {renderField("Date facture", formattedDate)}
-            
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>Expiration:</Text>
-              <Text style={[
-                styles.fieldValue,
-                expired && { color: '#EF4444' },
-                daysUntilExpiration <= 7 && !expired && { color: '#F59E0B' }
-              ]}>
-                {expired ? 'Expiré' : `${daysUntilExpiration} jours restants`}
-              </Text>
-            </View>
-
-            <View style={styles.expandedActions}>
-              <Pressable
-                style={styles.detailButton}
-                onPress={() => handleProformaAction(item, 'view')}
-              >
-                <Ionicons name="document-text-outline" size={16} color="#4F46E5" />
-                <Text style={styles.detailButtonText}>Voir détail</Text>
-              </Pressable>
-              
-              <Pressable
-                style={styles.convertButton}
-                onPress={() => handleProformaAction(item, 'convert')}
-              >
-                <Ionicons name="cart-outline" size={16} color="#FFFFFF" />
-                <Text style={styles.convertButtonText}>Convertir en vente</Text>
-              </Pressable>
-            </View>
           </View>
         )}
       </Pressable>
@@ -467,21 +431,6 @@ export default function ProformaScreen() {
                 >
                   <Ionicons name="alert-circle-outline" size={20} color="#EF4444" />
                   <Text style={styles.statusFilterButtonText}>Expirés</Text>
-                </Pressable>
-                
-                <Pressable
-                  style={styles.statusFilterButton}
-                  onPress={() => {
-                    // Filtrer les proformas qui expirent bientôt
-                    const expiringSoon = (Array.isArray(proformas) ? proformas : []).filter(item => 
-                      getDaysUntilExpiration(item) <= 7 && !isProformaExpired(item)
-                    );
-                    setFilteredProformas(expiringSoon);
-                    setShowFilters(false);
-                  }}
-                >
-                  <Ionicons name="time-outline" size={20} color="#F59E0B" />
-                  <Text style={styles.statusFilterButtonText}>Expire bientôt</Text>
                 </Pressable>
                 
                 <Pressable

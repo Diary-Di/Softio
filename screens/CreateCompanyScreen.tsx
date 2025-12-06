@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,10 +13,11 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialIcons, FontAwesome, Ionicons, Feather, Entypo } from '@expo/vector-icons';
-import axios from 'axios'; // Import axios directement si besoin
+import axios from 'axios';
 import { CreateCompanyStyles } from '@/styles/CreateCompanyStyles';
 import { companyService, CompanyData } from '@/services/companyService';
-import { API_BASE_URL, API_ENDPOINTS } from '@/config/api'; // Import de la config
+import { useAuth } from '@/hooks/useAuth'; // Import du hook d'authentification
+import { API_BASE_URL, API_ENDPOINTS } from '@/config/api';
 
 const COMPANY_URL = `${API_BASE_URL}${API_ENDPOINTS.COMPANY || 'company'}`;
 
@@ -39,11 +40,12 @@ interface FormErrors {
 }
 
 const CreateCompanyScreen = () => {
+  const { user } = useAuth(); // Récupérer l'utilisateur connecté
   const [formData, setFormData] = useState<CompanyForm>({
     companyName: '',
     address: '',
     phone: '',
-    email: '',
+    email: user?.email || '', // Pré-remplir avec l'email de l'utilisateur
     nif: '',
     stat: '',
     rcs: '',
@@ -54,6 +56,51 @@ const CreateCompanyScreen = () => {
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [loadingCompanyData, setLoadingCompanyData] = useState(true);
+  const [isEditingExisting, setIsEditingExisting] = useState(false);
+
+  // Fonction pour rechercher l'entreprise par email de l'utilisateur
+  const fetchCompanyByUserEmail = async () => {
+    if (!user?.email) {
+      setLoadingCompanyData(false);
+      return;
+    }
+
+    try {
+      setLoadingCompanyData(true);
+      
+      // Option 1: Rechercher via l'endpoint search
+      const companies = await companyService.getCompanies();
+      
+      // Trouver l'entreprise dont l'email correspond à celui de l'utilisateur
+      const userCompany = companies.find((company: any) => 
+        company.email?.toLowerCase() === user.email.toLowerCase()
+      );
+
+      if (userCompany) {
+        // Pré-remplir le formulaire avec les données de l'entreprise
+        setFormData({
+          companyName: userCompany.nom || userCompany.companyName || '',
+          address: userCompany.adresse || userCompany.address || '',
+          phone: userCompany.telephone || userCompany.phone || '',
+          email: userCompany.email || user.email || '',
+          nif: userCompany.nif || '',
+          stat: userCompany.stat || '',
+          rcs: userCompany.rcs || '',
+          logo: userCompany.logoUrl || userCompany.logo || null,
+        });
+        setIsEditingExisting(true);
+      }
+    } catch (error) {
+      console.log('Erreur lors de la recherche de l\'entreprise:', error);
+    } finally {
+      setLoadingCompanyData(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCompanyByUserEmail();
+  }, [user?.email]);
 
   const handleInputChange = (field: keyof CompanyForm, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -107,7 +154,6 @@ const CreateCompanyScreen = () => {
       });
 
       if (!result.canceled && result.assets[0].uri) {
-        // Utiliser directement l'URI retournée par ImagePicker
         setFormData(prev => ({ ...prev, logo: result.assets[0].uri }));
       }
     } catch (error) {
@@ -120,17 +166,27 @@ const CreateCompanyScreen = () => {
     setFormData(prev => ({ ...prev, logo: null }));
   };
 
-  // OPTION 1: Utiliser FormData pour envoyer tout en une requête (RECOMMANDÉ)
   const handleSubmit = async () => {
     if (!validateForm()) {
       Alert.alert('Erreur', 'Veuillez corriger les erreurs dans le formulaire');
       return;
     }
 
+    // Vérifier que l'email du formulaire correspond à l'email de l'utilisateur
+    if (formData.email.toLowerCase() !== user?.email?.toLowerCase()) {
+      Alert.alert(
+        'Email incompatible',
+        'L\'email de l\'entreprise doit correspondre à votre email de connexion.',
+        [
+          { text: 'OK' }
+        ]
+      );
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // Créer FormData pour l'envoi multipart
       const formDataToSend = new FormData();
       
       // Ajouter les champs texte
@@ -155,45 +211,55 @@ const CreateCompanyScreen = () => {
         } as any);
       }
 
-      console.log('Envoi FormData à:', COMPANY_URL);
+      let response;
       
-      // Option A: Utiliser axios directement
-      const response = await axios.post(COMPANY_URL, formDataToSend, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      
-      // Option B: Ou utiliser le service si vous l'avez adapté pour FormData
-      // const response = await companyService.createCompanyWithFormData(formDataToSend);
+      if (isEditingExisting) {
+        // Mettre à jour l'entreprise existante
+        response = await axios.put(`${COMPANY_URL}/${formData.phone}`, formDataToSend, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      } else {
+        // Créer une nouvelle entreprise
+        response = await axios.post(COMPANY_URL, formDataToSend, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      }
       
       Alert.alert(
         'Succès',
-        'Entreprise créée avec succès!',
+        isEditingExisting 
+          ? 'Entreprise mise à jour avec succès!' 
+          : 'Entreprise créée avec succès!',
         [
           {
             text: 'OK',
             onPress: () => {
-              // Réinitialiser le formulaire
-              setFormData({
-                companyName: '',
-                address: '',
-                phone: '',
-                email: '',
-                nif: '',
-                stat: '',
-                rcs: '',
-                logo: null,
-              });
+              // Ne réinitialiser que si c'était une création
+              if (!isEditingExisting) {
+                setFormData({
+                  companyName: '',
+                  address: '',
+                  phone: '',
+                  email: user?.email || '',
+                  nif: '',
+                  stat: '',
+                  rcs: '',
+                  logo: null,
+                });
+              }
             }
           }
         ]
       );
 
     } catch (error: any) {
-      console.error('Erreur création entreprise:', error);
+      console.error('Erreur:', error);
       
-      let errorMessage = 'Une erreur est survenue lors de la création de l\'entreprise';
+      let errorMessage = 'Une erreur est survenue';
       
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
@@ -209,77 +275,14 @@ const CreateCompanyScreen = () => {
     }
   };
 
-  // OPTION 2: Utiliser le service companyService (si vous ne voulez pas de FormData)
-  const handleSubmitWithService = async () => {
-    if (!validateForm()) {
-      Alert.alert('Erreur', 'Veuillez corriger les erreurs dans le formulaire');
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      // Préparer les données pour l'API
-      const companyData: CompanyData = {
-        companyName: formData.companyName.trim(),
-        address: formData.address.trim(),
-        phone: formData.phone.trim(),
-        email: formData.email.trim(),
-        nif: formData.nif.trim(),
-        stat: formData.stat.trim(),
-        rcs: formData.rcs.trim(),
-        logoUrl: formData.logo, // Envoyer l'URI comme chaîne
-      };
-
-      console.log('Envoi des données via service:', companyData);
-      
-      // Utiliser le service
-      const response = await companyService.createCompany(companyData);
-      
-      Alert.alert(
-        'Succès',
-        'Entreprise créée avec succès!',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              setFormData({
-                companyName: '',
-                address: '',
-                phone: '',
-                email: '',
-                nif: '',
-                stat: '',
-                rcs: '',
-                logo: null,
-              });
-            }
-          }
-        ]
-      );
-
-    } catch (error: any) {
-      console.error('Erreur création entreprise:', error);
-      
-      let errorMessage = 'Une erreur est survenue lors de la création de l\'entreprise';
-      
-      if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      Alert.alert('Erreur', errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const renderInput = (
     label: string,
     field: keyof CompanyForm,
     icon: React.ReactNode,
     placeholder: string,
     keyboardType: 'default' | 'email-address' | 'phone-pad' | 'numeric' = 'default',
-    multiline: boolean = false
+    multiline: boolean = false,
+    editable: boolean = true
   ) => {
     const value = formData[field] || '';
     
@@ -289,7 +292,8 @@ const CreateCompanyScreen = () => {
         <View style={[
           CreateCompanyStyles.inputWrapper,
           focusedField === field && CreateCompanyStyles.inputWrapperFocused,
-          errors[field as keyof FormErrors] && CreateCompanyStyles.inputWrapperError
+          errors[field as keyof FormErrors] && CreateCompanyStyles.inputWrapperError,
+          !editable && CreateCompanyStyles.inputDisabled
         ]}>
           <View style={CreateCompanyStyles.inputIcon}>
             {icon}
@@ -297,7 +301,8 @@ const CreateCompanyScreen = () => {
           <TextInput
             style={[
               CreateCompanyStyles.input,
-              multiline && CreateCompanyStyles.inputMultiline
+              multiline && CreateCompanyStyles.inputMultiline,
+              !editable && CreateCompanyStyles.inputTextDisabled
             ]}
             value={value}
             onChangeText={(text) => handleInputChange(field, text)}
@@ -308,7 +313,7 @@ const CreateCompanyScreen = () => {
             numberOfLines={multiline ? 4 : 1}
             onFocus={() => setFocusedField(field)}
             onBlur={() => setFocusedField(null)}
-            editable={!isLoading && !uploadingLogo}
+            editable={!isLoading && !uploadingLogo && editable}
           />
         </View>
         {errors[field as keyof FormErrors] && (
@@ -317,6 +322,19 @@ const CreateCompanyScreen = () => {
       </View>
     );
   };
+
+  if (loadingCompanyData) {
+    return (
+      <View style={CreateCompanyStyles.container}>
+        <View style={CreateCompanyStyles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4a6cf7" />
+          <Text style={{ marginTop: 10, color: '#4a6cf7' }}>
+            Recherche de votre entreprise...
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView 
@@ -332,6 +350,28 @@ const CreateCompanyScreen = () => {
         overScrollMode="never"
       >
         <View style={CreateCompanyStyles.formContainer}>
+          
+          {/* En-tête avec indication */}
+          <View style={CreateCompanyStyles.header}>
+            <Text style={CreateCompanyStyles.title}>
+              {isEditingExisting ? 'Modifier mon entreprise' : 'Créer mon entreprise'}
+            </Text>
+            <Text style={CreateCompanyStyles.subtitle}>
+              {user?.email 
+                ? `Connecté en tant que: ${user.email}`
+                : 'Non connecté'
+              }
+            </Text>
+            {isEditingExisting && (
+              <View style={CreateCompanyStyles.infoBox}>
+                <MaterialIcons name="info" size={16} color="#4a6cf7" />
+                <Text style={CreateCompanyStyles.infoText}>
+                  L'entreprise liée à votre email a été trouvée. Vous pouvez la modifier.
+                </Text>
+              </View>
+            )}
+          </View>
+
           {/* Logo Upload */}
           <TouchableOpacity
             style={[
@@ -398,13 +438,15 @@ const CreateCompanyScreen = () => {
             'phone-pad'
           )}
 
-          {/* Email */}
+          {/* Email - Non modifiable car doit correspondre à l'utilisateur */}
           {renderInput(
             'Email *',
             'email',
             <MaterialIcons name="email" size={22} color="#666" />,
-            'contact@entreprise.mg',
-            'email-address'
+            user?.email || 'Votre email',
+            'email-address',
+            false,
+            false // Non modifiable
           )}
 
           {/* NIF */}
@@ -440,7 +482,7 @@ const CreateCompanyScreen = () => {
                 CreateCompanyStyles.submitButton,
                 (isLoading || uploadingLogo) && CreateCompanyStyles.submitButtonDisabled
               ]}
-              onPress={handleSubmit} // Choisissez handleSubmit ou handleSubmitWithService
+              onPress={handleSubmit}
               disabled={isLoading || uploadingLogo}
               activeOpacity={0.8}
             >
@@ -448,16 +490,35 @@ const CreateCompanyScreen = () => {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Entypo name="plus" size={22} color="#fff" style={{ marginRight: 8 }} />
-                  <Text style={CreateCompanyStyles.submitButtonText}>
-                    Créer l'entreprise
-                  </Text>
+                  {isEditingExisting ? (
+                    <>
+                      <MaterialIcons name="save" size={22} color="#fff" style={{ marginRight: 8 }} />
+                      <Text style={CreateCompanyStyles.submitButtonText}>
+                        Mettre à jour l'entreprise
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <Entypo name="plus" size={22} color="#fff" style={{ marginRight: 8 }} />
+                      <Text style={CreateCompanyStyles.submitButtonText}>
+                        Créer l'entreprise
+                      </Text>
+                    </>
+                  )}
                 </View>
               )}
             </TouchableOpacity>
           </View>
 
-          {/* Espacement minimal après le bouton */}
+          {/* Note */}
+          <View style={CreateCompanyStyles.noteContainer}>
+            <MaterialIcons name="warning" size={16} color="#666" />
+            <Text style={CreateCompanyStyles.noteText}>
+              L'email de l'entreprise doit correspondre à votre email de connexion.
+              {isEditingExisting && ' Les modifications seront appliquées immédiatement.'}
+            </Text>
+          </View>
+
           <View style={{ height: 1 }} />
         </View>
       </ScrollView>
@@ -467,7 +528,7 @@ const CreateCompanyScreen = () => {
         <View style={CreateCompanyStyles.loadingOverlay}>
           <ActivityIndicator size="large" color="#4a6cf7" />
           <Text style={{ marginTop: 10, color: '#4a6cf7' }}>
-            Création en cours...
+            {isEditingExisting ? 'Mise à jour en cours...' : 'Création en cours...'}
           </Text>
         </View>
       )}

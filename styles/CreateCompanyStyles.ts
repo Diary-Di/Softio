@@ -160,4 +160,72 @@ export const CreateCompanyStyles = StyleSheet.create({
   formContent: {
     paddingBottom: 10, // Espacement minimal après le bouton
   },
+
+  header: {
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  
+  subtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 12,
+  },
+  
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f5ff',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  
+  infoText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#4a6cf7',
+    flex: 1,
+  },
+  
+  inputDisabled: {
+    backgroundColor: '#f5f5f5',
+    borderColor: '#ddd',
+  },
+  
+  inputTextDisabled: {
+    color: '#666',
+  },
+  
+  noteContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#f9f9f9',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  
+  noteText: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: '#666',
+    flex: 1,
+    lineHeight: 16,
+  },
+  
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
 });
