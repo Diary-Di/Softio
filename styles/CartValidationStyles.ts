@@ -548,7 +548,7 @@ export const validationStyles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Section Condition (NOUVEAU)
+  // Section Condition
   conditionSection: {
     marginTop: 16,
     backgroundColor: '#FFF',
@@ -581,6 +581,167 @@ export const validationStyles = StyleSheet.create({
     color: '#8E8E93',
     marginTop: 8,
     fontStyle: 'italic',
+  },
+
+  // Section Notes (Nouveau pour Proforma)
+  notesSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    marginBottom: 16,
+  },
+  notesLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#8E8E93',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  notesInput: {
+    fontSize: 16,
+    color: '#000',
+    minHeight: 80,
+    padding: 12,
+    backgroundColor: '#F8F8F8',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    textAlignVertical: 'top',
+  },
+  notesHelpText: {
+    fontSize: 12,
+    color: '#8E8E93',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+
+  // Carte d'information (Nouveau pour Proforma)
+  infoCard: {
+    backgroundColor: '#FFF8E1',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#FFECB3',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#6D4C41',
+    marginLeft: 12,
+    lineHeight: 20,
+  },
+
+  // Avertissement stocks insuffisants (Nouveau pour Proforma)
+  warningCard: {
+    backgroundColor: '#FFF3CD',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FFEAA7',
+  },
+  warningHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  warningTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#856404',
+    marginLeft: 12,
+  },
+  warningContent: {
+    marginLeft: 36, // Pour aligner avec l'icône
+  },
+  warningText: {
+    fontSize: 14,
+    color: '#856404',
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  warningNote: {
+    fontSize: 12,
+    color: '#856404',
+    fontStyle: 'italic',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#FFEAA7',
+  },
+
+  // Liste des articles avec stocks insuffisants
+  warningItemsList: {
+    maxHeight: 150,
+    marginBottom: 12,
+  },
+  warningItem: {
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#FFEAA7',
+  },
+  warningItemName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#856404',
+    marginBottom: 4,
+  },
+  warningItemDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+  },
+  warningItemStock: {
+    fontSize: 12,
+    color: '#856404',
+  },
+  warningItemRequested: {
+    fontSize: 12,
+    color: '#856404',
+  },
+  warningItemDiff: {
+    fontSize: 12,
+    color: '#FF3B30',
+    fontWeight: '600',
+  },
+
+  // Badge d'avertissement stock insuffisant dans les articles
+  stockWarningBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF3CD',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginLeft: 8,
+  },
+  stockWarningText: {
+    fontSize: 11,
+    color: '#856404',
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+
+  // Ligne d'information de stock (Nouveau pour Proforma)
+  stockInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F2F2F7',
+  },
+  stockInfoText: {
+    fontSize: 12,
+    color: '#8E8E93',
   },
 
   // Modal paiement
@@ -675,7 +836,7 @@ export const validationStyles = StyleSheet.create({
     marginLeft: 8,
   },
 
-  // Styles pour les modals client (conservés pour compatibilité)
+  // Styles pour les modals client
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -862,9 +1023,10 @@ export const validationStyles = StyleSheet.create({
     color: '#FFF',
   },
 
+  // Message de succès (Toast)
   successToast: {
     position: 'absolute',
-    top: 60, // Sous la barre de navigation
+    top: 60,
     left: 16,
     right: 16,
     backgroundColor: '#34C759',
@@ -892,5 +1054,103 @@ export const validationStyles = StyleSheet.create({
   },
   successToastClose: {
     padding: 4,
+  },
+});
+
+// Styles spécifiques pour Proforma
+export const proformaValidationStyles = StyleSheet.create({
+  ...validationStyles,
+  
+  // Surcharger les couleurs pour le proforma
+  headerBadge: {
+    ...validationStyles.headerBadge,
+    backgroundColor: '#6B7280',
+  },
+  
+  itemsCountBadge: {
+    ...validationStyles.itemsCountBadge,
+    backgroundColor: '#6B7280',
+  },
+  
+  totalValueMain: {
+    ...validationStyles.totalValueMain,
+    color: '#6B7280',
+  },
+  
+  footerTotalAmount: {
+    ...validationStyles.footerTotalAmount,
+    color: '#6B7280',
+  },
+  
+  validateButton: {
+    ...validationStyles.validateButton,
+    backgroundColor: '#6B7280',
+  },
+  
+  validateButtonDisabled: {
+    ...validationStyles.validateButtonDisabled,
+    backgroundColor: '#C7C7CC',
+  },
+  
+  successToast: {
+    ...validationStyles.successToast,
+    backgroundColor: '#6B7280',
+  },
+  
+  // Styles spécifiques pour les badges d'avertissement
+  quantityBadgeLowStock: {
+    backgroundColor: '#FFEAA7',
+  },
+  
+  quantityBadgeCriticalStock: {
+    backgroundColor: '#FECACA',
+  },
+  
+  quantityBadgeTextLowStock: {
+    color: '#856404',
+  },
+  
+  quantityBadgeTextCriticalStock: {
+    color: '#DC2626',
+  },
+  
+  // Styles pour les indicateurs de stock
+  stockIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  
+  stockIndicatorGood: {
+    backgroundColor: '#D1FAE5',
+  },
+  
+  stockIndicatorWarning: {
+    backgroundColor: '#FEF3C7',
+  },
+  
+  stockIndicatorCritical: {
+    backgroundColor: '#FEE2E2',
+  },
+  
+  stockIndicatorText: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  
+  stockIndicatorTextGood: {
+    color: '#059669',
+  },
+  
+  stockIndicatorTextWarning: {
+    color: '#D97706',
+  },
+  
+  stockIndicatorTextCritical: {
+    color: '#DC2626',
   },
 });

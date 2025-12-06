@@ -78,6 +78,17 @@ export const cartSalesStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  saveDraftButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
   // Sections
   section: {
@@ -265,7 +276,7 @@ export const cartSalesStyles = StyleSheet.create({
     ...(Platform.OS === 'web' ? webSpecificStyles.quantityInput : {}),
   },
 
-  // Bouton Ajouter au panier
+  // Bouton Ajouter au panier/proforma
   addToCartButton: {
     backgroundColor: '#007AFF',
     borderRadius: 12,
@@ -281,7 +292,7 @@ export const cartSalesStyles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Panier
+  // Panier/Proforma
   cartHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -329,7 +340,7 @@ export const cartSalesStyles = StyleSheet.create({
     marginTop: 8,
   },
 
-  // Article panier
+  // Article panier/proforma
   cartItemCard: {
     backgroundColor: '#FFF',
     borderRadius: 16,
@@ -505,6 +516,153 @@ export const cartSalesStyles = StyleSheet.create({
     fontWeight: '600',
     marginRight: 8,
   },
+
+  // Styles spécifiques pour proforma
+  warningCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFF3CD',
+    borderWidth: 1,
+    borderColor: '#FFEAA7',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 12,
+  },
+  warningText: {
+    flex: 1,
+    marginLeft: 12,
+    color: '#856404',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+
+  // Styles pour l'indicateur de stock insuffisant
+  stockWarning: {
+    fontSize: 13,
+    color: '#FF9500',
+    marginTop: 4,
+  },
+
+  // Styles pour les statuts de stock
+  stockStatusAvailable: {
+    color: '#34C759',
+  },
+  stockStatusLow: {
+    color: '#FF9500',
+  },
+  stockStatusCritical: {
+    color: '#FF3B30',
+  },
+
+  // Styles pour les badges de statut
+  statusBadge: {
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginLeft: 8,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+
+  // Styles pour les boutons spécifiques au proforma
+  proformaButton: {
+    backgroundColor: '#6B7280',
+  },
+  proformaButtonText: {
+    color: '#FFF',
+  },
+
+  // Styles pour les en-têtes de section proforma
+  proformaSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  proformaIcon: {
+    marginRight: 8,
+    color: '#6B7280',
+  },
+
+  // Styles pour les notes et commentaires
+  notesContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 12,
+    marginHorizontal: 16,
+  },
+  notesLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  notesInput: {
+    minHeight: 80,
+    fontSize: 16,
+    color: '#000',
+    padding: 0,
+    textAlignVertical: 'top',
+  },
+
+  // Styles pour les informations client
+  clientInfoContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 12,
+    marginHorizontal: 16,
+  },
+  clientInfoLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  clientInfoInput: {
+    height: 48,
+    fontSize: 16,
+    color: '#000',
+    padding: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+
+  // Styles pour la date d'expiration
+  expiryContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 12,
+    marginHorizontal: 16,
+  },
+  expiryLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  expiryDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  expiryDateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flex: 1,
+  },
+  expiryDateText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#000',
+  },
 });
 
 // Fonction utilitaire pour appliquer les styles Web si nécessaire
@@ -532,5 +690,66 @@ export const getWebStyles = () => {
         boxShadow: 'none',
       } as any,
     },
+    notesInput: {
+      outlineWidth: 0,
+      outlineStyle: 'none' as any,
+      borderWidth: 0,
+      ':focus': {
+        outline: 'none',
+        border: 'none',
+        boxShadow: 'none',
+      } as any,
+    },
+    clientInfoInput: {
+      outlineWidth: 0,
+      outlineStyle: 'none' as any,
+      borderWidth: 0,
+      ':focus': {
+        outline: 'none',
+        border: 'none',
+        boxShadow: 'none',
+      } as any,
+    },
   };
+};
+
+// Export également un objet de styles spécifiques pour le proforma
+export const cartProformaStyles = {
+  ...cartSalesStyles,
+  
+  // Surcharger certains styles pour le proforma
+  headerBadge: {
+    ...cartSalesStyles.headerBadge,
+    backgroundColor: '#6B7280',
+  },
+  
+  cartCountBadge: {
+    ...cartSalesStyles.cartCountBadge,
+    backgroundColor: '#6B7280',
+  },
+  
+  cartItemTotal: {
+    ...cartSalesStyles.cartItemTotal,
+    color: '#6B7280',
+  },
+  
+  totalMainValue: {
+    ...cartSalesStyles.totalMainValue,
+    color: '#6B7280',
+  },
+  
+  footerTotalAmount: {
+    ...cartSalesStyles.footerTotalAmount,
+    color: '#6B7280',
+  },
+  
+  addToCartButton: {
+    ...cartSalesStyles.addToCartButton,
+    backgroundColor: '#6B7280',
+  },
+  
+  continueButton: {
+    ...cartSalesStyles.continueButton,
+    backgroundColor: '#6B7280',
+  },
 };

@@ -6,7 +6,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SalesStackParamList } from '../navigation/SalesStackNavigator';
 
 type NavProp = NativeStackNavigationProp<SalesStackParamList>;
-type Tab = 'ventes' | 'proforma' | 'newSale'; // Ajouter 'newSale'
+type Tab = 'ventes' | 'proforma' | 'newSale' | 'newProforma' | 'cartValidation' | 'proformaValidation'; // Ajouter 'newSale'
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -23,10 +23,27 @@ export default function FloatingBottomBarSales({ active = 'ventes' }: Props) {
         nav.navigate('SalesList');
         break;
       case 'proforma':
-        nav.navigate('proforma');
+        nav.navigate('ProformaList');
         break;
       case 'newSale':
         nav.navigate('NewSales'); // Utiliser 'NewSales' qui est défini dans param list
+        break;
+      case 'newProforma':
+        nav.navigate('NewProforma');
+        break;
+      case 'cartValidation':
+        nav.navigate('CartValidation', {
+          cart: [], // Valeurs par défaut ou à adapter
+          totalAmount: 0,
+          totalItems: 0,
+        });
+        break;
+      case 'proformaValidation':
+        nav.navigate('ProformaValidation', {
+          proformaItems: [], // Valeurs par défaut ou à adapter
+          totalAmount: 0,
+          totalItems: 0,
+        });
         break;
     }
   };
