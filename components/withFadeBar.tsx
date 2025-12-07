@@ -34,7 +34,7 @@ export default function withFadeBar<P>(
     const routeName = (props as any).route?.name as string | undefined;
     // Exclude certain screens so the product floating bar does not appear on those screens
     // Add 'CustomerFollowUp' so the product bar is hidden on the follow-up screen
-    const excludedScreens = ['CreateProduct', 'CreateCustomer', 'CustomerList', 'CustomerFollowUp', 'NewSale', 'CartValidation'];
+    const excludedScreens = ['CreateProduct', 'CreateCustomer', 'CustomerList', 'CustomerFollowUp', 'NewSale', 'CartValidation', 'CreateCompany', 'EditProduct', 'EditCustomer'];
     const shouldShowBar = !routeName || !excludedScreens.includes(routeName);
 
     return (

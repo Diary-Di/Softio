@@ -302,12 +302,6 @@ export default function CustomerScreen() {
                 <Ionicons name="mail" size={24} color="#059669" />
               </Pressable>
 
-              <Pressable
-                style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1 }]}
-                onPress={() => handleEditCustomer(item)}
-              >
-                <Ionicons name="create" size={24} color="#F59E0B" />
-              </Pressable>
 
               <Pressable
                 style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1 }]}

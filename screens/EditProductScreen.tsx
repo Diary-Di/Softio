@@ -1,3 +1,6 @@
+/******************************************************************
+ *  ModifyProductScreen.tsx  –  Modification d'un produit existant
+ ******************************************************************/
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
@@ -22,7 +25,7 @@ import {
 import { productService } from '../services/productService';
 import { categoryService } from '../services/categoryService';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 // Interface pour les catégories
 interface Categorie {
@@ -39,20 +42,30 @@ interface ProductFormData {
   qte_disponible: number;
   image_url: string | null;
   imageFile?: any; // Fichier image temporaire
+  original_ref?: string; // Référence originale pour mise à jour
 }
 
-const CreateProductScreen: React.FC = () => {
+// Type pour les paramètres de navigation
+type EditProductRouteProp = RouteProp<
+  { params: { product: any } },
+  'params'
+>;
+
+const EditProductScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const route = useRoute<EditProductRouteProp>();
+  const { product } = route.params;
   
-  // États du formulaire
+  // États du formulaire avec pré-remplissage
   const [formData, setFormData] = useState<ProductFormData>({
-    ref_produit: '',
-    designation: '',
-    categorie: '',
-    prix_actuel: '',
-    qte_disponible: 1,
-    image_url: null,
+    ref_produit: product.ref_produit || '',
+    designation: product.designation || '',
+    categorie: product.categorie || '',
+    prix_actuel: product.prix_actuel?.toString() || '',
+    qte_disponible: product.qte_disponible || 1,
+    image_url: product.image_url || null,
     imageFile: undefined,
+    original_ref: product.ref_produit, // Sauvegarde de la référence originale
   });
   
   // États pour les catégories
@@ -64,6 +77,7 @@ const CreateProductScreen: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
   
   // États pour le message de succès
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
@@ -79,7 +93,7 @@ const CreateProductScreen: React.FC = () => {
   const hideTimerRef = useRef<number | null>(null);
 
   // Destructuration
-  const { ref_produit, designation, categorie, prix_actuel, qte_disponible, image_url, imageFile } = formData;
+  const { ref_produit, designation, categorie, prix_actuel, qte_disponible, image_url, imageFile, original_ref } = formData;
 
   // Nettoyage des timers
   useEffect(() => {
@@ -88,10 +102,101 @@ const CreateProductScreen: React.FC = () => {
     };
   }, []);
 
-  // Charger les catégories au démarrage
+  // Charger les catégories et vérifier les données au démarrage
   useEffect(() => {
     loadCategories();
+    verifyProductData();
   }, []);
+
+  // Vérifier et valider les données du produit reçu
+  const verifyProductData = async () => {
+    try {
+      if (!product || !product.ref_produit) {
+        Alert.alert('Erreur', 'Données du produit invalides', [
+          { text: 'OK', onPress: () => navigation.goBack() }
+        ]);
+        return;
+      }
+
+      // Optionnel: Vérifier si le produit existe toujours
+      setIsFetching(true);
+      const existingProduct = await productService.getProduct(product.ref_produit);
+      
+      if (!existingProduct) {
+        Alert.alert(
+          'Produit non trouvé',
+          'Ce produit a peut-être été supprimé.',
+          [
+            { 
+              text: 'Retour', 
+              onPress: () => navigation.goBack() 
+            }
+          ]
+        );
+      }
+    } catch (error) {
+      console.warn('⚠️ Impossible de vérifier le produit:', error);
+      // On continue quand même, l'utilisateur pourra essayer de sauvegarder
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  // Afficher le message de succès avec animation
+  const showSuccessBanner = useCallback((message: string) => {
+    // Réinitialiser les animations
+    fadeAnim.setValue(0);
+    translateYAnim.setValue(-100);
+    scaleAnim.setValue(0.9);
+    
+    setSuccessMessage(message);
+    setShowSuccessMessage(true);
+    
+    // Animation d'entrée
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.spring(translateYAnim, {
+        toValue: 0,
+        tension: 70,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 70,
+        friction: 10,
+        useNativeDriver: true,
+      })
+    ]).start();
+
+    // Cacher automatiquement après 2 secondes
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => {
+      hideSuccessBanner();
+    }, 2000) as unknown as number;
+  }, [fadeAnim, translateYAnim, scaleAnim]);
+
+  // Masquer le message de succès avec animation
+  const hideSuccessBanner = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateYAnim, {
+        toValue: -100,
+        duration: 300,
+        useNativeDriver: true,
+      })
+    ]).start(() => {
+      setShowSuccessMessage(false);
+    });
+  }, [fadeAnim, translateYAnim]);
 
   // Charger les catégories depuis l'API
   const loadCategories = async () => {
@@ -101,6 +206,14 @@ const CreateProductScreen: React.FC = () => {
       
       if (Array.isArray(categoriesData)) {
         setCategories(categoriesData);
+        
+        // Si la catégorie du produit n'existe plus, afficher un avertissement
+        if (product.categorie && !categoriesData.some(cat => cat.categorie === product.categorie)) {
+          Alert.alert(
+            'Catégorie introuvable',
+            `La catégorie "${product.categorie}" n'existe plus. Veuillez en sélectionner une nouvelle.`
+          );
+        }
       } else {
         console.warn('Format de données de catégories inattendu:', categoriesData);
         setCategories([]);
@@ -196,19 +309,22 @@ const CreateProductScreen: React.FC = () => {
     );
   };
 
-  // Uploader l'image vers le serveur
-  const uploadImageToServer = async (): Promise<string | null> => {
-    if (!imageFile) return null;
-
-    try {
-      const formData = new FormData();
-      formData.append('image', imageFile as any);
-      
-      return imageFile.uri;
-    } catch (error) {
-      console.error('Erreur upload image:', error);
-      return null;
-    }
+  // Réinitialiser l'image à l'originale
+  const handleImageReset = () => {
+    Alert.alert(
+      'Rétablir l\'image originale',
+      'Voulez-vous rétablir l\'image d\'origine ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { 
+          text: 'Rétablir', 
+          onPress: () => {
+            updateField('image_url', product.image_url || null);
+            updateField('imageFile', undefined);
+          }
+        },
+      ]
+    );
   };
 
   // Formatage du prix
@@ -237,14 +353,14 @@ const CreateProductScreen: React.FC = () => {
   }, [qte_disponible, updateField]);
 
   const decrementQuantite = useCallback(() => {
-    if (qte_disponible > 1) {
+    if (qte_disponible > 0) {
       updateField('qte_disponible', qte_disponible - 1);
     }
   }, [qte_disponible, updateField]);
 
   const handleQuantiteChange = useCallback((text: string) => {
     const num = parseInt(text);
-    if (!isNaN(num) && num > 0) {
+    if (!isNaN(num) && num >= 0) {
       updateField('qte_disponible', num);
     } else if (text === '') {
       updateField('qte_disponible', 0);
@@ -256,6 +372,21 @@ const CreateProductScreen: React.FC = () => {
     updateField('categorie', nomCategorie);
     setModalVisible(false);
   }, [updateField]);
+
+  // Vérifier si des modifications ont été faites
+  const hasChanges = useCallback((): boolean => {
+    const originalProduct = product;
+    
+    return (
+      ref_produit !== originalProduct.ref_produit ||
+      designation !== originalProduct.designation ||
+      categorie !== originalProduct.categorie ||
+      parseFloat(prix_actuel.replace(/\s/g, '').replace(',', '.')) !== originalProduct.prix_actuel ||
+      qte_disponible !== originalProduct.qte_disponible ||
+      imageFile !== undefined || // Nouvelle image sélectionnée
+      image_url !== originalProduct.image_url
+    );
+  }, [ref_produit, designation, categorie, prix_actuel, qte_disponible, image_url, imageFile, product]);
 
   // Validation du formulaire
   const validateForm = useCallback((): boolean => {
@@ -291,72 +422,69 @@ const CreateProductScreen: React.FC = () => {
     }
 
     if (qte_disponible < 0) {
-      Alert.alert('Erreur', 'La quantité doit être positive');
+      Alert.alert('Erreur', 'La quantité doit être positive ou nulle');
       return false;
     }
 
     return true;
   }, [ref_produit, designation, categorie, prix_actuel, qte_disponible]);
 
-  // Afficher le message de succès avec animation
-  const showSuccessBanner = useCallback((message: string) => {
-    // Réinitialiser les animations
-    fadeAnim.setValue(0);
-    translateYAnim.setValue(-100);
-    scaleAnim.setValue(0.9);
-    
-    setSuccessMessage(message);
-    setShowSuccessMessage(true);
-    
-    // Animation d'entrée
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-      Animated.spring(translateYAnim, {
-        toValue: 0,
-        tension: 70,
-        friction: 10,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 70,
-        friction: 10,
-        useNativeDriver: true,
-      })
-    ]).start();
+  // Annuler les modifications
+  const handleCancel = useCallback(() => {
+    if (hasChanges()) {
+      Alert.alert(
+        'Annuler les modifications',
+        'Vous avez des modifications non enregistrées. Êtes-vous sûr de vouloir quitter ?',
+        [
+          { text: 'Continuer la modification', style: 'cancel' },
+          { 
+            text: 'Quitter', 
+            style: 'destructive',
+            onPress: () => navigation.goBack()
+          },
+        ]
+      );
+    } else {
+      navigation.goBack();
+    }
+  }, [hasChanges, navigation]);
 
-    // Cacher automatiquement après 2 secondes
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    hideTimerRef.current = setTimeout(() => {
-      hideSuccessBanner();
-    }, 2000) as unknown as number;
-  }, [fadeAnim, translateYAnim, scaleAnim]);
+  // Réinitialiser le formulaire
+  const handleReset = useCallback(() => {
+    Alert.alert(
+      'Réinitialiser',
+      'Voulez-vous réinitialiser toutes les modifications ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { 
+          text: 'Réinitialiser', 
+          style: 'destructive',
+          onPress: () => {
+            setFormData({
+              ref_produit: product.ref_produit || '',
+              designation: product.designation || '',
+              categorie: product.categorie || '',
+              prix_actuel: product.prix_actuel?.toString() || '',
+              qte_disponible: product.qte_disponible || 1,
+              image_url: product.image_url || null,
+              imageFile: undefined,
+              original_ref: product.ref_produit,
+            });
+          }
+        },
+      ]
+    );
+  }, [product]);
 
-  // Masquer le message de succès avec animation
-  const hideSuccessBanner = useCallback(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateYAnim, {
-        toValue: -100,
-        duration: 300,
-        useNativeDriver: true,
-      })
-    ]).start(() => {
-      setShowSuccessMessage(false);
-    });
-  }, [fadeAnim, translateYAnim]);
-
-  // Enregistrement du produit
-  const handleSave = useCallback(async () => {
+  // Mise à jour du produit
+  const handleUpdate = useCallback(async () => {
     if (!validateForm()) return;
+
+    // Vérifier si des modifications ont été faites
+    if (!hasChanges()) {
+      Alert.alert('Aucune modification', 'Aucune modification détectée.');
+      return;
+    }
 
     const categorieExists = categories.some(cat => cat.categorie === categorie);
     if (!categorieExists) {
@@ -386,52 +514,88 @@ const CreateProductScreen: React.FC = () => {
         qte_disponible: Number(qte_disponible),
       };
 
-      // Ajouter l'URL de l'image si disponible
+      // Gestion de l'image
       if (imageFile) {
         productData.image_url = imageFile.uri;
       } else if (image_url) {
         productData.image_url = image_url;
+      } else {
+        // Si aucune image n'est spécifiée, conservez l'originale
+        productData.image_url = product.image_url;
       }
 
-      const response = await productService.createProduct(productData);
-
-      // VIDER LE FORMULAIRE
-      setFormData({
-        ref_produit: '',
-        designation: '',
-        categorie: '',
-        prix_actuel: '',
-        qte_disponible: 1,
-        image_url: null,
-        imageFile: undefined,
-      });
-      setModalVisible(false);
-
-      // Afficher le message de succès avec animation
-      showSuccessBanner(`Produit "${designation}" créé avec succès`);
-
-      // Retourner à la liste des produits après 2 secondes
-      setTimeout(() => {
-        navigation.navigate('ProductList', { 
-          refresh: true,
-          newProduct: response.product || productData
-        });
-      }, 2000);
+      // Vérifier si la référence a changé
+      const refHasChanged = original_ref !== ref_produit.trim();
+      
+      let response;
+      if (refHasChanged) {
+        // Si la référence a changé, on doit créer un nouveau produit et supprimer l'ancien
+        Alert.alert(
+          'Changement de référence',
+          'La référence du produit a changé. Cela créera un nouveau produit avec la nouvelle référence.',
+          [
+            { text: 'Annuler', style: 'cancel' },
+            { 
+              text: 'Continuer', 
+              onPress: async () => {
+                try {
+                  setIsLoading(true);
+                  // Créer le nouveau produit
+                  response = await productService.createProduct(productData);
+                  
+                  // Supprimer l'ancien produit
+                  await productService.deleteProduct(original_ref!);
+                  
+                  // Afficher le message de succès
+                  showSuccessBanner(`Produit "${designation}" mis à jour avec nouvelle référence`);
+                  
+                  // Retourner à la liste des produits après 2 secondes
+                  setTimeout(() => {
+                    navigation.navigate('ProductList', { 
+                      refresh: true,
+                    });
+                  }, 2000);
+                  
+                } catch (error) {
+                  throw error;
+                } finally {
+                  setIsLoading(false);
+                }
+              }
+            }
+          ]
+        );
+        setIsLoading(false);
+        return;
+      } else {
+        // Mise à jour normale
+        response = await productService.updateProduct(original_ref!, productData);
+        
+        // Afficher le message de succès
+        showSuccessBanner(`Produit "${designation}" mis à jour avec succès`);
+        
+        // Retourner à la liste des produits après 2 secondes
+        setTimeout(() => {
+          navigation.navigate('ProductList', { 
+            refresh: true,
+          });
+        }, 2000);
+      }
 
     } catch (error: any) {
-      console.error('❌ Erreur:', error);
+      console.error('❌ Erreur mise à jour:', error);
       
-      let errorMessage = 'Échec de l\'enregistrement';
+      let errorMessage = 'Échec de la mise à jour';
       if (error.code === 409) errorMessage = 'Cette référence existe déjà';
       else if (error.code === 400) errorMessage = 'Données invalides';
-      else if (error.code === 404) errorMessage = 'Catégorie introuvable';
+      else if (error.code === 404) errorMessage = 'Produit ou catégorie introuvable';
       else if (error.code === 413) errorMessage = 'Image trop volumineuse';
       else if (error.message) errorMessage = error.message;
 
       Alert.alert('Erreur ❌', errorMessage);
       setIsLoading(false);
     }
-  }, [ref_produit, designation, categorie, prix_actuel, qte_disponible, image_url, imageFile, validateForm, categories, navigation, showSuccessBanner]);
+  }, [ref_produit, designation, categorie, prix_actuel, qte_disponible, image_url, imageFile, original_ref, validateForm, hasChanges, categories, product, navigation, showSuccessBanner]);
 
   // Rendu d'un élément de catégorie
   const renderCategorieItem = useCallback(({ item }: { item: Categorie }) => (
@@ -503,6 +667,15 @@ const CreateProductScreen: React.FC = () => {
     );
   };
 
+  if (isFetching) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#4A90E2" />
+        <Text style={{ marginTop: 16, color: '#666' }}>Chargement des données...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Bannière de succès animée moderne */}
@@ -543,24 +716,41 @@ const CreateProductScreen: React.FC = () => {
       >
         {/* HEADER */}
         <View style={styles.header}>
-          <TouchableOpacity 
-            onPress={() => navigation.goBack()} 
-            style={styles.backButton} 
-            accessibilityLabel="Retour"
-            disabled={isLoading}
-          >
+          <TouchableOpacity onPress={handleCancel} style={styles.backButton} accessibilityLabel="Retour">
             <Ionicons name="arrow-back" size={24} color="#111" />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
-            <Text style={styles.title}>Ajouter un produit</Text>
+            <Text style={styles.title}>Modifier le produit</Text>
+            <Text style={styles.subtitle}>Ref: {original_ref}</Text>
           </View>
-          <View style={{ width: 32 }} />
+          <TouchableOpacity 
+            onPress={handleReset} 
+            style={styles.resetButton}
+            disabled={!hasChanges() || isLoading}
+          >
+            <Icon 
+              name="refresh" 
+              size={22} 
+              color={hasChanges() && !isLoading ? "#4A90E2" : "#CCCCCC"} 
+            />
+          </TouchableOpacity>
         </View>
         
+        {/* Indicateur de modifications */}
+        {hasChanges() && (
+          <View style={styles.changesIndicator}>
+            <Icon name="edit" size={16} color="#4A90E2" />
+            <Text style={styles.changesText}>Modifications non enregistrées</Text>
+          </View>
+        )}
+
         {/* Référence du produit */}
         <View style={styles.inputContainer}>
           <View style={styles.labelContainer}>
             <Text style={styles.label}>Référence du produit *</Text>
+            {original_ref !== ref_produit && (
+              <Text style={styles.warningText}>Référence modifiée</Text>
+            )}
           </View>
           <TextInput
             style={styles.input}
@@ -573,6 +763,7 @@ const CreateProductScreen: React.FC = () => {
             autoCapitalize="none"
             maxLength={50}
           />
+          <Text style={styles.hint}>Référence originale: {original_ref}</Text>
         </View>
 
         {/* Désignation */}
@@ -599,6 +790,9 @@ const CreateProductScreen: React.FC = () => {
             {loadingCategories && (
               <ActivityIndicator size="small" color="#4A90E2" style={styles.loadingIndicator} />
             )}
+            {product.categorie !== categorie && (
+              <Text style={styles.warningText}>Catégorie modifiée</Text>
+            )}
           </View>
           <TouchableOpacity
             style={[styles.dropdown, (isLoading || loadingCategories) && { opacity: 0.5 }]}
@@ -623,6 +817,9 @@ const CreateProductScreen: React.FC = () => {
             </View>
             <Icon name="arrow-drop-down" size={24} color="#666" />
           </TouchableOpacity>
+          {product.categorie && (
+            <Text style={styles.hint}>Catégorie originale: {product.categorie}</Text>
+          )}
         </View>
 
         {/* Prix actuel */}
@@ -641,12 +838,19 @@ const CreateProductScreen: React.FC = () => {
             />
             <Text style={styles.currency}>€</Text>
           </View>
-          <Text style={styles.hint}>Utilisez le point ou la virgule pour les décimales</Text>
+          {product.prix_actuel && (
+            <Text style={styles.hint}>
+              Prix original: {product.prix_actuel.toFixed(2).replace('.', ',')} €
+            </Text>
+          )}
         </View>
 
         {/* Quantité disponible */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Quantité disponible</Text>
+          {product.qte_disponible !== qte_disponible && (
+            <Text style={styles.warningText}>Quantité modifiée</Text>
+          )}
           
           <View style={styles.quantiteContainer}>
             {/* Bouton Moins */}
@@ -693,11 +897,19 @@ const CreateProductScreen: React.FC = () => {
               <Icon name="add" size={24} color="#FFF" />
             </TouchableOpacity>
           </View>
+          {product.qte_disponible !== undefined && (
+            <Text style={styles.hint}>Quantité originale: {product.qte_disponible}</Text>
+          )}
         </View>
 
         {/* Image du produit */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Image du produit</Text>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>Image du produit</Text>
+            {(imageFile || image_url !== product.image_url) && (
+              <Text style={styles.warningText}>Image modifiée</Text>
+            )}
+          </View>
           <View style={styles.imageContainer}>
             {image_url ? (
               <>
@@ -717,6 +929,16 @@ const CreateProductScreen: React.FC = () => {
                       </>
                     )}
                   </TouchableOpacity>
+                  {product.image_url && product.image_url !== image_url && (
+                    <TouchableOpacity
+                      style={[styles.imageButton, styles.resetButtonStyle, isLoading && { opacity: 0.5 }]}
+                      onPress={handleImageReset}
+                      disabled={isLoading}
+                    >
+                      <Icon name="restore" size={20} color="#FFF" />
+                      <Text style={styles.imageButtonText}>Originale</Text>
+                    </TouchableOpacity>
+                  )}
                   <TouchableOpacity
                     style={[styles.imageButton, styles.deleteButton, isLoading && { opacity: 0.5 }]}
                     onPress={handleImageDelete}
@@ -739,7 +961,7 @@ const CreateProductScreen: React.FC = () => {
                   <>
                     <Icon name="add-photo-alternate" size={50} color="#4A90E2" />
                     <Text style={styles.uploadText}>
-                      {isLoading ? 'Chargement...' : 'Importer une image'}
+                      {isLoading ? 'Chargement...' : product.image_url ? 'Changer l\'image' : 'Importer une image'}
                     </Text>
                     <Text style={styles.uploadSubtext}>Appuyez pour sélectionner</Text>
                   </>
@@ -747,40 +969,56 @@ const CreateProductScreen: React.FC = () => {
               </TouchableOpacity>
             )}
             <Text style={styles.imageHint}>
-              {imageFile ? `Fichier: ${imageFile.name}` : 'Optionnel - Formats: JPG, PNG, GIF'}
+              {imageFile ? `Fichier: ${imageFile.name}` : 
+               product.image_url ? 'Image originale disponible' : 'Optionnel - Formats: JPG, PNG, GIF'}
             </Text>
           </View>
         </View>
 
-        {/* Espace pour le bouton enregistrer */}
+        {/* Espace pour les boutons */}
         <View style={styles.spacer} />
       </ScrollView>
 
-      {/* Bouton Enregistrer */}
+      {/* Boutons d'action */}
       <View style={styles.saveButtonContainer}>
-        <TouchableOpacity 
-          style={[
-            styles.saveButton, 
-            (isLoading || loadingCategories || uploadingImage) && { opacity: 0.7 }
-          ]} 
-          onPress={handleSave}
-          activeOpacity={0.8}
-          disabled={isLoading || loadingCategories || uploadingImage}
-        >
-          {isLoading ? (
-            <>
-              <ActivityIndicator size="small" color="#FFF" />
-              <Text style={styles.saveButtonText}>Enregistrement...</Text>
-            </>
-          ) : (
-            <>
-              <Icon name="save" size={24} color="#FFF" />
-              <Text style={styles.saveButtonText}>
-                {loadingCategories ? 'Chargement...' : 'Enregistrer'}
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity 
+            style={[
+              styles.cancelButton,
+              (isLoading || loadingCategories || uploadingImage) && { opacity: 0.7 }
+            ]} 
+            onPress={handleCancel}
+            activeOpacity={0.8}
+            disabled={isLoading || loadingCategories || uploadingImage}
+          >
+            <Icon name="close" size={20} color="#666" />
+            <Text style={styles.cancelButtonText}>Annuler</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[
+              styles.saveButton, 
+              (!hasChanges() || isLoading || loadingCategories || uploadingImage) && { opacity: 0.7 }
+            ]} 
+            onPress={handleUpdate}
+            activeOpacity={0.8}
+            disabled={!hasChanges() || isLoading || loadingCategories || uploadingImage}
+          >
+            {isLoading ? (
+              <>
+                <ActivityIndicator size="small" color="#FFF" />
+                <Text style={styles.saveButtonText}>Mise à jour...</Text>
+              </>
+            ) : (
+              <>
+                <Icon name="save" size={24} color="#FFF" />
+                <Text style={styles.saveButtonText}>
+                  {loadingCategories ? 'Chargement...' : 'Mettre à jour'}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Modal pour la sélection des catégories */}
@@ -869,4 +1107,4 @@ const localStyles = StyleSheet.create({
   },
 });
 
-export default CreateProductScreen;
+export default EditProductScreen;

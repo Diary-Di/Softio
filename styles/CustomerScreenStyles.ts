@@ -320,4 +320,25 @@ export default StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+
+  // Ajoutez ces styles à votre stylesheet existante
+impayeeAlert: {
+  color: '#EF4444',
+  fontSize: 12,
+  fontWeight: '600',
+  marginTop: 2,
+},
+statsSection: {
+  marginTop: 12,
+  paddingTop: 12,
+  borderTopWidth: 1,
+  borderTopColor: '#E5E7EB',
+},
+sectionTitle: {
+  fontSize: 14,
+  fontWeight: '700',
+  color: '#374151',
+  marginBottom: 8,
+},
+
 });

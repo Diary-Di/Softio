@@ -239,9 +239,115 @@ export default StyleSheet.create({
   successText: {
     color: '#16A34A',
   },
+
+  hintText: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+    marginTop: 4,
+    marginLeft: 12,
+  },
   
   // Style pour le placeholder des TextInput
   placeholderText: {
     color: '#9CA3AF',
-  }
+  }, 
+
+  subtitle: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  
+  resetButton: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  
+  changesIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E3F2FD',
+    padding: 10,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 8,
+  },
+  
+  changesText: {
+    marginLeft: 8,
+    color: '#4A90E2',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  
+  warningText: {
+    fontSize: 11,
+    color: '#FF9800',
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  
+  resetButtonStyle: {
+    backgroundColor: '#FF9800',
+  },
+  
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  
+  cancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F5F5F5',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    flex: 1,
+    marginRight: 12,
+  },
+  
+  cancelButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+
+  // Bannière de succès
+  successBanner: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#4CAF50',
+    zIndex: 1000,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  
+  successBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  
+  successBannerText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+    marginLeft: 12,
+  },
+  
+  successBannerClose: {
+    padding: 4,
+  },
 });

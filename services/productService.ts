@@ -17,6 +17,7 @@ export interface Product {
 }
 
 export interface ApiResponse<T = any> {
+  [x: string]: any;
   status: string;
   data: T;
   message: string;

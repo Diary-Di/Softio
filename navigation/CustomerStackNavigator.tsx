@@ -3,11 +3,13 @@ import withFadeBar from '../components/withFadeBar';
 import CreateCustomerScreen from '../screens/CreateCustomerScreen';
 import CustomerFollowUpScreen from '../screens/CustomerFollowUpScreen';
 import CustomerScreen from '../screens/CustomerScreen';
+import EditCustomerScreen from '@/screens/EditCustomerScreen';
 
 export type CustomerStackParamList = {
   CustomerList: undefined;
   CreateCustomer: undefined;
   CustomerFollowUp: undefined;
+  EditCustomer: { customer: any };
 };
 
 const Stack = createNativeStackNavigator<CustomerStackParamList>();
@@ -16,12 +18,14 @@ export default function CustomerStackNavigator() {
   const CustomerList = withFadeBar(CustomerScreen, 'produit');
   const CreateCustomer = withFadeBar(CreateCustomerScreen, 'produit');
   const CustomerFollowUp = withFadeBar(CustomerFollowUpScreen, 'produit');
+  const EditCustomer = withFadeBar(EditCustomerScreen, 'produit');
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="CustomerList" component={CustomerList} />
       <Stack.Screen name="CreateCustomer" component={CreateCustomer} />
       <Stack.Screen name="CustomerFollowUp" component={CustomerFollowUp} />
+      <Stack.Screen name="EditCustomer" component={EditCustomer} />
     </Stack.Navigator>
   );
 }

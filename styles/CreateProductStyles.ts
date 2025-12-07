@@ -380,7 +380,119 @@ export const styles = StyleSheet.create({
   refreshButton: {
     marginRight: 16,
     padding: 4,
-  }
+  },
+
+  subtitle: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  
+  resetButton: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  
+  changesIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E3F2FD',
+    padding: 10,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 8,
+  },
+  
+  changesText: {
+    marginLeft: 8,
+    color: '#4A90E2',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  
+  warningText: {
+    fontSize: 11,
+    color: '#FF9800',
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  
+  resetButtonStyle: {
+    backgroundColor: '#FF9800',
+  },
+  
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  
+  cancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F5F5F5',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    flex: 1,
+    marginRight: 12,
+  },
+  
+  cancelButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+
+  successBanner: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#4CAF50',
+    zIndex: 1000,
+    elevation: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#45a049',
+  },
+  bannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+  },
+  bannerIconContainer: {
+    marginRight: 12,
+  },
+  bannerTextContainer: {
+    flex: 1,
+  },
+  bannerTitle: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  bannerMessage: {
+    color: '#FFF',
+    fontSize: 14,
+    opacity: 0.9,
+  },
+  bannerCloseButton: {
+    padding: 4,
+    marginLeft: 10,
+  },
+  progressBar: {
+    height: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    width: '100%',
+  },
+  // Ajustement pour le scrollview quand la bannière est affichée
+  scrollViewWithBanner: {
+    marginTop: 80,
+  },
 });
 
 // Types
@@ -399,16 +511,4 @@ export interface ProductFormData {
   imageBase64?: string;
 }
 
-// Constantes
-export const CATEGORIES: Categorie[] = [
-  { id: '1', nom: 'Électronique' },
-  { id: '2', nom: 'Vêtements' },
-  { id: '3', nom: 'Alimentation' },
-  { id: '4', nom: 'Meubles' },
-  { id: '5', nom: 'Livres' },
-  { id: '6', nom: 'Sports' },
-  { id: '7', nom: 'Beauté' },
-  { id: '8', nom: 'Jouets' },
-  { id: '9', nom: 'Automobile' },
-  { id: '10', nom: 'Jardin' },
-];
+// Constante

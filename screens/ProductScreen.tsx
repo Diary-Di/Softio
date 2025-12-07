@@ -461,30 +461,24 @@ export default function ProductScreen({ navigation }: Props) {
 
               {/* Action buttons */}
               <View style={styles.actionRow}>
+                {/* Bouton vide invisible pour garder l'espace */}
+                <View style={{ flex: 1, marginRight: 8, opacity: 0 }}>
+                  <View style={styles.actionButton}>
+                    <Ionicons name="eye" size={24} color="#4F46E5" />
+                    <Text style={styles.actionButtonText}>Détails</Text>
+                  </View>
+               </View>
+  
                 <Pressable
-                  style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1 }]}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    Alert.alert(
-                      item.designation,
-                      `Référence: ${item.ref_produit}\nCatégorie: ${item.categorie}\nPrix actuel: ${formattedPrice} €\nQuantité disponible: ${quantity}\nÉtat: ${stockStatus.label}`
-                    );
-                  }}
-                >
-                  <Ionicons name="eye" size={24} color="#4F46E5" />
-                  <Text style={styles.actionButtonText}>Détails</Text>
-                </Pressable>
-
-                <Pressable
-                  style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1 }]}
+                 style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1, flex: 1 }]}
                   onPress={() => handleEditProduct(item)}
                 >
-                  <Ionicons name="create" size={24} color="#F59E0B" />
+                 <Ionicons name="create" size={24} color="#F59E0B" />
                   <Text style={styles.actionButtonText}>Modifier</Text>
                 </Pressable>
-
+                            
                 <Pressable
-                  style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1 }]}
+                  style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1, flex: 1, marginLeft: 8 }]}
                   onPress={() => handleDeleteProduct(item)}
                 >
                   <Ionicons name="trash" size={24} color="#DC2626" />
