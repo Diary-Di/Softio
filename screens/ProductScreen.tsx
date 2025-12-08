@@ -1,7 +1,7 @@
 /******************************************************************
  *  ProductScreen.tsx  –  Liste des produits avec filtres de stock
  ******************************************************************/
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react'; // Ajout de useRef
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  Animated, // Ajout de Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -61,6 +62,7 @@ export default function ProductScreen({ navigation }: Props) {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [displayedProducts, setDisplayedProducts] = useState<Product[]>([]); // Nouveau: produits affichés
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -68,6 +70,17 @@ export default function ProductScreen({ navigation }: Props) {
   const [stockFilter, setStockFilter] = useState<StockFilter>('all');
   const [searchFocused, setSearchFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // États pour la pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  
+  // Références pour les animations
+  const fabAnimation = useRef(new Animated.Value(1)).current;
+  const isScrolling = useRef(false);
+  const scrollTimeout = useRef<any>(null); // Changé de NodeJS.Timeout à any
+  const flatListRef = useRef<FlatList>(null);
 
   const fetchProducts = useCallback(async (isRefreshing = false) => {
     if (!isRefreshing) {
@@ -174,7 +187,27 @@ export default function ProductScreen({ navigation }: Props) {
     }
     
     setFilteredProducts(filtered);
+    setCurrentPage(1); // Réinitialiser à la première page quand les filtres changent
   }, [products, searchQuery, stockFilter]);
+
+  // Mettre à jour les produits affichés (pagination)
+  useEffect(() => {
+    // Calculer le nombre total de pages
+    const total = Math.ceil(filteredProducts.length / itemsPerPage);
+    setTotalPages(total || 1);
+    
+    // Extraire les produits pour la page courante
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+    
+    setDisplayedProducts(paginatedProducts);
+    
+    // Scroll vers le haut quand la page change
+    if (flatListRef.current && currentPage > 1) {
+      flatListRef.current.scrollToOffset({ offset: 0, animated: true });
+    }
+  }, [filteredProducts, currentPage, itemsPerPage]);
 
   // Recharger quand l'écran obtient le focus
   useFocusEffect(
@@ -243,6 +276,69 @@ export default function ProductScreen({ navigation }: Props) {
 
   const clearSearch = useCallback(() => {
     setSearchQuery("");
+  }, []);
+
+  // Navigation entre les pages
+  const goToPage = useCallback((page: number) => {
+    if (page >= 1 && page <= totalPages && page !== currentPage) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setCurrentPage(page);
+    }
+  }, [totalPages, currentPage]);
+
+  const goToNextPage = useCallback(() => {
+    if (currentPage < totalPages) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setCurrentPage(prev => prev + 1);
+    }
+  }, [currentPage, totalPages]);
+
+  const goToPrevPage = useCallback(() => {
+    if (currentPage > 1) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setCurrentPage(prev => prev - 1);
+    }
+  }, [currentPage]);
+
+  // Gestion du scroll pour cacher/afficher le FAB
+  const handleScrollBegin = useCallback(() => {
+    isScrolling.current = true;
+    
+    // Cacher le FAB
+    Animated.timing(fabAnimation, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    
+    // Clear previous timeout
+    if (scrollTimeout.current) {
+      clearTimeout(scrollTimeout.current);
+    }
+  }, [fabAnimation]);
+
+  const handleScrollEnd = useCallback(() => {
+    isScrolling.current = false;
+    
+    // Set timeout to show FAB after scrolling stops
+    scrollTimeout.current = setTimeout(() => {
+      if (!isScrolling.current) {
+        Animated.timing(fabAnimation, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+      }
+    }, 500);
+  }, [fabAnimation]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeout.current) {
+        clearTimeout(scrollTimeout.current);
+      }
+    };
   }, []);
 
   // Get stock filter options
@@ -314,6 +410,119 @@ export default function ProductScreen({ navigation }: Props) {
     
     return null;
   }, []);
+
+  // Rendu du composant de pagination
+  const renderPagination = useCallback(() => {
+    if (filteredProducts.length <= itemsPerPage) {
+      return null;
+    }
+    
+    const startItem = (currentPage - 1) * itemsPerPage + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, filteredProducts.length);
+    
+    return (
+      <View style={styles.paginationContainer}>
+        <View style={styles.paginationInfo}>
+          <Text style={styles.paginationText}>
+            {startItem}-{endItem} sur {filteredProducts.length} produits
+          </Text>
+          <Text style={styles.paginationPageText}>
+            Page {currentPage} sur {totalPages}
+          </Text>
+        </View>
+        
+        <View style={styles.paginationButtons}>
+          <TouchableOpacity
+            style={[
+              styles.paginationButton,
+              currentPage === 1 && styles.paginationButtonDisabled
+            ]}
+            onPress={goToPrevPage}
+            disabled={currentPage === 1}
+          >
+            <Ionicons 
+              name="chevron-back" 
+              size={20} 
+              color={currentPage === 1 ? "#9CA3AF" : "#4F46E5"} 
+            />
+            <Text style={[
+              styles.paginationButtonText,
+              currentPage === 1 && styles.paginationButtonTextDisabled
+            ]}>
+              Précédent
+            </Text>
+          </TouchableOpacity>
+          
+          {/* Indicateurs de page */}
+          <View style={styles.pageIndicators}>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (currentPage <= 3) {
+                pageNum = i + 1;
+              } else if (currentPage >= totalPages - 2) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = currentPage - 2 + i;
+              }
+              
+              return (
+                <TouchableOpacity
+                  key={`page-${pageNum}`}
+                  style={[
+                    styles.pageIndicator,
+                    currentPage === pageNum && styles.pageIndicatorActive
+                  ]}
+                  onPress={() => goToPage(pageNum)}
+                >
+                  <Text style={[
+                    styles.pageIndicatorText,
+                    currentPage === pageNum && styles.pageIndicatorTextActive
+                  ]}>
+                    {pageNum}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+            
+            {totalPages > 5 && currentPage < totalPages - 2 && (
+              <>
+                <Text style={styles.pageDots}>...</Text>
+                <TouchableOpacity
+                  style={styles.pageIndicator}
+                  onPress={() => goToPage(totalPages)}
+                >
+                  <Text style={styles.pageIndicatorText}>{totalPages}</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+          
+          <TouchableOpacity
+            style={[
+              styles.paginationButton,
+              currentPage === totalPages && styles.paginationButtonDisabled
+            ]}
+            onPress={goToNextPage}
+            disabled={currentPage === totalPages}
+          >
+            <Text style={[
+              styles.paginationButtonText,
+              currentPage === totalPages && styles.paginationButtonTextDisabled
+            ]}>
+              Suivant
+            </Text>
+            <Ionicons 
+              name="chevron-forward" 
+              size={20} 
+              color={currentPage === totalPages ? "#9CA3AF" : "#4F46E5"} 
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }, [currentPage, totalPages, filteredProducts.length, itemsPerPage, goToPrevPage, goToNextPage, goToPage]);
 
   /* --------------------  RENDER ITEM  -------------------- */
   const renderProductItem = useCallback(
@@ -461,22 +670,14 @@ export default function ProductScreen({ navigation }: Props) {
 
               {/* Action buttons */}
               <View style={styles.actionRow}>
-                {/* Bouton vide invisible pour garder l'espace */}
-                <View style={{ flex: 1, marginRight: 8, opacity: 0 }}>
-                  <View style={styles.actionButton}>
-                    <Ionicons name="eye" size={24} color="#4F46E5" />
-                    <Text style={styles.actionButtonText}>Détails</Text>
-                  </View>
-               </View>
-  
                 <Pressable
-                 style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1, flex: 1 }]}
+                  style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1, flex: 1, marginRight: 8 }]}
                   onPress={() => handleEditProduct(item)}
                 >
-                 <Ionicons name="create" size={24} color="#F59E0B" />
+                  <Ionicons name="create" size={24} color="#F59E0B" />
                   <Text style={styles.actionButtonText}>Modifier</Text>
                 </Pressable>
-                            
+
                 <Pressable
                   style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1, flex: 1, marginLeft: 8 }]}
                   onPress={() => handleDeleteProduct(item)}
@@ -671,11 +872,12 @@ export default function ProductScreen({ navigation }: Props) {
 
       {/* Product List */}
       <FlatList
-        data={filteredProducts}
+        ref={flatListRef}
+        data={displayedProducts} // Utiliser displayedProducts au lieu de filteredProducts
         renderItem={renderProductItem}
         keyExtractor={(item) => item.ref_produit}
         contentContainerStyle={
-          filteredProducts.length ? styles.listContainer : styles.listContainerCenter
+          displayedProducts.length ? styles.listContainer : styles.listContainerCenter
         }
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -687,21 +889,40 @@ export default function ProductScreen({ navigation }: Props) {
           />
         }
         ListEmptyComponent={renderEmptyList}
-        initialNumToRender={8}
+        ListFooterComponent={renderPagination} // Ajout de la pagination en bas
+        onScrollBeginDrag={handleScrollBegin}
+        onScrollEndDrag={handleScrollEnd}
+        onMomentumScrollEnd={handleScrollEnd}
+        initialNumToRender={10}
         maxToRenderPerBatch={10}
         windowSize={7}
         removeClippedSubviews
         keyboardShouldPersistTaps="handled"
       />
 
-      {/* FAB */}
-      <TouchableOpacity 
-        style={styles.fab} 
-        onPress={handleAddProduct}
-        activeOpacity={0.85}
+      {/* FAB avec animation */}
+      <Animated.View 
+        style={[
+          styles.fabContainer,
+          {
+            transform: [{
+              translateY: fabAnimation.interpolate({
+                inputRange: [0, 1],
+                outputRange: [100, 0]
+              })
+            }],
+            opacity: fabAnimation
+          }
+        ]}
       >
-        <Ionicons name="add" size={26} color="#fff" />
-      </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.fab} 
+          onPress={handleAddProduct}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="add" size={26} color="#fff" />
+        </TouchableOpacity>
+      </Animated.View>
     </SafeAreaView>
   );
 }

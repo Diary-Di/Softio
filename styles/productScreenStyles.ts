@@ -366,4 +366,114 @@ export const productScreenStyles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
+
+   // Pagination styles
+  paginationContainer: {
+    backgroundColor: '#fff',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    marginTop: 8,
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  
+  paginationInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  
+  paginationText: {
+    fontSize: 14,
+    color: '#4B5563',
+    fontWeight: '500',
+  },
+  
+  paginationPageText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  
+  paginationButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  
+  paginationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  
+  paginationButtonDisabled: {
+    opacity: 0.5,
+  },
+  
+  paginationButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4F46E5',
+    marginHorizontal: 4,
+  },
+  
+  paginationButtonTextDisabled: {
+    color: '#9CA3AF',
+  },
+  
+  pageIndicators: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  
+  pageIndicator: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+    marginHorizontal: 2,
+    backgroundColor: '#f8fafc',
+  },
+  
+  pageIndicatorActive: {
+    backgroundColor: '#4F46E5',
+  },
+  
+  pageIndicatorText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  
+  pageIndicatorTextActive: {
+    color: '#fff',
+  },
+  
+  pageDots: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginHorizontal: 4,
+  },
+  
+  // FAB container for animation
+  fabContainer: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+  },
 });
