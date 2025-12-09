@@ -2,15 +2,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useState, useEffect, useCallback } from "react";
-import { 
-  FlatList, 
-  LayoutAnimation, 
-  Platform, 
-  Pressable, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  UIManager, 
+import {
+  FlatList,
+  LayoutAnimation,
+  Platform,
+  Pressable,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  UIManager,
   View,
   Modal,
   ScrollView,
@@ -21,6 +21,9 @@ import { SalesStackParamList } from '../navigation/SalesStackNavigator';
 import { salesService, Sale, formatSaleDate } from '../services/salesService';
 import styles from "../styles/SalesScreenStyles";
 import { productScreenStyles as productStyles } from '../styles/productScreenStyles';
+import { useSaleCustomers } from "@/hooks/useSaleCustomers";
+import { getCustomerInitials } from "@/utils/customerInitials";
+import { formatAmount } from '@/utils/formatAmount';
 
 type SalesScreenNavigationProp = StackNavigationProp<SalesStackParamList, 'SalesList'>;
 
@@ -39,9 +42,7 @@ interface FilterOptions {
 }
 
 export default function SalesScreen() {
-
   const navigation = useNavigation<SalesScreenNavigationProp>();
-  // Enable LayoutAnimation on Android
   if (Platform.OS === "android") {
     UIManager.setLayoutAnimationEnabledExperimental?.(true);
   }
@@ -61,13 +62,8 @@ export default function SalesScreen() {
     modePaiement: ''
   });
 
-  useEffect(() => {
-    loadSales();
-  }, []);
-
-  useEffect(() => {
-    filterSales();
-  }, [sales, filters]);
+  useEffect(() => { loadSales(); }, []);
+  useEffect(() => { filterSales(); }, [sales, filters]);
 
   const loadSales = async () => {
     try {
@@ -85,10 +81,9 @@ export default function SalesScreen() {
   const filterSales = useCallback(() => {
     let result = [...sales];
 
-    // Filtre par texte de recherche
     if (filters.searchText) {
       const searchLower = filters.searchText.toLowerCase();
-      result = result.filter(sale => 
+      result = result.filter(sale =>
         sale.ref_facture.toLowerCase().includes(searchLower) ||
         sale.email.toLowerCase().includes(searchLower) ||
         sale.ref_produit.toLowerCase().includes(searchLower) ||
@@ -96,60 +91,33 @@ export default function SalesScreen() {
       );
     }
 
-    // Filtre par date
     if (filters.startDate) {
       const startDate = new Date(filters.startDate);
       startDate.setHours(0, 0, 0, 0);
-      result = result.filter(sale => {
-        const saleDate = new Date(sale.date_achat);
-        return saleDate >= startDate;
-      });
+      result = result.filter(sale => new Date(sale.date_achat) >= startDate);
     }
 
     if (filters.endDate) {
       const endDate = new Date(filters.endDate);
       endDate.setHours(23, 59, 59, 999);
-      result = result.filter(sale => {
-        const saleDate = new Date(sale.date_achat);
-        return saleDate <= endDate;
-      });
+      result = result.filter(sale => new Date(sale.date_achat) <= endDate);
     }
 
-    // Filtre par montant
     if (filters.minAmount) {
-      const minAmount = parseFloat(filters.minAmount);
-      if (!isNaN(minAmount)) {
-        result = result.filter(sale => {
-          const amount = typeof sale.montant_paye === 'string' ? 
-            parseFloat(sale.montant_paye) : Number(sale.montant_paye);
-          return amount >= minAmount;
-        });
-      }
+      const min = parseFloat(filters.minAmount);
+      if (!isNaN(min)) result = result.filter(s => (typeof s.montant_paye === 'string' ? parseFloat(s.montant_paye) : s.montant_paye) >= min);
     }
 
     if (filters.maxAmount) {
-      const maxAmount = parseFloat(filters.maxAmount);
-      if (!isNaN(maxAmount)) {
-        result = result.filter(sale => {
-          const amount = typeof sale.montant_paye === 'string' ? 
-            parseFloat(sale.montant_paye) : Number(sale.montant_paye);
-          return amount <= maxAmount;
-        });
-      }
+      const max = parseFloat(filters.maxAmount);
+      if (!isNaN(max)) result = result.filter(s => (typeof s.montant_paye === 'string' ? parseFloat(s.montant_paye) : s.montant_paye) <= max);
     }
 
-    // Filtre par mode de paiement
     if (filters.modePaiement) {
-      result = result.filter(sale => 
-        sale.mode_paiement === filters.modePaiement
-      );
+      result = result.filter(sale => sale.mode_paiement === filters.modePaiement);
     }
 
-    // Trier par date décroissante
-    result.sort((a, b) => 
-      new Date(b.date_achat).getTime() - new Date(a.date_achat).getTime()
-    );
-
+    result.sort((a, b) => new Date(b.date_achat).getTime() - new Date(a.date_achat).getTime());
     setFilteredSales(result);
   }, [sales, filters]);
 
@@ -162,139 +130,93 @@ export default function SalesScreen() {
 
   const toggle = (ref_facture: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpandedId((prev) => (prev === ref_facture ? null : ref_facture));
-  };
-
-  const getInitials = (email: string) => {
-    const username = email.split('@')[0];
-    const parts = username.split(/[._-]/);
-    const initials = parts.map(part => part.charAt(0)).join('').toUpperCase();
-    return initials.length > 2 ? initials.substring(0, 2) : initials || '??';
-  };
-
-  const formatTotal = (amount: any) => {
-    const numAmount = typeof amount === 'string' ? parseFloat(amount) : Number(amount);
-    if (isNaN(numAmount)) {
-      return "0.00 €";
-    }
-    return `${numAmount.toFixed(2)} €`;
+    setExpandedId(prev => (prev === ref_facture ? null : ref_facture));
   };
 
   const handleDateChange = (event: any, selectedDate: Date | undefined, type: 'start' | 'end') => {
     setShowDatePicker(null);
-    if (selectedDate) {
-      setFilters(prev => ({
-        ...prev,
-        [type === 'start' ? 'startDate' : 'endDate']: selectedDate
-      }));
-    }
+    if (selectedDate) setFilters(prev => ({ ...prev, [type === 'start' ? 'startDate' : 'endDate']: selectedDate }));
   };
 
-  const clearFilters = () => {
-    setFilters({
-      searchText: '',
-      startDate: null,
-      endDate: null,
-      minAmount: '',
-      maxAmount: '',
-      modePaiement: ''
-    });
-  };
+  const clearFilters = () => setFilters({
+    searchText: '', startDate: null, endDate: null, minAmount: '', maxAmount: '', modePaiement: ''
+  });
 
-  const formatDate = (date: Date | null) => {
-    if (!date) return 'Sélectionner';
-    return date.toLocaleDateString('fr-FR');
-  };
+  const formatDate = (date: Date | null) => (date ? date.toLocaleDateString('fr-FR') : 'Sélectionner');
+
+  const customersMap = useSaleCustomers(sales);
 
   const renderItem = ({ item }: { item: Sale }) => {
     const isExpanded = expandedId === item.ref_facture;
-    const initials = getInitials(item.email);
+    const customer = customersMap[item.client_id || -1];
+    const initials = getCustomerInitials(customer);
     const formattedDate = formatSaleDate(item.date_achat);
 
     return (
-      <Pressable
-        onPress={() => toggle(item.ref_facture)}
-        style={styles.card}
-        accessibilityLabel={`Vente ${item.ref_facture}`}
-      >
+      <Pressable onPress={() => toggle(item.ref_facture)} style={styles.card} accessibilityLabel={`Vente ${item.ref_facture}`}>
         <View style={styles.headerRow}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
+          <View style={styles.avatar}><Text style={styles.avatarText}>{initials}</Text></View>
 
           <View style={styles.headerInfo}>
             <Text style={styles.invoiceRef}>Facture: {item.ref_facture}</Text>
             <Text style={styles.email}>{item.email}</Text>
-            <Text style={styles.amountBadge}>{formatTotal(item.montant_paye)}</Text>
+            {/* MONTANT BADGE : séparateurs milliers */}
+            <Text style={styles.amountBadge}>{formatAmount(item.montant_paye)}</Text>
           </View>
 
-          <Pressable
-            onPress={() => toggle(item.ref_facture)}
-            style={({ pressed }) => [
-              styles.chevronButton,
-              { opacity: pressed ? 0.85 : 1, transform: [{ rotate: isExpanded ? '180deg' : '0deg' }] },
-            ]}
-            accessibilityLabel={isExpanded ? 'Réduire les détails' : 'Développer les détails'}
-          >
+          <Pressable onPress={() => toggle(item.ref_facture)} style={({ pressed }) => [styles.chevronButton, { opacity: pressed ? 0.85 : 1, transform: [{ rotate: isExpanded ? '180deg' : '0deg' }] }]}>
             <Ionicons name="chevron-down" size={20} color="#4F46E5" />
           </Pressable>
         </View>
 
         {isExpanded && (
           <View style={styles.expanded}>
-            {item.ref_produit && renderField("Produits", item.ref_produit)}
-            {item.qte_vendu && renderField("Quantités vendues", item.qte_vendu)}
-            {renderField("Mode paiement", item.mode_paiement)}
-            {renderField("Montant payé", formatTotal(item.montant_paye))}
-            {item.condition_paiement && renderField("Condition", item.condition_paiement)}
-            {item.remise && renderField("Remise", item.remise)}
-            {renderField("Date achat", formattedDate)}
+            {customer && (
+              <>
+                {customer.type === 'entreprise' && customer.sigle
+                  ? renderField('Client (sigle)', customer.sigle)
+                  : renderField('Client', `${customer.prenoms || ''} ${customer.nom || ''}`.trim() || customer.email || 'Non renseigné')}
+              </>
+            )}
+            {item.ref_produit && renderField('Produits', item.ref_produit)}
+            {item.qte_vendu && renderField('Quantités vendues', item.qte_vendu)}
+            {renderField('Mode paiement', item.mode_paiement)}
+            {/* MONTANT PAYE : séparateurs milliers */}
+            {renderField('Montant payé', formatAmount(item.montant_paye))}
+            {item.condition_paiement && renderField('Condition', item.condition_paiement)}
+            {item.remise && renderField('Remise', item.remise)}
+            {renderField('Date achat', formattedDate)}
           </View>
         )}
       </Pressable>
     );
   };
 
-  // Rendu de la modale des filtres
+  /* ---------------  MODALE FILTRES  --------------- */
   const renderFilterModal = () => (
-    <Modal
-      visible={showFilters}
-      transparent
-      animationType="slide"
-      onRequestClose={() => setShowFilters(false)}
-    >
+    <Modal visible={showFilters} transparent animationType="slide" onRequestClose={() => setShowFilters(false)}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Filtres</Text>
-            <Pressable onPress={() => setShowFilters(false)}>
-              <Ionicons name="close" size={24} color="#4F46E5" />
-            </Pressable>
+            <Pressable onPress={() => setShowFilters(false)}><Ionicons name="close" size={24} color="#4F46E5" /></Pressable>
           </View>
 
           <ScrollView style={styles.filterContainer}>
-            {/* Filtres par date */}
+            {/* Dates */}
             <View style={styles.filterSection}>
               <Text style={styles.filterSectionTitle}>Date d'achat</Text>
-              
               <View style={styles.dateFilterRow}>
                 <View style={styles.dateFilterItem}>
                   <Text style={styles.filterLabel}>Du</Text>
-                  <Pressable 
-                    style={styles.dateButton}
-                    onPress={() => setShowDatePicker('start')}
-                  >
+                  <Pressable style={styles.dateButton} onPress={() => setShowDatePicker('start')}>
                     <Ionicons name="calendar" size={20} color="#4F46E5" />
                     <Text style={styles.dateButtonText}>{formatDate(filters.startDate)}</Text>
                   </Pressable>
                 </View>
-
                 <View style={styles.dateFilterItem}>
                   <Text style={styles.filterLabel}>Au</Text>
-                  <Pressable 
-                    style={styles.dateButton}
-                    onPress={() => setShowDatePicker('end')}
-                  >
+                  <Pressable style={styles.dateButton} onPress={() => setShowDatePicker('end')}>
                     <Ionicons name="calendar" size={20} color="#4F46E5" />
                     <Text style={styles.dateButtonText}>{formatDate(filters.endDate)}</Text>
                   </Pressable>
@@ -302,58 +224,49 @@ export default function SalesScreen() {
               </View>
             </View>
 
-            {/* Filtres par montant */}
+            {/* Montants */}
             <View style={styles.filterSection}>
               <Text style={styles.filterSectionTitle}>Montant</Text>
-              
               <View style={styles.amountFilterRow}>
                 <View style={styles.amountFilterItem}>
                   <Text style={styles.filterLabel}>Min (€)</Text>
                   <TextInput
                     style={styles.amountInput}
                     value={filters.minAmount}
-                    onChangeText={(text) => setFilters(prev => ({ ...prev, minAmount: text }))}
+                    onChangeText={t => setFilters(p => ({ ...p, minAmount: t }))}
                     placeholder="0"
                     keyboardType="decimal-pad"
                   />
+                  {/* AFFICHAGE AVEC SEPARATEURS */}
+                  <Text style={styles.hint}>{filters.minAmount ? formatAmount(filters.minAmount) : ''}</Text>
                 </View>
-
                 <View style={styles.amountFilterItem}>
                   <Text style={styles.filterLabel}>Max (€)</Text>
                   <TextInput
                     style={styles.amountInput}
                     value={filters.maxAmount}
-                    onChangeText={(text) => setFilters(prev => ({ ...prev, maxAmount: text }))}
-                    placeholder="1000"
+                    onChangeText={t => setFilters(p => ({ ...p, maxAmount: t }))}
+                    placeholder="1 000"
                     keyboardType="decimal-pad"
                   />
+                  {/* AFFICHAGE AVEC SEPARATEURS */}
+                  <Text style={styles.hint}>{filters.maxAmount ? formatAmount(filters.maxAmount) : ''}</Text>
                 </View>
               </View>
             </View>
 
-            {/* Filtre par mode de paiement */}
+            {/* Mode paiement */}
             <View style={styles.filterSection}>
               <Text style={styles.filterSectionTitle}>Mode de paiement</Text>
               <View style={styles.paymentFilterRow}>
-                {['cash', 'card', 'transfer', 'check'].map((mode) => (
+                {(['cash', 'card', 'transfer', 'check'] as const).map(mode => (
                   <Pressable
                     key={mode}
-                    style={[
-                      styles.paymentButton,
-                      filters.modePaiement === mode && styles.paymentButtonActive
-                    ]}
-                    onPress={() => setFilters(prev => ({ 
-                      ...prev, 
-                      modePaiement: filters.modePaiement === mode ? '' : mode 
-                    }))}
+                    style={[styles.paymentButton, filters.modePaiement === mode && styles.paymentButtonActive]}
+                    onPress={() => setFilters(p => ({ ...p, modePaiement: p.modePaiement === mode ? '' : mode }))}
                   >
-                    <Text style={[
-                      styles.paymentButtonText,
-                      filters.modePaiement === mode && styles.paymentButtonTextActive
-                    ]}>
-                      {mode === 'cash' ? 'Espèces' : 
-                       mode === 'card' ? 'Carte' : 
-                       mode === 'transfer' ? 'Virement' : 'Chèque'}
+                    <Text style={[styles.paymentButtonText, filters.modePaiement === mode && styles.paymentButtonTextActive]}>
+                      {mode === 'cash' ? 'Espèces' : mode === 'card' ? 'Carte' : mode === 'transfer' ? 'Virement' : 'Chèque'}
                     </Text>
                   </Pressable>
                 ))}
@@ -362,17 +275,10 @@ export default function SalesScreen() {
           </ScrollView>
 
           <View style={styles.modalFooter}>
-            <Pressable 
-              style={styles.clearButton}
-              onPress={clearFilters}
-            >
+            <Pressable style={styles.clearButton} onPress={clearFilters}>
               <Text style={styles.clearButtonText}>Effacer tout</Text>
             </Pressable>
-            
-            <Pressable 
-              style={styles.applyButton}
-              onPress={() => setShowFilters(false)}
-            >
+            <Pressable style={styles.applyButton} onPress={() => setShowFilters(false)}>
               <Text style={styles.applyButtonText}>Appliquer</Text>
             </Pressable>
           </View>
@@ -381,6 +287,7 @@ export default function SalesScreen() {
     </Modal>
   );
 
+  /* ---------------  RENDU PRINCIPAL  --------------- */
   if (loading && sales.length === 0) {
     return (
       <View style={styles.container}>
@@ -404,33 +311,26 @@ export default function SalesScreen() {
             style={styles.searchInput}
             placeholder="Rechercher une vente..."
             value={filters.searchText}
-            onChangeText={(text) => setFilters(prev => ({ ...prev, searchText: text }))}
+            onChangeText={t => setFilters(p => ({ ...p, searchText: t }))}
           />
           {filters.searchText ? (
-            <Pressable onPress={() => setFilters(prev => ({ ...prev, searchText: '' }))}>
+            <Pressable onPress={() => setFilters(p => ({ ...p, searchText: '' }))}>
               <Ionicons name="close-circle" size={20} color="#9CA3AF" />
             </Pressable>
           ) : null}
         </View>
-        
-        <Pressable 
-          style={styles.filterButton}
-          onPress={() => setShowFilters(true)}
-        >
+
+        <Pressable style={styles.filterButton} onPress={() => setShowFilters(true)}>
           <Ionicons name="filter" size={20} color="#4F46E5" />
           {(filters.startDate || filters.endDate || filters.minAmount || filters.maxAmount || filters.modePaiement) && (
-            <View style={styles.filterBadge}>
-              <Text style={styles.filterBadgeText}>!</Text>
-            </View>
+            <View style={styles.filterBadge}><Text style={styles.filterBadgeText}>!</Text></View>
           )}
         </Pressable>
       </View>
 
       {/* Compteur de résultats */}
       <View style={styles.resultCounter}>
-        <Text style={styles.resultText}>
-          {filteredSales.length} {filteredSales.length === 1 ? 'vente' : 'ventes'}
-        </Text>
+        <Text style={styles.resultText}>{filteredSales.length} {filteredSales.length === 1 ? 'vente' : 'ventes'}</Text>
         {(filters.searchText || filters.startDate || filters.endDate || filters.minAmount || filters.maxAmount || filters.modePaiement) && (
           <Pressable onPress={clearFilters} style={styles.clearFilterButton}>
             <Text style={styles.clearFilterText}>Effacer filtres</Text>
@@ -457,29 +357,23 @@ export default function SalesScreen() {
       ) : (
         <FlatList
           data={filteredSales}
-          keyExtractor={(item) => item.ref_facture}
+          keyExtractor={item => item.ref_facture}
           renderItem={renderItem}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
-          scrollEnabled={true}
+          scrollEnabled
           refreshing={loading}
           onRefresh={loadSales}
         />
       )}
 
       {/* Bouton FAB */}
-      <TouchableOpacity
-        style={productStyles.fab}
-        activeOpacity={0.85}
-        onPress={() => navigation?.navigate('NewSales')}
-      >
+      <TouchableOpacity style={productStyles.fab} activeOpacity={0.85} onPress={() => navigation?.navigate('NewSales')}>
         <Ionicons name="add" size={26} color="#fff" />
       </TouchableOpacity>
 
-      {/* Modale des filtres */}
+      {/* Modale & DatePicker */}
       {renderFilterModal()}
-
-      {/* DatePicker */}
       {showDatePicker && (
         <DateTimePicker
           value={filters[showDatePicker === 'start' ? 'startDate' : 'endDate'] || new Date()}

@@ -431,4 +431,12 @@ suggestClearText: {
   color: '#4F46E5',
   fontWeight: '500',
 },
+
+hint: {
+  fontSize: 12,
+  color: '#6B7280',      // gris clair
+  marginTop: 4,
+  alignSelf: 'flex-end',
+},
+
 });

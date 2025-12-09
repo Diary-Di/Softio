@@ -11,6 +11,7 @@ export interface Sale {
   ref_produit: string;
   qte_vendu: string;
   email: string;
+  client_id: number;
   mode_paiement: string;
   montant_paye: number;
   condition_paiement: string;
@@ -57,7 +58,12 @@ export const salesService = {
       const response = await axios.get<ApiResponse<Sale[]>>(SALES_URL, {
         params
       });
-      return response.data.data;
+      return response.data.data.map((raw: any) => ({
+      ...raw,
+      client_id: raw.identifiant, // ← mapping clé
+      montant_paye: Number(raw.montant_paye),
+    }));
+    
     } catch (error: any) {
       throw {
         message: error.response?.data?.message || "Erreur chargement des ventes",
