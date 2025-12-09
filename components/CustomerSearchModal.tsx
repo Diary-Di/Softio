@@ -11,16 +11,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { validationStyles } from '../styles/CartValidationStyles';
+import { Customer as CustomerType } from '../services/customerService';
 
-type Customer = {
-  type: 'particulier' | 'entreprise';
-  email: string;
-  sigle?: string;
-  nom?: string;
-  prenoms?: string;
-  adresse?: string;
-  telephone?: string;
-};
+type Customer = CustomerType;
 
 type CustomerSearchModalProps = {
   visible: boolean;
@@ -75,7 +68,7 @@ export default function CustomerSearchModal({
       return customer.prenoms;
     }
     
-    return customer.email;
+    return customer.email || `Client #${customer.identifiant}`;
   };
 
   // Filtrer les clients selon la recherche
@@ -84,13 +77,15 @@ export default function CustomerSearchModal({
     
     const searchLower = searchQuery.toLowerCase();
     const displayName = getCustomerDisplayName(customer).toLowerCase();
-    const email = customer.email.toLowerCase();
+    const email = (customer.email || '').toLowerCase();
     
     return displayName.includes(searchLower) || 
            email.includes(searchLower) ||
            (customer.nom && customer.nom.toLowerCase().includes(searchLower)) ||
            (customer.prenoms && customer.prenoms.toLowerCase().includes(searchLower)) ||
-           (customer.sigle && customer.sigle.toLowerCase().includes(searchLower));
+           (customer.sigle && customer.sigle.toLowerCase().includes(searchLower)) ||
+           (customer.telephone && customer.telephone.toLowerCase().includes(searchLower)) ||
+           customer.identifiant.toString().includes(searchLower);
   });
 
   // Recherche avec debounce
@@ -119,18 +114,18 @@ export default function CustomerSearchModal({
   // Rendre un client dans la liste
   const renderCustomerItem = (customer: Customer) => (
     <TouchableOpacity
-      key={customer.email}
+      key={`${customer.identifiant}-${customer.email || 'no-email'}`}
       style={validationStyles.customerItem}
       onPress={() => onSelectCustomer(customer)}
     >
       <View style={[
         validationStyles.customerItemIcon,
-        { backgroundColor: customer.type === 'entreprise' ? '#E8F4FF' : '#F0F8FF' }
+        { backgroundColor: customer.type === 'entreprise' ? '#FFF4E6' : '#E8F4FF' }
       ]}>
         <Ionicons 
           name={customer.type === 'entreprise' ? 'business' : 'person'} 
           size={24} 
-          color={customer.type === 'entreprise' ? '#0056B3' : '#007AFF'} 
+          color={customer.type === 'entreprise' ? '#FF9500' : '#007AFF'} 
         />
       </View>
       <View style={validationStyles.customerItemInfo}>
@@ -140,7 +135,9 @@ export default function CustomerSearchModal({
         <View style={validationStyles.customerItemDetails}>
           <View style={validationStyles.customerDetailRow}>
             <Ionicons name="mail" size={12} color="#8E8E93" style={validationStyles.customerDetailIcon} />
-            <Text style={validationStyles.customerItemEmail}>{customer.email}</Text>
+            <Text style={validationStyles.customerItemEmail}>
+              {customer.email || 'Aucun email'}
+            </Text>
           </View>
           {customer.telephone && (
             <View style={validationStyles.customerDetailRow}>
@@ -150,7 +147,17 @@ export default function CustomerSearchModal({
           )}
         </View>
       </View>
-      <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+      <View>
+        <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+        <Text style={{
+          fontSize: 10,
+          color: '#8E8E93',
+          marginTop: 4,
+          textAlign: 'right',
+        }}>
+          #{customer.identifiant}
+        </Text>
+      </View>
     </TouchableOpacity>
   );
 
@@ -187,7 +194,7 @@ export default function CustomerSearchModal({
               style={validationStyles.searchInput}
               value={searchQuery}
               onChangeText={handleSearchChange}
-              placeholder="Rechercher par nom, email ou téléphone..."
+              placeholder="Rechercher par nom, email, téléphone ou ID..."
               placeholderTextColor="#999"
               autoFocus
               autoCapitalize="none"
@@ -220,16 +227,9 @@ export default function CustomerSearchModal({
                 </Text>
                 {searchQuery && (
                   <Text style={validationStyles.noResultsSubtext}>
-                    Essayez avec un nom, email ou téléphone différent
+                    Essayez avec un nom, email, téléphone ou ID différent
                   </Text>
                 )}
-                <TouchableOpacity
-                  style={validationStyles.createFromSearchButton}
-                  onPress={onSwitchToCreate}
-                >
-                  <Ionicons name="person-add" size={18} color="#007AFF" style={{ marginRight: 6 }} />
-                  <Text style={validationStyles.createFromSearchText}>Créer un nouveau client</Text>
-                </TouchableOpacity>
               </View>
             ) : (
               <>

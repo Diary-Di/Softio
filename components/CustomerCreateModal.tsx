@@ -13,17 +13,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { validationStyles } from '../styles/CartValidationStyles';
-import { customerService } from '../services/customerService';
+import { customerService, Customer as CustomerType, CreateCustomerData } from '../services/customerService';
 
-type Customer = {
-  type: 'particulier' | 'entreprise';
-  email: string;
-  sigle?: string;
-  nom?: string;
-  prenoms?: string;
-  adresse?: string;
-  telephone?: string;
-};
+type Customer = CustomerType;
 
 type CustomerCreateModalProps = {
   visible: boolean;
@@ -33,14 +25,8 @@ type CustomerCreateModalProps = {
   existingCustomers: Customer[];
 };
 
-type NewCustomerForm = {
-  type: 'particulier' | 'entreprise';
-  email: string;
-  sigle?: string;
-  nom?: string;
-  prenoms?: string;
-  adresse?: string;
-  telephone?: string;
+type NewCustomerForm = CreateCustomerData & {
+  email: string; // Rendre email obligatoire pour la création
 };
 
 export default function CustomerCreateModal({
@@ -58,6 +44,8 @@ export default function CustomerCreateModal({
     prenoms: '',
     adresse: '',
     telephone: '',
+    nif: '',
+    stat: '',
   });
   const [isCreating, setIsCreating] = useState(false);
   const emailInputRef = useRef<TextInput>(null);
@@ -76,7 +64,10 @@ export default function CustomerCreateModal({
     setNewCustomer(prev => ({ 
       ...prev, 
       type,
+      // Réinitialiser les champs spécifiques au type
       sigle: type === 'entreprise' ? prev.sigle : '',
+      nif: type === 'entreprise' ? prev.nif : '',
+      stat: type === 'entreprise' ? prev.stat : '',
       nom: type === 'particulier' ? prev.nom : '',
       prenoms: type === 'particulier' ? prev.prenoms : '',
     }));
@@ -84,25 +75,21 @@ export default function CustomerCreateModal({
 
   // Créer un nouveau client
   const createCustomer = useCallback(async () => {
-    if (!newCustomer.email.trim()) {
-      alert('L\'email du client est obligatoire');
-      return;
-    }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(newCustomer.email)) {
-      alert('Veuillez entrer une adresse email valide');
-      return;
-    }
+    if (newCustomer.email && !emailRegex.test(newCustomer.email)) {
+       alert('Veuillez entrer une adresse email valide');
+    return;
+  }
 
     if (newCustomer.type === 'entreprise' && !newCustomer.sigle?.trim()) {
       alert('Le sigle de l\'entreprise est obligatoire');
       return;
     }
 
-    // Vérifier si le client existe déjà
+    // Vérifier si le client existe déjà (par email)
     const customerExists = existingCustomers.some(
-      c => c.email.toLowerCase() === newCustomer.email.toLowerCase()
+      c => c.email?.toLowerCase() === newCustomer.email.toLowerCase()
     );
     if (customerExists) {
       alert('Un client avec cet email existe déjà');
@@ -112,12 +99,15 @@ export default function CustomerCreateModal({
     try {
       setIsCreating(true);
       
-      const customerData = {
+      // Préparer les données pour l'API
+      const customerData: CreateCustomerData = {
         type: newCustomer.type,
         email: newCustomer.email.trim(),
         ...(newCustomer.type === 'entreprise' && { 
           sigle: newCustomer.sigle?.trim(),
-          nom: newCustomer.sigle?.trim()
+          nom: newCustomer.sigle?.trim(), // Utiliser sigle comme nom par défaut
+          nif: newCustomer.nif?.trim(),
+          stat: newCustomer.stat?.trim()
         }),
         ...(newCustomer.type === 'particulier' && { 
           nom: newCustomer.nom?.trim(),
@@ -127,19 +117,29 @@ export default function CustomerCreateModal({
         telephone: newCustomer.telephone?.trim(),
       };
 
-      await customerService.createCustomer(customerData);
+      // Appeler le service pour créer le client
+      const response = await customerService.createCustomer(customerData);
       
-      const customer: Customer = {
+      // Construire l'objet customer avec l'identifiant retourné
+      const createdCustomer: Customer = {
+        identifiant: response.identifiant || response.id, // S'adapter à la réponse de l'API
         type: newCustomer.type,
         email: newCustomer.email.trim(),
         sigle: newCustomer.sigle?.trim(),
-        nom: newCustomer.nom?.trim(),
+        nom: newCustomer.type === 'entreprise' 
+          ? newCustomer.sigle?.trim() // Pour entreprise, utiliser sigle comme nom
+          : newCustomer.nom?.trim(),
         prenoms: newCustomer.prenoms?.trim(),
         adresse: newCustomer.adresse?.trim(),
         telephone: newCustomer.telephone?.trim(),
+        nif: newCustomer.nif?.trim(),
+        stat: newCustomer.stat?.trim(),
       };
 
-      onCustomerCreated(customer);
+      // Appeler le callback avec le client créé
+      onCustomerCreated(createdCustomer);
+      
+      // Réinitialiser le formulaire
       setNewCustomer({ 
         type: 'particulier',
         email: '', 
@@ -148,6 +148,8 @@ export default function CustomerCreateModal({
         prenoms: '',
         adresse: '',
         telephone: '',
+        nif: '',
+        stat: '',
       });
       
     } catch (error: any) {
@@ -458,6 +460,36 @@ export default function CustomerCreateModal({
                       />
                     </View>
                   </View>
+
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={validationStyles.formLabel}>
+                      NIF (optionnel)
+                    </Text>
+                    <View style={validationStyles.formInputContainer}>
+                      <Ionicons name="document-text" size={20} color="#8E8E93" style={validationStyles.formInputIcon} />
+                      <TextInput
+                        style={validationStyles.formInput}
+                        value={newCustomer.nif}
+                        onChangeText={(value) => setNewCustomer({ ...newCustomer, nif: value })}
+                        placeholderTextColor="#999"
+                      />
+                    </View>
+                  </View>
+
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={validationStyles.formLabel}>
+                      STAT (optionnel)
+                    </Text>
+                    <View style={validationStyles.formInputContainer}>
+                      <Ionicons name="document" size={20} color="#8E8E93" style={validationStyles.formInputIcon} />
+                      <TextInput
+                        style={validationStyles.formInput}
+                        value={newCustomer.stat}
+                        onChangeText={(value) => setNewCustomer({ ...newCustomer, stat: value })}
+                        placeholderTextColor="#999"
+                      />
+                    </View>
+                  </View>
                 </>
               ) : (
                 <>
@@ -590,8 +622,7 @@ export default function CustomerCreateModal({
                     validationStyles.formSubmitButtonDisabled
                   ]}
                   onPress={createCustomer}
-                  disabled={!newCustomer.email.trim() || 
-                           (newCustomer.type === 'entreprise' && !newCustomer.sigle?.trim())}
+                  disabled={(newCustomer.type === 'entreprise' && !newCustomer.sigle?.trim())}
                   activeOpacity={0.7}
                 >
                   {isCreating ? (

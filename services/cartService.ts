@@ -30,7 +30,7 @@ export interface DatabaseSale {
   ref_facture: string;
   ref_produit: string; // Format: "pdt1, pdt2, ..., pdtn"
   qte_vendu: string;   // Format: "qte1, qte2, ..., qten"
-  email: string;
+  identifiant: number;
   remise: string;      // Peut être "%" ou "€"
   mode_paiement: PaymentMethod;
   montant_paye: number;
@@ -90,7 +90,7 @@ export const getAvailableQuantity = (item: CartItem): number => {
 
 export interface SaleCreationData {
   cartItems: CartItem[];
-  clientEmail: string;
+  clientId?: number;
   paymentInfo: {
     method: PaymentMethod;
     amount_paid: number;
@@ -115,7 +115,7 @@ export const formatCartForDatabase = (data: SaleCreationData): any => {
     ref_facture,
     ref_produit,
     qte_vendu,
-    email: data.clientEmail || '',
+    identifiant: data.clientId || '',
     remise: data.paymentInfo.discount_type === 'percent' 
       ? `${data.paymentInfo.discount_amount}%`
       : `€${data.paymentInfo.discount_amount.toFixed(2)}`,
@@ -144,12 +144,12 @@ export const cartService = {
   },
 
   /** Créer une vente (version simplifiée pour compatibilité) */
-  createSaleSimple: async (cartItems: CartItem[], clientEmail: string, notes?: string) => {
+  createSaleSimple: async (cartItems: CartItem[], clientId: number, notes?: string) => {
     try {
       const subtotal = cartItems.reduce((sum, item) => sum + (item.montant || 0), 0);
       const saleData: SaleCreationData = {
         cartItems,
-        clientEmail,
+        clientId,
         paymentInfo: {
           method: 'cash',
           amount_paid: subtotal,
@@ -224,7 +224,7 @@ export const cartService = {
   getSales: async (params?: { 
     startDate?: string; 
     endDate?: string; 
-    email?: string;
+    identifiant?: number;
     mode_paiement?: PaymentMethod;
     limit?: number;
     page?: number;
@@ -274,9 +274,9 @@ export const cartService = {
   },
 
   /** Récupérer les ventes par client */
-  getSalesByClient: async (email: string) => {
+  getSalesByClient: async (identifiant: string) => {
     try {
-      const response = await axios.get<ApiResponse<DatabaseSale[]>>(`${SALE_URL}/client/${email}`);
+      const response = await axios.get<ApiResponse<DatabaseSale[]>>(`${SALE_URL}/client/${identifiant}`);
       return response.data.data;
     } catch (error: any) {
       throw {
@@ -491,7 +491,7 @@ export const cartService = {
   /** Parser une vente de la base de données pour l'affichage */
   parseDatabaseSale: (dbSale: DatabaseSale): {
     ref_facture: string;
-    email: string;
+    identifiant: number;
     products: Array<{
       ref_produit: string;
       qte_vendu: number;
@@ -517,7 +517,7 @@ export const cartService = {
     
     return {
       ref_facture: dbSale.ref_facture,
-      email: dbSale.email,
+      identifiant: dbSale.identifiant,
       products,
       remise: dbSale.remise,
       mode_paiement: dbSale.mode_paiement,

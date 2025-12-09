@@ -7,7 +7,7 @@ export interface CompanyData {
   companyName: string;
   address: string;
   phone: string;
-  email: string;
+  identifiant: string;
   nif: string;
   stat: string;
   rcs: string;

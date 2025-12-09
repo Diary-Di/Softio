@@ -16,20 +16,10 @@ import {
 import { validationStyles } from '../styles/CartValidationStyles';
 import { Ionicons } from '@expo/vector-icons';
 import { cartService, CartItem, SaleCreationData, PaymentMethod } from '../services/cartService';
-import { customerService } from '../services/customerService';
+import { customerService, Customer } from '../services/customerService';
 import CustomerCreateModal from '../components/CustomerCreateModal';
 import CustomerSearchModal from '../components/customerSearchModal';
 
-// Types
-type Customer = {
-  type: 'particulier' | 'entreprise';
-  email: string;
-  sigle?: string;
-  nom?: string;
-  prenoms?: string;
-  adresse?: string;
-  telephone?: string;
-};
 
 // Fonction pour formater les prix avec séparateurs de milliers
 const formatPrice = (price: number | undefined): string => {
@@ -77,7 +67,7 @@ const getCustomerDisplayName = (customer: Customer): string => {
   if (customer.prenoms) {
     return customer.prenoms;
   }
-  return customer.email;
+  return customer.email || `Client #${customer.identifiant}`;
 };
 
 // Méthodes de paiement
@@ -257,8 +247,8 @@ export default function CartValidationScreen({ route, navigation }: any) {
   const handleCustomerCreated = useCallback((customer: Customer) => {
     setSelectedCustomer(customer);
     setCustomers(prev => {
-      const exists = prev.some(c => c.email === customer.email);
-      if (exists) return prev.map(c => c.email === customer.email ? customer : c);
+      const exists = prev.some(c => c.identifiant === customer.identifiant);
+      if (exists) return prev.map(c => c.identifiant === customer.identifiant ? customer : c);
       return [customer, ...prev];
     });
     closeAllModals();
@@ -343,7 +333,7 @@ export default function CartValidationScreen({ route, navigation }: any) {
       // Création des données de vente
       const saleData: SaleCreationData = {
         cartItems: safeCart,
-        clientEmail: selectedCustomer.email,
+        clientId: selectedCustomer.identifiant, // Utilisation de identifiant
         paymentInfo: {
           method: selectedPaymentMethod,
           amount_paid: paidAmount,
@@ -454,12 +444,15 @@ export default function CartValidationScreen({ route, navigation }: any) {
                 <View style={[validationStyles.clientAvatar, { backgroundColor: selectedCustomer.type === 'entreprise' ? '#E8F4FF' : '#F0F8FF' }]}>
                   <Ionicons name={selectedCustomer.type === 'entreprise' ? 'business' : 'person'} size={24} color={selectedCustomer.type === 'entreprise' ? '#0056B3' : '#007AFF'} />
                 </View>
+                
                 <View style={validationStyles.selectedClientInfo}>
                   <Text style={validationStyles.selectedClientName}>{getCustomerDisplayName(selectedCustomer)}</Text>
                   <View style={validationStyles.selectedClientDetails}>
                     <View style={validationStyles.clientDetailRow}>
                       <Ionicons name="mail" size={14} color="#8E8E93" style={{ marginRight: 4 }} />
-                      <Text style={validationStyles.selectedClientEmail}>{selectedCustomer.email}</Text>
+                      <Text style={validationStyles.selectedClientEmail}>
+                          {selectedCustomer.email || 'Aucun email'}
+                      </Text>
                     </View>
                     {selectedCustomer.telephone && (
                       <View style={validationStyles.clientDetailRow}>
@@ -469,9 +462,11 @@ export default function CartValidationScreen({ route, navigation }: any) {
                     )}
                   </View>
                 </View>
+
                 <TouchableOpacity style={validationStyles.changeClientButton} onPress={handleOpenSearchModal}>
                   <Ionicons name="create" size={18} color="#007AFF" />
                 </TouchableOpacity>
+
               </View>
             </View>
           ) : (
