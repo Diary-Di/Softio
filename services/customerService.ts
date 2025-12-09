@@ -2,22 +2,49 @@
 import axios from "axios";
 import { API_BASE_URL, API_ENDPOINTS } from "../config/api";
 
-// services/customerService.ts
 const CUSTOMER_URL = `${API_BASE_URL}${API_ENDPOINTS.CUSTOMER}`;
+
+// Types
+export interface Customer {
+  identifiant: number;
+  type: 'particulier' | 'entreprise';
+  email?: string;
+  sigle?: string;
+  nom?: string;
+  prenoms?: string;
+  adresse?: string;
+  telephone?: string;
+  nif?: string;
+  stat?: string;
+}
+
+export interface CreateCustomerData {
+  type: 'particulier' | 'entreprise';
+  email?: string;
+  sigle?: string;
+  nom?: string;
+  prenoms?: string;
+  adresse?: string;
+  telephone?: string;
+  nif?: string;
+  stat?: string;
+}
+
+export interface UpdateCustomerData {
+  type?: 'particulier' | 'entreprise';
+  email?: string;
+  sigle?: string;
+  nom?: string;
+  prenoms?: string;
+  adresse?: string;
+  telephone?: string;
+  nif?: string;
+  stat?: string;
+}
 
 export const customerService = {
   /** ✔ CREATE CUSTOMER */
-  createCustomer: async (data: {
-    type: 'particulier' | 'entreprise';
-    email: string; // REQUIS car clé primaire
-    sigle?: string;
-    nom?: string;
-    prenoms?: string;
-    adresse?: string;
-    telephone?: string;
-    nif?: string;
-    stat?: string;
-  }) => {
+  createCustomer: async (data: CreateCustomerData) => {
     try {
       const response = await axios.post(CUSTOMER_URL, data);
       return response.data;
@@ -32,9 +59,12 @@ export const customerService = {
   },
 
   /** ✔ GET ALL CUSTOMERS */
-  getCustomers: async () => {
+  getCustomers: async (params?: {
+    type?: 'particulier' | 'entreprise';
+    q?: string;
+  }) => {
     try {
-      const response = await axios.get(CUSTOMER_URL);
+      const response = await axios.get(CUSTOMER_URL, { params });
       return response.data.data;
     } catch (error: any) {
       throw {
@@ -46,12 +76,10 @@ export const customerService = {
     }
   },
 
-  /** ✔ GET CUSTOMER BY EMAIL (clé primaire) */
-  getCustomer: async (email: string) => {
+  /** ✔ GET CUSTOMER BY ID */
+  getCustomerById: async (id: number) => {
     try {
-      // Encoder l'email pour l'URL (car contient @)
-      const encodedEmail = encodeURIComponent(email);
-      const response = await axios.get(`${CUSTOMER_URL}/${encodedEmail}`);
+      const response = await axios.get(`${CUSTOMER_URL}/${id}`);
       return response.data.data;
     } catch (error: any) {
       throw {
@@ -62,12 +90,27 @@ export const customerService = {
     }
   },
 
-  /** ✔ UPDATE CUSTOMER */
-  updateCustomer: async (email: string, data: any) => {
+  /** ✔ GET CUSTOMER BY EMAIL */
+  getCustomerByEmail: async (email: string) => {
     try {
-      // Encoder l'email pour l'URL
       const encodedEmail = encodeURIComponent(email);
-      const response = await axios.put(`${CUSTOMER_URL}/${encodedEmail}`, data);
+      const response = await axios.get(`${CUSTOMER_URL}/email`, {
+        params: { email: encodedEmail }
+      });
+      return response.data.data;
+    } catch (error: any) {
+      throw {
+        message:
+          error.response?.data?.messages || "Client introuvable",
+        code: error.response?.status || 404,
+      };
+    }
+  },
+
+  /** ✔ UPDATE CUSTOMER BY ID */
+  updateCustomer: async (id: number, data: UpdateCustomerData) => {
+    try {
+      const response = await axios.put(`${CUSTOMER_URL}/${id}`, data);
       return response.data;
     } catch (error: any) {
       throw {
@@ -79,12 +122,10 @@ export const customerService = {
     }
   },
 
-  /** ✔ DELETE CUSTOMER */
-  deleteCustomer: async (email: string) => {
+  /** ✔ DELETE CUSTOMER BY ID */
+  deleteCustomer: async (id: number) => {
     try {
-      // Encoder l'email pour l'URL
-      const encodedEmail = encodeURIComponent(email);
-      const response = await axios.delete(`${CUSTOMER_URL}/${encodedEmail}`);
+      const response = await axios.delete(`${CUSTOMER_URL}/${id}`);
       return response.data;
     } catch (error: any) {
       throw {
@@ -96,5 +137,35 @@ export const customerService = {
     }
   },
 
-  // ... autres méthodes
+  /** ✔ SEARCH CUSTOMERS */
+  searchCustomers: async (query: string) => {
+    try {
+      const response = await axios.get(`${CUSTOMER_URL}/search`, {
+        params: { q: query }
+      });
+      return response.data.data;
+    } catch (error: any) {
+      throw {
+        message:
+          error.response?.data?.messages ||
+          "Erreur lors de la recherche des clients",
+        code: error.response?.status || 500,
+      };
+    }
+  },
+
+  /** ✔ GET CUSTOMERS BY TYPE */
+  getCustomersByType: async (type: 'particulier' | 'entreprise') => {
+    try {
+      const response = await axios.get(`${CUSTOMER_URL}/type/${type}`);
+      return response.data.data;
+    } catch (error: any) {
+      throw {
+        message:
+          error.response?.data?.messages ||
+          "Erreur lors du chargement des clients par type",
+        code: error.response?.status || 500,
+      };
+    }
+  }
 };

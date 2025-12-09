@@ -6,14 +6,6 @@ export default StyleSheet.create({
     backgroundColor: '#fff' 
   },
   
-  // Nouveau style pour ScrollView
-  scrollContainer: { 
-    flexGrow: 1, 
-    paddingHorizontal: 16, 
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24 
-  },
-  
-  // Ancien content gardé pour compatibilité
   content: { 
     padding: 16, 
     paddingBottom: Platform.OS === 'ios' ? 40 : 24 
@@ -60,7 +52,6 @@ export default StyleSheet.create({
     fontWeight: '600' 
   },
   
-  // Nouveaux styles pour les inputs avec container
   inputContainer: {
     borderWidth: 1,
     borderColor: '#E6E7EB',
@@ -147,7 +138,6 @@ export default StyleSheet.create({
     color: '#fff',
   },
 
-  // Inline variant used next to the Raison social label
   segmentRowInline: { 
     flexDirection: 'row' 
   },
@@ -208,7 +198,6 @@ export default StyleSheet.create({
     color: '#111827' 
   },
   
-  // Nouveaux styles pour les messages
   messageBox: {
     padding: 12,
     borderRadius: 8,
@@ -248,7 +237,6 @@ export default StyleSheet.create({
     marginLeft: 12,
   },
   
-  // Style pour le placeholder des TextInput
   placeholderText: {
     color: '#9CA3AF',
   }, 
@@ -317,21 +305,6 @@ export default StyleSheet.create({
     marginLeft: 8,
   },
 
-  // Bannière de succès
-  successBanner: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#4CAF50',
-    zIndex: 1000,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  
   successBannerContent: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -346,8 +319,83 @@ export default StyleSheet.create({
     flex: 1,
     marginLeft: 12,
   },
+
+  // BANNER SIMPLE ET MODERNE
+  banner: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20,
+    left: 16,
+    right: 16,
+    zIndex: 1000,
+    elevation: 1000,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    //elevation: 6,
+  },
   
-  successBannerClose: {
+  errorBanner: {
+    backgroundColor: '#DC2626', // Rouge vif
+  },
+  
+  successBanner: {
+    backgroundColor: '#10B981', // Vert vif
+  },
+  
+  bannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  
+  bannerTextContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
+  
+  bannerText: {
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+  
+  bannerCloseButton: {
     padding: 4,
   },
+  
+  // Ajustement du scroll container
+  scrollContainer: {
+    padding: 16,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24
+  },
+    
+    actionsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 12,
+        marginTop: 8,
+    },
+    
+    resetButtonText: {
+        color: '#007AFF',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    
+    updateButton: {
+        flex: 2,
+        backgroundColor: '#007AFF',
+    },
+
+    closeBannerButton: {
+    padding: 4,
+    }
 });

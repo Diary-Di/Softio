@@ -19,21 +19,7 @@ import {
 import FloatingBottomBarCustomer from '../components/FloatingBottomBarCustomer';
 import styles from "../styles/CustomerScreenStyles";
 import { productScreenStyles as productStyles } from '../styles/productScreenStyles';
-import { customerService } from '../services/customerService';
-
-type Customer = {
-  id?: string;
-  email: string;
-  type: 'particulier' | 'entreprise';
-  sigle?: string;
-  nom?: string;
-  prenom?: string;
-  adresse?: string;
-  telephone?: string;
-  nif?: string;
-  stat?: string;
-  raison_social?: string;
-};
+import { customerService, Customer } from '../services/customerService'; // Importer le type Customer
 
 const ITEMS_PER_PAGE = 10;
 
@@ -42,7 +28,7 @@ export default function CustomerScreen() {
     UIManager.setLayoutAnimationEnabledExperimental?.(true);
   }
 
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +49,7 @@ export default function CustomerScreen() {
       const query = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(customer =>
         (customer.nom?.toLowerCase().includes(query)) ||
-        (customer.prenom?.toLowerCase().includes(query)) ||
+        (customer.prenoms?.toLowerCase().includes(query)) || // Changé de prenom à prenoms
         (customer.sigle?.toLowerCase().includes(query)) ||
         (customer.email?.toLowerCase().includes(query)) ||
         (customer.telephone?.includes(query)) ||
@@ -90,16 +76,30 @@ export default function CustomerScreen() {
   const loadCustomers = useCallback(async () => {
     try {
       setError(null);
-      const data = await customerService.getCustomers();
+      // Ajouter des paramètres pour le filtrage côté serveur si nécessaire
+      const params: any = {};
+      if (customerType !== 'all') {
+        params.type = customerType;
+      }
+      if (searchQuery.trim()) {
+        params.q = searchQuery.trim();
+      }
+      
+      const data = await customerService.getCustomers(params);
       setCustomers(data || []);
     } catch (error: any) {
       console.error('❌ Erreur chargement clients:', error);
       setError(error.message || 'Impossible de charger les clients');
+      
+      // Afficher une alerte pour les erreurs graves
+      if (error.code === 500) {
+        Alert.alert('Erreur serveur', 'Impossible de contacter le serveur. Veuillez réessayer plus tard.');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [customerType, searchQuery]);
 
   // Recharger quand l'écran obtient le focus
   useFocusEffect(
@@ -117,7 +117,7 @@ export default function CustomerScreen() {
   // Fonctions utilitaires
   const getFullName = (customer: Customer): string => {
     if (customer.type === 'particulier') {
-      return `${customer.prenom || ''} ${customer.nom || ''}`.trim();
+      return `${customer.prenoms || ''} ${customer.nom || ''}`.trim();
     } else {
       return customer.sigle || 'Entreprise';
     }
@@ -125,7 +125,7 @@ export default function CustomerScreen() {
 
   const getInitials = (customer: Customer): string => {
     if (customer.type === 'particulier') {
-      return `${customer.prenom?.[0] || ''}${customer.nom?.[0] || ''}`.toUpperCase();
+      return `${customer.prenoms?.[0] || ''}${customer.nom?.[0] || ''}`.toUpperCase();
     } else {
       return customer.sigle?.[0] || 'E';
     }
@@ -138,9 +138,9 @@ export default function CustomerScreen() {
     </View>
   );
 
-  const toggle = (email: string) => {
+  const toggle = (id: number) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpandedId((prev) => (prev === email ? null : email));
+    setExpandedId((prev) => (prev === id ? null : id));
   };
 
   // Pagination
@@ -218,13 +218,13 @@ export default function CustomerScreen() {
 
   // Render item
   const renderItem = ({ item }: { item: Customer }) => {
-    const isExpanded = expandedId === item.email;
+    const isExpanded = expandedId === item.identifiant;
     const fullName = getFullName(item);
     const initials = getInitials(item);
 
     return (
       <Pressable
-        onPress={() => toggle(item.email)}
+        onPress={() => toggle(item.identifiant)}
         style={styles.card}
         accessibilityLabel={`Client ${fullName}`}
       >
@@ -238,7 +238,7 @@ export default function CustomerScreen() {
 
           <View style={styles.nameContainer}>
             <Text style={styles.name}>{fullName}</Text>
-            <Text style={styles.email}>{item.email}</Text>
+            <Text style={styles.email}>{item.email || 'Aucun email'}</Text>
             <View style={styles.typeBadge}>
               <Text style={styles.typeText}>
                 {item.type === 'particulier' ? 'Particulier' : 'Entreprise'}
@@ -247,7 +247,7 @@ export default function CustomerScreen() {
           </View>
 
           <Pressable
-            onPress={() => toggle(item.email)}
+            onPress={() => toggle(item.identifiant)}
             style={({ pressed }) => [
               styles.chevronButton,
               { opacity: pressed ? 0.85 : 1, transform: [{ rotate: isExpanded ? '180deg' : '0deg' }] },
@@ -259,65 +259,87 @@ export default function CustomerScreen() {
         </View>
 
         {isExpanded && (
-          <View style={styles.expanded}>
-            {renderField("Type", item.type === 'particulier' ? 'Particulier' : 'Entreprise')}
-            
-            {item.type === 'entreprise' && renderField("SIGLE", item.sigle)}
-            {item.type === 'particulier' && renderField("Nom", item.nom)}
-            {item.type === 'particulier' && renderField("Prénom", item.prenom)}
-            
-            {renderField("Adresse", item.adresse)}
-            {renderField("Téléphone", item.telephone)}
-            {renderField("Email", item.email)}
-            
-            {item.type === 'entreprise' && renderField("NIF", item.nif)}
-            {item.type === 'entreprise' && renderField("STAT", item.stat)}
+  <View style={styles.expanded}>
+    {renderField("Type", item.type === 'particulier' ? 'Particulier' : 'Entreprise')}
+    
+    {item.type === 'entreprise' && renderField("SIGLE", item.sigle)}
+    {item.type === 'particulier' && renderField("Nom", item.nom)}
+    {item.type === 'particulier' && renderField("Prénom", item.prenoms)}
+    
+    {renderField("Adresse", item.adresse)}
+    {renderField("Téléphone", item.telephone)}
+    {renderField("Email", item.email)}
+    
+    {item.type === 'entreprise' && renderField("NIF", item.nif)}
+    {item.type === 'entreprise' && renderField("STAT", item.stat)}
 
-            <View style={styles.actionRow}>
-              {item.telephone && (
-                <Pressable
-                  style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1 }]}
-                  onPress={() => {
-                    const url = `tel:${item.telephone}`;
-                    Linking.canOpenURL(url).then((supported) => {
-                      if (supported) Linking.openURL(url);
-                      else Alert.alert("Appel impossible", "Votre appareil ne peut pas passer d'appels.");
-                    });
-                  }}
-                >
-                  <Ionicons name="call" size={24} color="#2563EB" />
-                </Pressable>
-              )}
+    <View style={styles.actionRow}>
+      {item.telephone && (
+        <Pressable
+          style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1 }]}
+          onPress={() => {
+            const url = `tel:${item.telephone}`;
+            Linking.canOpenURL(url).then((supported) => {
+              if (supported) Linking.openURL(url);
+              else Alert.alert("Appel impossible", "Votre appareil ne peut pas passer d'appels.");
+            });
+          }}
+        >
+          <Ionicons name="call" size={24} color="#2563EB" />
+        </Pressable>
+      )}
 
-              <Pressable
-                style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1 }]}
-                onPress={() => {
-                  const url = `mailto:${item.email}`;
-                  Linking.canOpenURL(url).then((supported) => {
-                    if (supported) Linking.openURL(url);
-                    else Alert.alert("Email impossible", "Votre appareil ne peut pas envoyer d'emails.");
-                  });
-                }}
-              >
-                <Ionicons name="mail" size={24} color="#059669" />
-              </Pressable>
+      {item.email && (
+        <Pressable
+          style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1 }]}
+          onPress={() => {
+            const url = `mailto:${item.email}`;
+            Linking.canOpenURL(url).then((supported) => {
+              if (supported) Linking.openURL(url);
+              else Alert.alert("Email impossible", "Votre appareil ne peut pas envoyer d'emails.");
+            });
+          }}
+        >
+          <Ionicons name="mail" size={24} color="#059669" />
+        </Pressable>
+      )}
 
+      <Pressable
+  style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1 }]}
+  onPress={() => {
+    // Utiliser router.push au lieu de navigation.navigate
+    navigation.navigate('EditCustomer', {
+      id: item.identifiant.toString(), // Convertir en string
+      type: item.type,
+      nom: item.nom || '',
+      prenoms: item.prenoms || '',
+      sigle: item.sigle || '',
+      adresse: item.adresse || '',
+      telephone: item.telephone || '',
+      email: item.email || '',
+      nif: item.nif || '',
+      stat: item.stat || ''
+    });
+  }}
+>
+  <Ionicons name="pencil" size={24} color="#F59E0B" />
+</Pressable>
 
-              <Pressable
-                style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1 }]}
-                onPress={() => handleDeleteCustomer(item.email, fullName)}
-              >
-                <Ionicons name="trash" size={24} color="#DC2626" />
-              </Pressable>
-            </View>
-          </View>
-        )}
+      <Pressable
+        style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1 }]}
+        onPress={() => handleDeleteCustomer(item.identifiant, fullName)}
+      >
+        <Ionicons name="trash" size={24} color="#DC2626" />
+      </Pressable>
+    </View>
+  </View>
+)}
       </Pressable>
     );
   };
 
   // Actions
-  const handleDeleteCustomer = async (email: string, name: string) => {
+  const handleDeleteCustomer = async (id: number, name: string) => {
     Alert.alert(
       "Supprimer",
       `Voulez-vous supprimer ${name} ?`,
@@ -328,20 +350,21 @@ export default function CustomerScreen() {
           style: "destructive", 
           onPress: async () => {
             try {
-              await customerService.deleteCustomer(email);
+              await customerService.deleteCustomer(id);
               Alert.alert('Succès', 'Client supprimé avec succès');
               loadCustomers();
             } catch (error: any) {
-              Alert.alert('Erreur', error.message || 'Erreur lors de la suppression');
+              console.error('❌ Erreur suppression:', error);
+              Alert.alert(
+                'Erreur', 
+                error.message || 'Erreur lors de la suppression',
+                [{ text: 'OK' }]
+              );
             }
           }
         },
       ]
     );
-  };
-
-  const handleEditCustomer = (customer: Customer) => {
-    navigation.navigate('EditCustomer', { customer });
   };
 
   // Écran de chargement
@@ -465,7 +488,7 @@ export default function CustomerScreen() {
         <>
           <FlatList
             data={paginatedCustomers}
-            keyExtractor={(item) => item.email}
+            keyExtractor={(item) => item.identifiant.toString()} // Utiliser identifiant comme clé
             renderItem={renderItem}
             contentContainerStyle={styles.listContainer}
             showsVerticalScrollIndicator={false}

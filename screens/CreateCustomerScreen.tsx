@@ -1,30 +1,26 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from "expo-router";
-import { useNavigation } from '@react-navigation/native';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
-    Alert,
     KeyboardAvoidingView,
     Modal,
     Platform,
-    SafeAreaView,
     ScrollView,
     Text,
     TextInput,
     TouchableOpacity,
     View,
     ActivityIndicator,
-    TouchableWithoutFeedback
+    TouchableWithoutFeedback,
+    Animated
 } from 'react-native';
 import styles from '../styles/CreateCustomerStyles';
 import { customerService } from '../services/customerService';
-import CustomerScreen from './CustomerScreen';
 
 export default function CreateCustomerScreen() {
   const router = useRouter();
 
   // États pour les données du formulaire
-  const [raisonSocial, setRaisonSocial] = useState('');
   const [customerType, setCustomerType] = useState<'particulier' | 'entreprise'>('particulier');
   const [sigle, setSigle] = useState('');
   const [showTypePicker, setShowTypePicker] = useState(false);
@@ -40,6 +36,10 @@ export default function CreateCustomerScreen() {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'error' | 'success' | ''>('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Animation pour le banner
+  const bannerAnim = useRef(new Animated.Value(-100)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
 
   // États de focus pour les champs
   const [nomFocused, setNomFocused] = useState(false);
@@ -60,6 +60,59 @@ export default function CreateCustomerScreen() {
   const emailRef = useRef<TextInput>(null);
   const nifRef = useRef<TextInput>(null);
   const statRef = useRef<TextInput>(null);
+
+  // Gérer l'affichage/la disparition du banner
+  useEffect(() => {
+    if (message) {
+      // Afficher le banner avec animation
+      Animated.parallel([
+        Animated.spring(bannerAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 300,
+          friction: 25,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        })
+      ]).start();
+
+      // Si c'est un succès, cacher automatiquement après 3 secondes
+      if (messageType === 'success') {
+        const timer = setTimeout(() => {
+          hideBanner();
+        }, 3000);
+        return () => clearTimeout(timer);
+      }
+    } else {
+      hideBanner();
+    }
+  }, [message, messageType]);
+
+  const hideBanner = () => {
+    Animated.parallel([
+      Animated.spring(bannerAnim, {
+        toValue: -100,
+        useNativeDriver: true,
+        tension: 300,
+        friction: 25,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      })
+    ]).start(() => {
+      setMessage('');
+      setMessageType('');
+    });
+  };
+
+  const handleCloseBanner = () => {
+    hideBanner();
+  };
 
   // Validation du formulaire
   const validate = () => {
@@ -92,18 +145,18 @@ export default function CreateCustomerScreen() {
     setIsLoading(true);
     setMessage('');
 
+    // Préparer le payload selon le type de client
     const payload: any = {
       type: customerType,
-      raisonSocial: customerType === 'particulier' ? 'Particulier' : 'Entreprise',
-      adresse: adresse.trim(),
-      telephone: telephone.trim(),
-      email: email.trim(),
+      adresse: adresse.trim() || undefined,
+      telephone: telephone.trim() || undefined,
+      email: email.trim() || undefined,
     };
 
     if (customerType === 'entreprise') {
       payload.sigle = sigle.trim();
-      payload.nif = nif.trim();
-      payload.stat = stat.trim();
+      if (nif.trim()) payload.nif = nif.trim();
+      if (stat.trim()) payload.stat = stat.trim();
     } else {
       payload.nom = nom.trim();
       payload.prenoms = prenoms.trim();
@@ -118,22 +171,32 @@ export default function CreateCustomerScreen() {
       // Réinitialiser le formulaire après succès
       setTimeout(() => {
         resetForm();
-
+        // Rediriger vers la liste des clients après un délai
+        setTimeout(() => {
+          router.back();
+        }, 500);
       }, 1500);
     } catch (error: any) {
       console.error('❌ Erreur création client :', error);
-      showError(error.message || 'Erreur lors de l\'ajout du client');
-
-      if (error.code === 500) {
-        Alert.alert('Erreur serveur', 'Impossible de contacter le serveur.');
+      
+      let errorMessage = error.message || 'Erreur lors de l\'ajout du client';
+      
+      // Gestion spécifique des erreurs de validation
+      if (error.code === 409) {
+        errorMessage = "Cet email est déjà utilisé par un autre client";
+      } else if (error.code === 400) {
+        errorMessage = "Données invalides. Vérifiez les informations saisies";
+      } else if (error.code === 500) {
+        errorMessage = "Erreur serveur. Veuillez réessayer plus tard";
       }
+      
+      showError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
   const resetForm = () => {
-    setRaisonSocial('');
     setCustomerType('particulier');
     setSigle('');
     setNom('');
@@ -143,8 +206,6 @@ export default function CreateCustomerScreen() {
     setEmail('');
     setNif('');
     setStat('');
-    setMessage('');
-    setMessageType('');
   };
 
   const showError = (msg: string) => {
@@ -157,8 +218,41 @@ export default function CreateCustomerScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.container}
     >
+      {/* BANNER SIMPLE ET MODERNE */}
+      {message ? (
+        <Animated.View 
+          style={[
+            styles.banner,
+            messageType === 'error' ? styles.errorBanner : styles.successBanner,
+            {
+              transform: [{ translateY: bannerAnim }],
+              opacity: opacityAnim,
+            }
+          ]}
+        >
+          <View style={styles.bannerContent}>
+            <View style={styles.bannerTextContainer}>
+              <Text style={styles.bannerText}>
+                {message}
+              </Text>
+            </View>
+            
+            <TouchableOpacity 
+              onPress={handleCloseBanner}
+              style={styles.bannerCloseButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="close" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      ) : null}
+
       <ScrollView
-        contentContainerStyle={styles.scrollContainer}
+        contentContainerStyle={[
+          styles.scrollContainer,
+          message ? { paddingTop: Platform.OS === 'ios' ? 90 : 70 } : {}
+        ]}
         keyboardShouldPersistTaps="handled"
       >
         {/* HEADER */}
@@ -199,7 +293,7 @@ export default function CreateCustomerScreen() {
                   onPress={() => { 
                     setCustomerType('particulier'); 
                     setShowTypePicker(false); 
-                    setRaisonSocial('Particulier');
+                    setSigle(''); // Réinitialiser sigle si on passe de entreprise à particulier
                     setNif('');
                     setStat('');
                   }}
@@ -211,7 +305,8 @@ export default function CreateCustomerScreen() {
                   onPress={() => { 
                     setCustomerType('entreprise'); 
                     setShowTypePicker(false); 
-                    setRaisonSocial('Entreprise');
+                    setNom(''); // Réinitialiser nom et prénom si on passe de particulier à entreprise
+                    setPrenoms('');
                   }}
                 >
                   <Text style={styles.pickerOptionText}>Entreprise</Text>
@@ -411,25 +506,6 @@ export default function CreateCustomerScreen() {
             <Text style={styles.buttonText}>Enregistrer</Text>
           )}
         </TouchableOpacity>
-
-        {/* MESSAGE */}
-        {message ? (
-          <View
-            style={[
-              styles.messageBox,
-              messageType === 'error' ? styles.errorBox : styles.successBox,
-            ]}
-          >
-            <Text
-              style={[
-                styles.messageText,
-                messageType === 'error' ? styles.errorText : styles.successText,
-              ]}
-            >
-              {message}
-            </Text>
-          </View>
-        ) : null}
       </ScrollView>
     </KeyboardAvoidingView>
   );

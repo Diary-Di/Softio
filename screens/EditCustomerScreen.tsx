@@ -1,959 +1,574 @@
-/******************************************************************
- *  ModifyProductScreen.tsx  –  Modification d'un produit existant
- ******************************************************************/
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  Image,
-  Alert,
-  Modal,
-  FlatList,
-  ActivityIndicator,
-  RefreshControl,
-} from 'react-native';
-import Icon from '@expo/vector-icons/MaterialIcons';
-import * as ImagePicker from 'expo-image-picker';
-import { 
-  styles 
-} from '../styles/CreateProductStyles';
-import { productService } from '../services/productService';
-import { categoryService } from '../services/categoryService';
 import { Ionicons } from '@expo/vector-icons';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import * as FileSystem from 'expo-file-system';
+import { useState, useRef, useEffect } from 'react';
+import {
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+    TouchableWithoutFeedback,
+    Alert,
+    Animated,
+    ActivityIndicator // Ajouter ActivityIndicator
+} from 'react-native';
+import styles from '../styles/CreateCustomerStyles';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { customerService, UpdateCustomerData } from '../services/customerService';
 
-// Interface pour les catégories
-interface Categorie {
-  categorie: string;
-  description: string;
-}
-
-// Interface pour les données du produit
-interface ProductFormData {
-  ref_produit: string;
-  designation: string;
-  categorie: string;
-  prix_actuel: string;
-  qte_disponible: number;
-  image_url: string | null;
-  imageFile?: any; // Fichier image temporaire
-  original_ref?: string; // Référence originale pour mise à jour
-}
-
-// Type pour les paramètres de navigation
-type ModifyProductRouteProp = RouteProp<
-  { params: { product: any } },
-  'params'
->;
-
-const EditProductScreen: React.FC = () => {
-  const navigation = useNavigation<any>();
-  const route = useRoute<ModifyProductRouteProp>();
-  const { product } = route.params;
-  
-  // États du formulaire avec pré-remplissage
-  const [formData, setFormData] = useState<ProductFormData>({
-    ref_produit: product.ref_produit || '',
-    designation: product.designation || '',
-    categorie: product.categorie || '',
-    prix_actuel: product.prix_actuel?.toString() || '',
-    qte_disponible: product.qte_disponible || 1,
-    image_url: product.image_url || null,
-    imageFile: undefined,
-    original_ref: product.ref_produit, // Sauvegarde de la référence originale
-  });
-  
-  // États pour les catégories
-  const [categories, setCategories] = useState<Categorie[]>([]);
-  const [loadingCategories, setLoadingCategories] = useState(true);
-  const [refreshingCategories, setRefreshingCategories] = useState(false);
-  
-  // États UI
-  const [modalVisible, setModalVisible] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [isFetching, setIsFetching] = useState(false);
-
-  // Références
-  const inputRef = useRef<TextInput>(null);
-
-  // Destructuration
-  const { ref_produit, designation, categorie, prix_actuel, qte_disponible, image_url, imageFile, original_ref } = formData;
-
-  // Charger les catégories et vérifier les données au démarrage
-  useEffect(() => {
-    loadCategories();
-    verifyProductData();
-  }, []);
-
-  // Vérifier et valider les données du produit reçu
-  const verifyProductData = async () => {
-    try {
-      if (!product || !product.ref_produit) {
-        Alert.alert('Erreur', 'Données du produit invalides', [
-          { text: 'OK', onPress: () => navigation.goBack() }
-        ]);
-        return;
-      }
-
-      // Optionnel: Vérifier si le produit existe toujours
-      setIsFetching(true);
-      const existingProduct = await productService.getProduct(product.ref_produit);
-      
-      if (!existingProduct) {
-        Alert.alert(
-          'Produit non trouvé',
-          'Ce produit a peut-être été supprimé.',
-          [
-            { 
-              text: 'Retour', 
-              onPress: () => navigation.goBack() 
-            }
-          ]
-        );
-      }
-    } catch (error) {
-      console.warn('⚠️ Impossible de vérifier le produit:', error);
-      // On continue quand même, l'utilisateur pourra essayer de sauvegarder
-    } finally {
-      setIsFetching(false);
-    }
-  };
-
-  // Charger les catégories depuis l'API
-  const loadCategories = async () => {
-    try {
-      setLoadingCategories(true);
-      const categoriesData = await categoryService.getCategories();
-      
-      if (Array.isArray(categoriesData)) {
-        setCategories(categoriesData);
-        
-        // Si la catégorie du produit n'existe plus, afficher un avertissement
-        if (product.categorie && !categoriesData.some(cat => cat.categorie === product.categorie)) {
-          Alert.alert(
-            'Catégorie introuvable',
-            `La catégorie "${product.categorie}" n'existe plus. Veuillez en sélectionner une nouvelle.`
-          );
-        }
-      } else {
-        console.warn('Format de données de catégories inattendu:', categoriesData);
-        setCategories([]);
-      }
-    } catch (error: any) {
-      console.error('❌ Erreur chargement catégories:', error);
-      Alert.alert(
-        'Erreur',
-        error.message || 'Impossible de charger les catégories',
-        [
-          { text: 'Réessayer', onPress: () => loadCategories() },
-          { text: 'Continuer', style: 'cancel' }
-        ]
-      );
-      setCategories([]);
-    } finally {
-      setLoadingCategories(false);
-      setRefreshingCategories(false);
-    }
-  };
-
-  // Rafraîchir les catégories
-  const handleRefreshCategories = () => {
-    setRefreshingCategories(true);
-    loadCategories();
-  };
-
-  // Mise à jour des champs
-  const updateField = useCallback((field: keyof ProductFormData, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  }, []);
-
-  // Sélectionner une image depuis la galerie
-  const selectImageFromGallery = async () => {
-    try {
-      setUploadingImage(true);
-      
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission requise', 'Nous avons besoin d\'accéder à votre galerie');
-        setUploadingImage(false);
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.7,
-        base64: false,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        
-        // Stocker le fichier image temporairement
-        updateField('image_url', asset.uri);
-        updateField('imageFile', {
-          uri: asset.uri,
-          type: asset.mimeType || 'image/jpeg',
-          name: asset.fileName || `product_${Date.now()}.jpg`,
-        });
-      }
-    } catch (error) {
-      console.error('❌ Erreur sélection image:', error);
-      Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
-    } finally {
-      setUploadingImage(false);
-    }
-  };
-
-  // Gestion de l'import d'image
-  const handleImageImport = () => {
-    selectImageFromGallery();
-  };
-
-  // Supprimer l'image
-  const handleImageDelete = () => {
-    Alert.alert(
-      'Supprimer l\'image',
-      'Êtes-vous sûr de vouloir supprimer cette image ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Supprimer', 
-          style: 'destructive',
-          onPress: () => {
-            updateField('image_url', null);
-            updateField('imageFile', undefined);
-          }
-        },
-      ]
-    );
-  };
-
-  // Réinitialiser l'image à l'originale
-  const handleImageReset = () => {
-    Alert.alert(
-      'Rétablir l\'image originale',
-      'Voulez-vous rétablir l\'image d\'origine ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Rétablir', 
-          onPress: () => {
-            updateField('image_url', product.image_url || null);
-            updateField('imageFile', undefined);
-          }
-        },
-      ]
-    );
-  };
-
-  // Formatage du prix
-  const formatPrix = useCallback((text: string) => {
-    let cleaned = text.replace(/[^\d.,]/g, '');
-    cleaned = cleaned.replace(',', '.');
-    
-    const parts = cleaned.split('.');
-    let partieEntiere = parts[0];
-    let partieDecimale = parts.length > 1 ? parts[1].substring(0, 2) : '';
-    
-    if (partieEntiere) {
-      partieEntiere = partieEntiere.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-    }
-    
-    const formatted = partieDecimale 
-      ? `${partieEntiere}.${partieDecimale}`
-      : partieEntiere;
-    
-    updateField('prix_actuel', formatted);
-  }, [updateField]);
-
-  // Gestion de la quantité
-  const incrementQuantite = useCallback(() => {
-    updateField('qte_disponible', qte_disponible + 1);
-  }, [qte_disponible, updateField]);
-
-  const decrementQuantite = useCallback(() => {
-    if (qte_disponible > 0) {
-      updateField('qte_disponible', qte_disponible - 1);
-    }
-  }, [qte_disponible, updateField]);
-
-  const handleQuantiteChange = useCallback((text: string) => {
-    const num = parseInt(text);
-    if (!isNaN(num) && num >= 0) {
-      updateField('qte_disponible', num);
-    } else if (text === '') {
-      updateField('qte_disponible', 0);
-    }
-  }, [updateField]);
-
-  // Sélection de catégorie
-  const handleSelectCategorie = useCallback((nomCategorie: string) => {
-    updateField('categorie', nomCategorie);
-    setModalVisible(false);
-  }, [updateField]);
-
-  // Vérifier si des modifications ont été faites
-  const hasChanges = useCallback((): boolean => {
-    const originalProduct = product;
-    
-    return (
-      ref_produit !== originalProduct.ref_produit ||
-      designation !== originalProduct.designation ||
-      categorie !== originalProduct.categorie ||
-      parseFloat(prix_actuel.replace(/\s/g, '').replace(',', '.')) !== originalProduct.prix_actuel ||
-      qte_disponible !== originalProduct.qte_disponible ||
-      imageFile !== undefined || // Nouvelle image sélectionnée
-      image_url !== originalProduct.image_url
-    );
-  }, [ref_produit, designation, categorie, prix_actuel, qte_disponible, image_url, imageFile, product]);
-
-  // Validation du formulaire
-  const validateForm = useCallback((): boolean => {
-    if (!ref_produit.trim()) {
-      Alert.alert('Erreur', 'La référence du produit est obligatoire');
-      return false;
-    }
-
-    if (ref_produit.trim().length < 2) {
-      Alert.alert('Erreur', 'La référence doit avoir au moins 2 caractères');
-      return false;
-    }
-
-    if (!designation.trim()) {
-      Alert.alert('Erreur', 'La désignation est obligatoire');
-      return false;
-    }
-
-    if (!categorie) {
-      Alert.alert('Erreur', 'Veuillez sélectionner une catégorie');
-      return false;
-    }
-
-    if (!prix_actuel) {
-      Alert.alert('Erreur', 'Le prix actuel est obligatoire');
-      return false;
-    }
-
-    const prixNumerique = parseFloat(prix_actuel.replace(/\s/g, '').replace(',', '.'));
-    if (isNaN(prixNumerique) || prixNumerique <= 0) {
-      Alert.alert('Erreur', 'Veuillez entrer un prix valide (supérieur à 0)');
-      return false;
-    }
-
-    if (qte_disponible < 0) {
-      Alert.alert('Erreur', 'La quantité doit être positive ou nulle');
-      return false;
-    }
-
-    return true;
-  }, [ref_produit, designation, categorie, prix_actuel, qte_disponible]);
-
-  // Annuler les modifications
-  const handleCancel = useCallback(() => {
-    if (hasChanges()) {
-      Alert.alert(
-        'Annuler les modifications',
-        'Vous avez des modifications non enregistrées. Êtes-vous sûr de vouloir quitter ?',
-        [
-          { text: 'Continuer la modification', style: 'cancel' },
-          { 
-            text: 'Quitter', 
-            style: 'destructive',
-            onPress: () => navigation.goBack()
-          },
-        ]
-      );
-    } else {
-      navigation.goBack();
-    }
-  }, [hasChanges, navigation]);
-
-  // Réinitialiser le formulaire
-  const handleReset = useCallback(() => {
-    Alert.alert(
-      'Réinitialiser',
-      'Voulez-vous réinitialiser toutes les modifications ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Réinitialiser', 
-          style: 'destructive',
-          onPress: () => {
-            setFormData({
-              ref_produit: product.ref_produit || '',
-              designation: product.designation || '',
-              categorie: product.categorie || '',
-              prix_actuel: product.prix_actuel?.toString() || '',
-              qte_disponible: product.qte_disponible || 1,
-              image_url: product.image_url || null,
-              imageFile: undefined,
-              original_ref: product.ref_produit,
-            });
-          }
-        },
-      ]
-    );
-  }, [product]);
-
-  // Mise à jour du produit
-  const handleUpdate = useCallback(async () => {
-    if (!validateForm()) return;
-
-    // Vérifier si des modifications ont été faites
-    if (!hasChanges()) {
-      Alert.alert('Aucune modification', 'Aucune modification détectée.');
-      return;
-    }
-
-    const categorieExists = categories.some(cat => cat.categorie === categorie);
-    if (!categorieExists) {
-      Alert.alert('Erreur', 'La catégorie sélectionnée n\'existe plus.');
-      setModalVisible(true);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      
-      const prixClean = prix_actuel.replace(/\s/g, '').replace(',', '.');
-      const prixNumerique = parseFloat(prixClean);
-      
-      if (isNaN(prixNumerique) || prixNumerique <= 0) {
-        Alert.alert('Erreur', 'Le prix doit être supérieur à 0');
-        setIsLoading(false);
-        return;
-      }
-
-      // Préparer les données du produit
-      const productData: any = {
-        ref_produit: ref_produit.trim(),
-        designation: designation.trim(),
-        categorie: categorie.trim(),
-        prix_actuel: prixNumerique,
-        qte_disponible: Number(qte_disponible),
-      };
-
-      // Gestion de l'image
-      if (imageFile) {
-        // Ici, vous devrez uploader l'image et obtenir l'URL
-        // Pour l'instant, utilisez une URL temporaire
-        productData.image_url = imageFile.uri; // Remplacez par l'URL réelle après upload
-      } else if (image_url) {
-        productData.image_url = image_url;
-      } else {
-        // Si aucune image n'est spécifiée, conservez l'originale
-        productData.image_url = product.image_url;
-      }
-
-      // Vérifier si la référence a changé
-      const refHasChanged = original_ref !== ref_produit.trim();
-      
-      let response;
-      if (refHasChanged) {
-        // Si la référence a changé, on doit créer un nouveau produit et supprimer l'ancien
-        Alert.alert(
-          'Changement de référence',
-          'La référence du produit a changé. Cela créera un nouveau produit avec la nouvelle référence.',
-          [
-            { text: 'Annuler', style: 'cancel' },
-            { 
-              text: 'Continuer', 
-              onPress: async () => {
-                try {
-                  // Créer le nouveau produit
-                  response = await productService.createProduct(productData);
-                  
-                  // Supprimer l'ancien produit
-                  await productService.deleteProduct(original_ref!);
-                  
-                  Alert.alert(
-                    'Succès ✅', 
-                    'Produit mis à jour avec nouvelle référence',
-                    [
-                      { 
-                        text: 'OK', 
-                        onPress: () => navigation.replace('ProductList') 
-                      }
-                    ]
-                  );
-                } catch (error) {
-                  throw error;
-                }
-              }
-            }
-          ]
-        );
-        setIsLoading(false);
-        return;
-      } else {
-        // Mise à jour normale
-        response = await productService.updateProduct(original_ref!, productData);
-      }
-
-      Alert.alert(
-        'Succès ✅', 
-        response.message || 'Produit mis à jour avec succès',
-        [
-          { 
-            text: 'OK', 
-            onPress: () => navigation.goBack() 
-          }
-        ]
-      );
-
-    } catch (error: any) {
-      console.error('❌ Erreur mise à jour:', error);
-      
-      let errorMessage = 'Échec de la mise à jour';
-      if (error.code === 409) errorMessage = 'Cette référence existe déjà';
-      else if (error.code === 400) errorMessage = 'Données invalides';
-      else if (error.code === 404) errorMessage = 'Produit ou catégorie introuvable';
-      else if (error.code === 413) errorMessage = 'Image trop volumineuse';
-      else if (error.message) errorMessage = error.message;
-
-      Alert.alert('Erreur ❌', errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [ref_produit, designation, categorie, prix_actuel, qte_disponible, image_url, imageFile, original_ref, validateForm, hasChanges, categories, product, navigation]);
-
-  // Rendu d'un élément de catégorie
-  const renderCategorieItem = useCallback(({ item }: { item: Categorie }) => (
-    <TouchableOpacity
-      style={styles.categorieItem}
-      onPress={() => handleSelectCategorie(item.categorie)}
-    >
-      <View style={styles.categorieInfo}>
-        <Text style={styles.categorieText}>{item.categorie}</Text>
-        {item.description && (
-          <Text style={styles.categorieDescription} numberOfLines={1}>
-            {item.description}
-          </Text>
-        )}
-      </View>
-      {categorie === item.categorie && (
-        <Icon name="check" size={20} color="#4A90E2" />
-      )}
-    </TouchableOpacity>
-  ), [categorie, handleSelectCategorie]);
-
-  // Rendu du contenu du modal
-  const renderModalContent = () => {
-    if (loadingCategories && !refreshingCategories) {
-      return (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4A90E2" />
-          <Text style={styles.loadingText}>Chargement des catégories...</Text>
-        </View>
-      );
-    }
-
-    if (categories.length === 0 && !loadingCategories) {
-      return (
-        <View style={styles.emptyContainer}>
-          <Icon name="category" size={60} color="#CCCCCC" />
-          <Text style={styles.emptyText}>Aucune catégorie disponible</Text>
-          <TouchableOpacity
-            style={styles.retryButton}
-            onPress={handleRefreshCategories}
-          >
-            <Text style={styles.retryButtonText}>Réessayer</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
-    return (
-      <FlatList
-        data={categories}
-        renderItem={renderCategorieItem}
-        keyExtractor={(item) => item.categorie}
-        showsVerticalScrollIndicator={false}
-        initialNumToRender={10}
-        windowSize={5}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshingCategories}
-            onRefresh={handleRefreshCategories}
-            colors={['#4A90E2']}
-          />
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Aucune catégorie trouvée</Text>
-          </View>
-        }
-      />
-    );
-  };
-
-  if (isFetching) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#4A90E2" />
-        <Text style={{ marginTop: 16, color: '#666' }}>Chargement des données...</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
-      <ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* HEADER */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleCancel} style={styles.backButton} accessibilityLabel="Retour">
-            <Ionicons name="arrow-back" size={24} color="#111" />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.title}>Modifier le produit</Text>
-            <Text style={styles.subtitle}>Ref: {original_ref}</Text>
-          </View>
-          <TouchableOpacity 
-            onPress={handleReset} 
-            style={styles.resetButton}
-            disabled={!hasChanges() || isLoading}
-          >
-            <Icon 
-              name="refresh" 
-              size={22} 
-              color={hasChanges() && !isLoading ? "#4A90E2" : "#CCCCCC"} 
-            />
-          </TouchableOpacity>
-        </View>
-        
-        {/* Indicateur de modifications */}
-        {hasChanges() && (
-          <View style={styles.changesIndicator}>
-            <Icon name="edit" size={16} color="#4A90E2" />
-            <Text style={styles.changesText}>Modifications non enregistrées</Text>
-          </View>
-        )}
-
-        {/* Référence du produit */}
-        <View style={styles.inputContainer}>
-          <View style={styles.labelContainer}>
-            <Text style={styles.label}>Référence du produit *</Text>
-            {original_ref !== ref_produit && (
-              <Text style={styles.warningText}>Référence modifiée</Text>
-            )}
-          </View>
-          <TextInput
-            style={styles.input}
-            value={ref_produit}
-            onChangeText={(text) => updateField('ref_produit', text)}
-            placeholder="Ex: PROD001"
-            placeholderTextColor="#999"
-            returnKeyType="next"
-            editable={!isLoading}
-            autoCapitalize="none"
-            maxLength={50}
-          />
-          <Text style={styles.hint}>Référence originale: {original_ref}</Text>
-        </View>
-
-        {/* Désignation */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Désignation *</Text>
-          <TextInput
-            style={[styles.input, styles.multilineInput]}
-            value={designation}
-            onChangeText={(text) => updateField('designation', text)}
-            placeholder="Description du produit"
-            placeholderTextColor="#999"
-            multiline
-            numberOfLines={3}
-            textAlignVertical="top"
-            blurOnSubmit={true}
-            editable={!isLoading}
-          />
-        </View>
-
-        {/* Catégorie */}
-        <View style={styles.inputContainer}>
-          <View style={styles.labelContainer}>
-            <Text style={styles.label}>Catégorie *</Text>
-            {loadingCategories && (
-              <ActivityIndicator size="small" color="#4A90E2" style={styles.loadingIndicator} />
-            )}
-            {product.categorie !== categorie && (
-              <Text style={styles.warningText}>Catégorie modifiée</Text>
-            )}
-          </View>
-          <TouchableOpacity
-            style={[styles.dropdown, (isLoading || loadingCategories) && { opacity: 0.5 }]}
-            onPress={() => !isLoading && setModalVisible(true)}
-            disabled={isLoading || loadingCategories}
-          >
-            <View style={styles.dropdownContent}>
-              {categorie ? (
-                <View>
-                  <Text style={styles.dropdownTextSelected}>{categorie}</Text>
-                  {categories.find(cat => cat.categorie === categorie)?.description && (
-                    <Text style={styles.dropdownDescription} numberOfLines={1}>
-                      {categories.find(cat => cat.categorie === categorie)?.description}
-                    </Text>
-                  )}
-                </View>
-              ) : (
-                <Text style={styles.dropdownTextPlaceholder}>
-                  {loadingCategories ? 'Chargement...' : 'Sélectionnez une catégorie'}
-                </Text>
-              )}
-            </View>
-            <Icon name="arrow-drop-down" size={24} color="#666" />
-          </TouchableOpacity>
-          {product.categorie && (
-            <Text style={styles.hint}>Catégorie originale: {product.categorie}</Text>
-          )}
-        </View>
-
-        {/* Prix actuel */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Prix actuel (€) *</Text>
-          <View style={styles.prixContainer}>
-            <TextInput
-              style={[styles.input, styles.prixInput, isLoading && { opacity: 0.5 }]}
-              value={prix_actuel}
-              onChangeText={formatPrix}
-              placeholder="0,00"
-              placeholderTextColor="#999"
-              keyboardType="decimal-pad"
-              returnKeyType="next"
-              editable={!isLoading}
-            />
-            <Text style={styles.currency}>€</Text>
-          </View>
-          {product.prix_actuel && (
-            <Text style={styles.hint}>
-              Prix original: {product.prix_actuel.toFixed(2).replace('.', ',')} €
-            </Text>
-          )}
-        </View>
-
-        {/* Quantité disponible */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Quantité disponible</Text>
-          {product.qte_disponible !== qte_disponible && (
-            <Text style={styles.warningText}>Quantité modifiée</Text>
-          )}
-          
-          <View style={styles.quantiteContainer}>
-            {/* Bouton Moins */}
-            <TouchableOpacity
-              style={[
-                styles.quantiteButton,
-                qte_disponible <= 0 && styles.quantiteButtonDisabled,
-                isLoading && { opacity: 0.5 }
-              ]}
-              onPress={decrementQuantite}
-              disabled={qte_disponible <= 0 || isLoading}
-              activeOpacity={0.7}
-            >
-              <Icon 
-                name="remove" 
-                size={24} 
-                color={qte_disponible <= 0 ? "#999" : "#FFF"} 
-              />
-            </TouchableOpacity>
-
-            {/* Input de quantité */}
-            <TextInput
-              ref={inputRef}
-              style={[styles.quantiteInput, isLoading && { opacity: 0.5 }]}
-              value={qte_disponible.toString()}
-              onChangeText={handleQuantiteChange}
-              keyboardType="numeric"
-              textAlign="center"
-              returnKeyType="done"
-              maxLength={6}
-              onBlur={() => {
-                if (qte_disponible < 0) updateField('qte_disponible', 0);
-              }}
-              editable={!isLoading}
-            />
-
-            {/* Bouton Plus */}
-            <TouchableOpacity
-              style={[styles.quantiteButton, isLoading && { opacity: 0.5 }]}
-              onPress={incrementQuantite}
-              disabled={isLoading}
-              activeOpacity={0.7}
-            >
-              <Icon name="add" size={24} color="#FFF" />
-            </TouchableOpacity>
-          </View>
-          {product.qte_disponible !== undefined && (
-            <Text style={styles.hint}>Quantité originale: {product.qte_disponible}</Text>
-          )}
-        </View>
-
-        {/* Image du produit */}
-        <View style={styles.inputContainer}>
-          <View style={styles.labelContainer}>
-            <Text style={styles.label}>Image du produit</Text>
-            {(imageFile || image_url !== product.image_url) && (
-              <Text style={styles.warningText}>Image modifiée</Text>
-            )}
-          </View>
-          <View style={styles.imageContainer}>
-            {image_url ? (
-              <>
-                <Image source={{ uri: image_url }} style={styles.imagePreview} />
-                <View style={styles.imageActions}>
-                  <TouchableOpacity
-                    style={[styles.imageButton, styles.changeButton, (isLoading || uploadingImage) && { opacity: 0.5 }]}
-                    onPress={handleImageImport}
-                    disabled={isLoading || uploadingImage}
-                  >
-                    {uploadingImage ? (
-                      <ActivityIndicator size="small" color="#FFF" />
-                    ) : (
-                      <>
-                        <Icon name="edit" size={20} color="#FFF" />
-                        <Text style={styles.imageButtonText}>Changer</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                  {product.image_url && product.image_url !== image_url && (
-                    <TouchableOpacity
-                      style={[styles.imageButton, styles.resetButtonStyle, isLoading && { opacity: 0.5 }]}
-                      onPress={handleImageReset}
-                      disabled={isLoading}
-                    >
-                      <Icon name="restore" size={20} color="#FFF" />
-                      <Text style={styles.imageButtonText}>Originale</Text>
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    style={[styles.imageButton, styles.deleteButton, isLoading && { opacity: 0.5 }]}
-                    onPress={handleImageDelete}
-                    disabled={isLoading}
-                  >
-                    <Icon name="delete" size={20} color="#FFF" />
-                    <Text style={styles.imageButtonText}>Supprimer</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            ) : (
-              <TouchableOpacity
-                style={[styles.uploadArea, (isLoading || uploadingImage) && { opacity: 0.5 }]}
-                onPress={handleImageImport}
-                disabled={isLoading || uploadingImage}
-              >
-                {uploadingImage ? (
-                  <ActivityIndicator size="large" color="#4A90E2" />
-                ) : (
-                  <>
-                    <Icon name="add-photo-alternate" size={50} color="#4A90E2" />
-                    <Text style={styles.uploadText}>
-                      {isLoading ? 'Chargement...' : product.image_url ? 'Changer l\'image' : 'Importer une image'}
-                    </Text>
-                    <Text style={styles.uploadSubtext}>Appuyez pour sélectionner</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            )}
-            <Text style={styles.imageHint}>
-              {imageFile ? `Fichier: ${imageFile.name}` : 
-               product.image_url ? 'Image originale disponible' : 'Optionnel - Formats: JPG, PNG, GIF'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Espace pour les boutons */}
-        <View style={styles.spacer} />
-      </ScrollView>
-
-      {/* Boutons d'action */}
-      <View style={styles.saveButtonContainer}>
-        <View style={styles.buttonRow}>
-          <TouchableOpacity 
-            style={[
-              styles.cancelButton,
-              (isLoading || loadingCategories || uploadingImage) && { opacity: 0.7 }
-            ]} 
-            onPress={handleCancel}
-            activeOpacity={0.8}
-            disabled={isLoading || loadingCategories || uploadingImage}
-          >
-            <Icon name="close" size={20} color="#666" />
-            <Text style={styles.cancelButtonText}>Annuler</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[
-              styles.saveButton, 
-              (!hasChanges() || isLoading || loadingCategories || uploadingImage) && { opacity: 0.7 }
-            ]} 
-            onPress={handleUpdate}
-            activeOpacity={0.8}
-            disabled={!hasChanges() || isLoading || loadingCategories || uploadingImage}
-          >
-            {isLoading ? (
-              <>
-                <ActivityIndicator size="small" color="#FFF" />
-                <Text style={styles.saveButtonText}>Mise à jour...</Text>
-              </>
-            ) : (
-              <>
-                <Icon name="save" size={24} color="#FFF" />
-                <Text style={styles.saveButtonText}>
-                  {loadingCategories ? 'Chargement...' : 'Mettre à jour'}
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Modal pour la sélection des catégories */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Sélectionnez une catégorie</Text>
-              <View style={styles.modalHeaderActions}>
-                <TouchableOpacity 
-                  style={styles.refreshButton}
-                  onPress={handleRefreshCategories}
-                  disabled={refreshingCategories}
-                >
-                  <Icon 
-                    name="refresh" 
-                    size={22} 
-                    color={refreshingCategories ? "#999" : "#4A90E2"} 
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={() => setModalVisible(false)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Icon name="close" size={24} color="#666" />
-                </TouchableOpacity>
-              </View>
-            </View>
-            {renderModalContent()}
-          </View>
-        </View>
-      </Modal>
-    </View>
-  );
+// Définir le type des paramètres
+type EditCustomerParams = {
+  id: string;
+  type: 'particulier' | 'entreprise';
+  nom: string;
+  prenoms: string;
+  sigle: string;
+  adresse: string;
+  telephone: string;
+  email: string;
+  nif: string;
+  stat: string;
 };
 
-export default EditProductScreen;
+type RootStackParamList = {
+  EditCustomer: EditCustomerParams;
+};
+
+type EditCustomerRouteProp = RouteProp<RootStackParamList, 'EditCustomer'>;
+
+export default function EditCustomerScreen() {
+    const navigation = useNavigation();
+    const route = useRoute<EditCustomerRouteProp>();
+    
+    // États pour le banner (même système que CreateCustomerScreen)
+    const [message, setMessage] = useState('');
+    const [messageType, setMessageType] = useState<'error' | 'success' | ''>('');
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Animation pour le banner (même que CreateCustomerScreen)
+    const bannerAnim = useRef(new Animated.Value(-100)).current;
+    const opacityAnim = useRef(new Animated.Value(0)).current;
+
+    // Pour le débogage
+    useEffect(() => {
+        console.log('=== ROUTE PARAMS RECEIVED ===');
+        
+        if (route.params) {
+            console.log('ID du client:', route.params.id);
+            console.log('Type:', route.params.type);
+            console.log('Nom:', route.params.nom);
+            console.log('Prénom:', route.params.prenoms);
+            console.log('Sigle:', route.params.sigle);
+            console.log('Adresse:', route.params.adresse);
+            console.log('Téléphone:', route.params.telephone);
+            console.log('Email:', route.params.email);
+            console.log('NIF:', route.params.nif);
+            console.log('STAT:', route.params.stat);
+        } else {
+            console.log('No params received');
+            showError('Aucune donnée reçue pour la modification');
+        }
+    }, [route.params]);
+
+    // Gérer l'affichage/la disparition du banner
+    useEffect(() => {
+        if (message) {
+            // Afficher le banner avec animation
+            Animated.parallel([
+                Animated.spring(bannerAnim, {
+                    toValue: 0,
+                    useNativeDriver: true,
+                    tension: 300,
+                    friction: 25,
+                }),
+                Animated.timing(opacityAnim, {
+                    toValue: 1,
+                    duration: 250,
+                    useNativeDriver: true,
+                })
+            ]).start();
+
+            // Si c'est un succès, cacher automatiquement après 3 secondes
+            if (messageType === 'success') {
+                const timer = setTimeout(() => {
+                    hideBanner();
+                    // Revenir à l'écran précédent après le délai
+                    setTimeout(() => {
+                        navigation.goBack();
+                    }, 300);
+                }, 3000);
+                return () => clearTimeout(timer);
+            }
+        } else {
+            hideBanner();
+        }
+    }, [message, messageType]);
+
+    const hideBanner = () => {
+        Animated.parallel([
+            Animated.spring(bannerAnim, {
+                toValue: -100,
+                useNativeDriver: true,
+                tension: 300,
+                friction: 25,
+            }),
+            Animated.timing(opacityAnim, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: true,
+            })
+        ]).start(() => {
+            setMessage('');
+            setMessageType('');
+        });
+    };
+
+    const handleCloseBanner = () => {
+        hideBanner();
+        // Si c'est un succès, revenir en arrière
+        if (messageType === 'success') {
+            navigation.goBack();
+        }
+    };
+
+    // États pour les données du formulaire - initialiser avec les paramètres
+    const [customerType, setCustomerType] = useState<'particulier' | 'entreprise'>(
+        route.params?.type || 'particulier'
+    );
+    const [sigle, setSigle] = useState(route.params?.sigle || '');
+    const [showTypePicker, setShowTypePicker] = useState(false);
+    const [nom, setNom] = useState(route.params?.nom || '');
+    const [prenoms, setPrenoms] = useState(route.params?.prenoms || '');
+    const [adresse, setAdresse] = useState(route.params?.adresse || '');
+    const [telephone, setTelephone] = useState(route.params?.telephone || '');
+    const [email, setEmail] = useState(route.params?.email || '');
+    const [nif, setNif] = useState(route.params?.nif || '');
+    const [stat, setStat] = useState(route.params?.stat || '');
+
+    // États de focus pour les champs
+    const [nomFocused, setNomFocused] = useState(false);
+    const [prenomsFocused, setPrenomsFocused] = useState(false);
+    const [sigleFocused, setSigleFocused] = useState(false);
+    const [adresseFocused, setAdresseFocused] = useState(false);
+    const [telephoneFocused, setTelephoneFocused] = useState(false);
+    const [emailFocused, setEmailFocused] = useState(false);
+    const [nifFocused, setNifFocused] = useState(false);
+    const [statFocused, setStatFocused] = useState(false);
+
+    // Refs pour la navigation entre champs
+    const nomRef = useRef<TextInput>(null);
+    const prenomsRef = useRef<TextInput>(null);
+    const sigleRef = useRef<TextInput>(null);
+    const adresseRef = useRef<TextInput>(null);
+    const telephoneRef = useRef<TextInput>(null);
+    const emailRef = useRef<TextInput>(null);
+    const nifRef = useRef<TextInput>(null);
+    const statRef = useRef<TextInput>(null);
+
+    // Validation du formulaire
+    const validate = () => {
+        if (customerType === 'particulier') {
+            if (!nom.trim()) {
+                showError('Veuillez renseigner le nom.');
+                nomRef.current?.focus();
+                return false;
+            }
+            if (!prenoms.trim()) {
+                showError('Veuillez renseigner le prénom.');
+                prenomsRef.current?.focus();
+                return false;
+            }
+        } else {
+            if (!sigle.trim()) {
+                showError('Veuillez renseigner le SIGLE de l\'entreprise.');
+                sigleRef.current?.focus();
+                return false;
+            }
+        }
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            showError('Veuillez entrer une adresse email valide.');
+            emailRef.current?.focus();
+            return false;
+        }
+        return true;
+    };
+
+    const handleSubmit = async () => {
+        if (!validate()) return;
+
+        // Récupérer l'ID du client
+        const customerId = route.params?.id;
+        
+        if (!customerId) {
+            showError('ID du client manquant');
+            return;
+        }
+
+        // Préparer les données pour l'API
+        const updateData: UpdateCustomerData = {
+            type: customerType,
+            adresse: adresse.trim() || undefined,
+            telephone: telephone.trim() || undefined,
+            email: email.trim() || undefined,
+        };
+
+        // Ajouter les champs spécifiques au type
+        if (customerType === 'particulier') {
+            updateData.nom = nom.trim();
+            updateData.prenoms = prenoms.trim();
+        } else {
+            updateData.sigle = sigle.trim();
+            updateData.nif = nif.trim() || undefined;
+            updateData.stat = stat.trim() || undefined;
+        }
+
+        console.log('Données à modifier (ID:', customerId, '):', updateData);
+
+        try {
+            setIsLoading(true);
+            
+            // Appeler l'API pour mettre à jour le client
+            await customerService.updateCustomer(parseInt(customerId), updateData);
+            
+            // Afficher le message de succès
+            setMessageType('success');
+            setMessage(
+                customerType === 'particulier' 
+                    ? `${nom} ${prenoms} modifié avec succès !`
+                    : `${sigle} modifié avec succès !`
+            );
+
+        } catch (error: any) {
+            console.error('❌ Erreur lors de la modification:', error);
+            
+            let errorMessage = error.message || 'Erreur lors de la modification du client';
+            
+            // Gestion spécifique des erreurs
+            if (error.code === 409) {
+                errorMessage = "Cet email est déjà utilisé par un autre client";
+            } else if (error.code === 400) {
+                errorMessage = "Données invalides. Vérifiez les informations saisies";
+            } else if (error.code === 404) {
+                errorMessage = "Client introuvable";
+            } else if (error.code === 500) {
+                errorMessage = "Erreur serveur. Veuillez réessayer plus tard";
+            }
+            
+            showError(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const showError = (msg: string) => {
+        setMessageType('error');
+        setMessage(msg);
+    };
+
+    const resetForm = () => {
+        if (route.params) {
+            // Réinitialiser avec les valeurs originales
+            setCustomerType(route.params.type);
+            setNom(route.params.nom);
+            setPrenoms(route.params.prenoms);
+            setSigle(route.params.sigle);
+            setAdresse(route.params.adresse);
+            setTelephone(route.params.telephone);
+            setEmail(route.params.email);
+            setNif(route.params.nif);
+            setStat(route.params.stat);
+        }
+    };
+
+    return (
+        <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.container}
+        >
+            {/* BANNER SIMPLE ET MODERNE (même que CreateCustomerScreen) */}
+            {message ? (
+                <Animated.View 
+                    style={[
+                        styles.banner,
+                        messageType === 'error' ? styles.errorBanner : styles.successBanner,
+                        {
+                            transform: [{ translateY: bannerAnim }],
+                            opacity: opacityAnim,
+                        }
+                    ]}
+                >
+                    <View style={styles.bannerContent}>
+                        <View style={styles.bannerTextContainer}>
+                            <Text style={styles.bannerText}>
+                                {message}
+                            </Text>
+                        </View>
+                        
+                        <TouchableOpacity 
+                            onPress={handleCloseBanner}
+                            style={styles.bannerCloseButton}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                            <Ionicons name="close" size={20} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
+                </Animated.View>
+            ) : null}
+
+            <ScrollView
+                contentContainerStyle={[
+                    styles.scrollContainer,
+                    message ? { paddingTop: Platform.OS === 'ios' ? 90 : 70 } : {}
+                ]}
+                keyboardShouldPersistTaps="handled"
+            >
+                {/* HEADER */}
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} accessibilityLabel="Retour">
+                        <Ionicons name="arrow-back" size={24} color="#111" />
+                    </TouchableOpacity>
+                    <View style={styles.headerCenter}>
+                        <Text style={styles.title}>Modifier le client</Text>
+                    </View>
+                    <View style={{ width: 32 }} />
+                </View>
+
+                {/* TYPE DE CLIENT (NON ÉDITABLE) */}
+                <View style={{ marginBottom: 16 }}>
+                    <Text style={styles.label}>Type de client *</Text>
+                    <View style={{
+                        backgroundColor: '#f5f5f5',
+                        paddingVertical: 12,
+                        paddingHorizontal: 16,
+                        borderRadius: 8,
+                        marginBottom: 4
+                    }}>
+                        <Text style={{ color: '#111', fontSize: 16 }}>
+                            {customerType === 'particulier' ? 'Particulier' : 'Entreprise'}
+                        </Text>
+                    </View>
+                    <Text style={styles.hintText}>
+                     Le type de client ne peut pas être modifié
+                    </Text>
+                </View>
+
+                {/* CHAMPS SPÉCIFIQUES SELON LE TYPE */}
+                {customerType === 'particulier' ? (
+                    <>
+                        {/* NOM */}
+                        <View style={{ marginBottom: 8 }}>
+                            <Text style={styles.label}>Nom *</Text>
+                            <TouchableWithoutFeedback onPress={() => nomRef.current?.focus()}>
+                                <View style={[styles.inputContainer, nomFocused && styles.inputFocused]}>
+                                    <TextInput
+                                        ref={nomRef}
+                                        placeholder="Entrez le nom"
+                                        placeholderTextColor="#777"
+                                        value={nom}
+                                        style={styles.input}
+                                        onChangeText={setNom}
+                                        onFocus={() => setNomFocused(true)}
+                                        onBlur={() => setNomFocused(false)}
+                                        returnKeyType="next"
+                                        onSubmitEditing={() => prenomsRef.current?.focus()}
+                                        editable={!isLoading}
+                                    />
+                                </View>
+                            </TouchableWithoutFeedback>
+                        </View>
+
+                        {/* PRÉNOMS */}
+                        <View style={{ marginBottom: 8 }}>
+                            <Text style={styles.label}>Prénom *</Text>
+                            <TouchableWithoutFeedback onPress={() => prenomsRef.current?.focus()}>
+                                <View style={[styles.inputContainer, prenomsFocused && styles.inputFocused]}>
+                                    <TextInput
+                                        ref={prenomsRef}
+                                        placeholder="Entrez le prénom"
+                                        placeholderTextColor="#777"
+                                        value={prenoms}
+                                        style={styles.input}
+                                        onChangeText={setPrenoms}
+                                        onFocus={() => setPrenomsFocused(true)}
+                                        onBlur={() => setPrenomsFocused(false)}
+                                        returnKeyType="next"
+                                        onSubmitEditing={() => adresseRef.current?.focus()}
+                                        editable={!isLoading}
+                                    />
+                                </View>
+                            </TouchableWithoutFeedback>
+                        </View>
+                    </>
+                ) : (
+                    <>
+                        {/* SIGLE */}
+                        <View style={{ marginBottom: 8 }}>
+                            <Text style={styles.label}>SIGLE de l'entreprise *</Text>
+                            <TouchableWithoutFeedback onPress={() => sigleRef.current?.focus()}>
+                                <View style={[styles.inputContainer, sigleFocused && styles.inputFocused]}>
+                                    <TextInput
+                                        ref={sigleRef}
+                                        placeholder="Entrez le SIGLE"
+                                        placeholderTextColor="#777"
+                                        value={sigle}
+                                        style={styles.input}
+                                        onChangeText={setSigle}
+                                        onFocus={() => setSigleFocused(true)}
+                                        onBlur={() => setSigleFocused(false)}
+                                        returnKeyType="next"
+                                        onSubmitEditing={() => adresseRef.current?.focus()}
+                                        editable={!isLoading}
+                                    />
+                                </View>
+                            </TouchableWithoutFeedback>
+                        </View>
+                    </>
+                )}
+
+                {/* ADRESSE */}
+                <View style={{ marginBottom: 8 }}>
+                    <Text style={styles.label}>Adresse</Text>
+                    <TouchableWithoutFeedback onPress={() => adresseRef.current?.focus()}>
+                        <View style={[styles.inputContainer, adresseFocused && styles.inputFocused]}>
+                            <TextInput
+                                ref={adresseRef}
+                                placeholder="Entrez l'adresse"
+                                placeholderTextColor="#777"
+                                value={adresse}
+                                style={[styles.input, { height: 80 }]}
+                                onChangeText={setAdresse}
+                                multiline
+                                onFocus={() => setAdresseFocused(true)}
+                                onBlur={() => setAdresseFocused(false)}
+                                returnKeyType="next"
+                                onSubmitEditing={() => telephoneRef.current?.focus()}
+                                editable={!isLoading}
+                            />
+                        </View>
+                    </TouchableWithoutFeedback>
+                </View>
+
+                {/* TÉLÉPHONE */}
+                <View style={{ marginBottom: 8 }}>
+                    <Text style={styles.label}>Téléphone</Text>
+                    <TouchableWithoutFeedback onPress={() => telephoneRef.current?.focus()}>
+                        <View style={[styles.inputContainer, telephoneFocused && styles.inputFocused]}>
+                            <TextInput
+                                ref={telephoneRef}
+                                placeholder="Entrez le numéro de téléphone"
+                                placeholderTextColor="#777"
+                                value={telephone}
+                                style={styles.input}
+                                onChangeText={setTelephone}
+                                keyboardType="phone-pad"
+                                onFocus={() => setTelephoneFocused(true)}
+                                onBlur={() => setTelephoneFocused(false)}
+                                returnKeyType="next"
+                                onSubmitEditing={() => emailRef.current?.focus()}
+                                editable={!isLoading}
+                            />
+                        </View>
+                    </TouchableWithoutFeedback>
+                </View>
+
+                {/* EMAIL */}
+                <View style={{ marginBottom: 8 }}>
+                    <Text style={styles.label}>Email</Text>
+                    <TouchableWithoutFeedback onPress={() => emailRef.current?.focus()}>
+                        <View style={[styles.inputContainer, emailFocused && styles.inputFocused]}>
+                            <TextInput
+                                ref={emailRef}
+                                placeholder="Entrez l'adresse email"
+                                placeholderTextColor="#777"
+                                value={email}
+                                style={styles.input}
+                                onChangeText={setEmail}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                onFocus={() => setEmailFocused(true)}
+                                onBlur={() => setEmailFocused(false)}
+                                returnKeyType={customerType === 'entreprise' ? 'next' : 'done'}
+                                onSubmitEditing={() => {
+                                    if (customerType === 'entreprise') {
+                                        nifRef.current?.focus();
+                                    } else {
+                                        handleSubmit();
+                                    }
+                                }}
+                                editable={!isLoading}
+                            />
+                        </View>
+                    </TouchableWithoutFeedback>
+                </View>
+
+                {/* CHAMPS ENTREPRISE UNIQUEMENT */}
+                {customerType === 'entreprise' && (
+                    <>
+                        {/* NIF */}
+                        <View style={{ marginBottom: 8 }}>
+                            <Text style={styles.label}>NIF</Text>
+                            <TouchableWithoutFeedback onPress={() => nifRef.current?.focus()}>
+                                <View style={[styles.inputContainer, nifFocused && styles.inputFocused]}>
+                                    <TextInput
+                                        ref={nifRef}
+                                        placeholder="Entrez le NIF"
+                                        placeholderTextColor="#777"
+                                        value={nif}
+                                        style={styles.input}
+                                        onChangeText={setNif}
+                                        onFocus={() => setNifFocused(true)}
+                                        onBlur={() => setNifFocused(false)}
+                                        returnKeyType="next"
+                                        onSubmitEditing={() => statRef.current?.focus()}
+                                        editable={!isLoading}
+                                    />
+                                </View>
+                            </TouchableWithoutFeedback>
+                        </View>
+
+                        {/* STAT */}
+                        <View style={{ marginBottom: 8 }}>
+                            <Text style={styles.label}>STAT</Text>
+                            <TouchableWithoutFeedback onPress={() => statRef.current?.focus()}>
+                                <View style={[styles.inputContainer, statFocused && styles.inputFocused]}>
+                                    <TextInput
+                                        ref={statRef}
+                                        placeholder="Entrez le STAT"
+                                        placeholderTextColor="#777"
+                                        value={stat}
+                                        style={styles.input}
+                                        onChangeText={setStat}
+                                        onFocus={() => setStatFocused(true)}
+                                        onBlur={() => setStatFocused(false)}
+                                        returnKeyType="done"
+                                        onSubmitEditing={handleSubmit}
+                                        editable={!isLoading}
+                                    />
+                                </View>
+                            </TouchableWithoutFeedback>
+                        </View>
+                    </>
+                )}
+
+                {/* BOUTON ENREGISTRER */}
+                <TouchableOpacity
+                    style={[
+                        styles.button,
+                        isLoading && styles.buttonDisabled,
+                    ]}
+                    disabled={isLoading}
+                    onPress={handleSubmit}
+                    activeOpacity={0.9}
+                >
+                    {isLoading ? (
+                        <ActivityIndicator color="#fff" />
+                    ) : (
+                        <Text style={styles.buttonText}>Mettre à jour</Text>
+                    )}
+                </TouchableOpacity>
+            </ScrollView>
+        </KeyboardAvoidingView>
+    );
+}
