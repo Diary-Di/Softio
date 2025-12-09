@@ -434,7 +434,7 @@ suggestClearText: {
 
 hint: {
   fontSize: 12,
-  color: '#6B7280',      // gris clair
+  color: '#6B7280',
   marginTop: 4,
   alignSelf: 'flex-end',
 },
