@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,13 +13,10 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialIcons, FontAwesome, Ionicons, Feather, Entypo } from '@expo/vector-icons';
-import axios from 'axios';
 import { CreateCompanyStyles } from '@/styles/CreateCompanyStyles';
-import { companyService, CompanyData } from '@/services/companyService';
-import { useAuth } from '@/hooks/useAuth'; // Import du hook d'authentification
-import { API_BASE_URL, API_ENDPOINTS } from '@/config/api';
-
-const COMPANY_URL = `${API_BASE_URL}${API_ENDPOINTS.COMPANY || 'company'}`;
+import { companyService } from '@/services/companyService';
+import { useAuth } from '@/hooks/useAuth';
+import { useFocusEffect } from '@react-navigation/native'; // ← import
 
 interface CompanyForm {
   companyName: string;
@@ -40,12 +37,12 @@ interface FormErrors {
 }
 
 const CreateCompanyScreen = () => {
-  const { user } = useAuth(); // Récupérer l'utilisateur connecté
+  const { user } = useAuth();
   const [formData, setFormData] = useState<CompanyForm>({
     companyName: '',
     address: '',
     phone: '',
-    email: user?.email || '', // Pré-remplir avec l'email de l'utilisateur
+    email: user?.email || '',
     nif: '',
     stat: '',
     rcs: '',
@@ -58,8 +55,9 @@ const CreateCompanyScreen = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [loadingCompanyData, setLoadingCompanyData] = useState(true);
   const [isEditingExisting, setIsEditingExisting] = useState(false);
+  const [existingId, setExistingId] = useState<number | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Fonction pour rechercher l'entreprise par email de l'utilisateur
   const fetchCompanyByUserEmail = async () => {
     if (!user?.email) {
       setLoadingCompanyData(false);
@@ -68,31 +66,29 @@ const CreateCompanyScreen = () => {
 
     try {
       setLoadingCompanyData(true);
-      
-      // Option 1: Rechercher via l'endpoint search
       const companies = await companyService.getCompanies();
-      
-      // Trouver l'entreprise dont l'email correspond à celui de l'utilisateur
-      const userCompany = companies.find((company: any) => 
-        company.email?.toLowerCase() === user.email.toLowerCase()
+      const userCompany = companies.find(
+        (c: any) => c.email?.toLowerCase() === user.email.toLowerCase()
       );
 
       if (userCompany) {
-        // Pré-remplir le formulaire avec les données de l'entreprise
         setFormData({
-          companyName: userCompany.nom || userCompany.companyName || '',
-          address: userCompany.adresse || userCompany.address || '',
-          phone: userCompany.telephone || userCompany.phone || '',
-          email: userCompany.email || user.email || '',
+          companyName: userCompany.nom || '',
+          address: userCompany.adresse || '',
+          phone: userCompany.telephone || '',
+          email: userCompany.email || '',
           nif: userCompany.nif || '',
           stat: userCompany.stat || '',
           rcs: userCompany.rcs || '',
-          logo: userCompany.logoUrl || userCompany.logo || null,
+          logo: userCompany.logo
+            ? `http://localhost/SOFTIO/backend/public/uploads/logos/${userCompany.logo}`
+            : null,
         });
+        setExistingId(userCompany.id);
         setIsEditingExisting(true);
       }
     } catch (error) {
-      console.log('Erreur lors de la recherche de l\'entreprise:', error);
+      console.log('Erreur lors de la recherche de l’entreprise:', error);
     } finally {
       setLoadingCompanyData(false);
     }
@@ -100,11 +96,16 @@ const CreateCompanyScreen = () => {
 
   useEffect(() => {
     fetchCompanyByUserEmail();
-  }, [user?.email]);
+  }, [user?.email, refreshKey]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchCompanyByUserEmail();
+    }, [])
+  );
 
   const handleInputChange = (field: keyof CompanyForm, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    
     if (errors[field as keyof FormErrors]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));
     }
@@ -112,133 +113,71 @@ const CreateCompanyScreen = () => {
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
-
-    if (!formData.companyName.trim()) {
-      newErrors.companyName = 'Le nom de l\'entreprise est requis';
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'L\'email est requis';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email invalide';
-    }
-
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Le téléphone est requis';
-    } else if (!/^[0-9+\-\s]+$/.test(formData.phone)) {
-      newErrors.phone = 'Numéro de téléphone invalide';
-    }
-
-    if (!formData.nif.trim()) {
-      newErrors.nif = 'Le NIF est requis';
-    }
-
+    if (!formData.companyName.trim()) newErrors.companyName = 'Le nom de l\'entreprise est requis';
+    if (!formData.email.trim()) newErrors.email = 'L\'email est requis';
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email invalide';
+    if (!formData.phone.trim()) newErrors.phone = 'Le téléphone est requis';
+    else if (!/^[0-9+\-\s]+$/.test(formData.phone)) newErrors.phone = 'Numéro invalide';
+    if (!formData.nif.trim()) newErrors.nif = 'Le NIF est requis';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const pickImage = async () => {
-    try {
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (!permissionResult.granted) {
-        Alert.alert('Permission requise', 'Nous avons besoin de votre permission pour accéder aux photos.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0].uri) {
-        setFormData(prev => ({ ...prev, logo: result.assets[0].uri }));
-      }
-    } catch (error) {
-      console.error('Erreur sélection image:', error);
-      Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission requise', 'Accès aux photos refusé');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0].uri) {
+      setFormData(prev => ({ ...prev, logo: result.assets[0].uri }));
     }
   };
 
-  const removeLogo = () => {
-    setFormData(prev => ({ ...prev, logo: null }));
-  };
+  const removeLogo = () => setFormData(prev => ({ ...prev, logo: null }));
 
   const handleSubmit = async () => {
     if (!validateForm()) {
-      Alert.alert('Erreur', 'Veuillez corriger les erreurs dans le formulaire');
+      Alert.alert('Erreur', 'Veuillez corriger les erreurs du formulaire');
       return;
     }
-
-    // Vérifier que l'email du formulaire correspond à l'email de l'utilisateur
     if (formData.email.toLowerCase() !== user?.email?.toLowerCase()) {
-      Alert.alert(
-        'Email incompatible',
-        'L\'email de l\'entreprise doit correspondre à votre email de connexion.',
-        [
-          { text: 'OK' }
-        ]
-      );
+      Alert.alert('Email incompatible', 'L\'email doit correspondre à votre compte');
       return;
     }
 
     setIsLoading(true);
-
     try {
-      const formDataToSend = new FormData();
-      
-      // Ajouter les champs texte
-      formDataToSend.append('companyName', formData.companyName.trim());
-      formDataToSend.append('address', formData.address.trim());
-      formDataToSend.append('phone', formData.phone.trim());
-      formDataToSend.append('email', formData.email.trim());
-      formDataToSend.append('nif', formData.nif.trim());
-      formDataToSend.append('stat', formData.stat.trim());
-      formDataToSend.append('rcs', formData.rcs.trim());
-      
-      // Ajouter le logo si présent
-      if (formData.logo) {
-        const filename = formData.logo.split('/').pop() || 'logo.jpg';
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : 'image/jpeg';
-        
-        formDataToSend.append('logo', {
-          uri: formData.logo,
-          name: filename,
-          type,
-        } as any);
+      const payload = {
+        companyName: formData.companyName.trim(),
+        address: formData.address.trim(),
+        phone: formData.phone.trim(),
+        email: formData.email.trim(),
+        nif: formData.nif.trim(),
+        stat: formData.stat.trim(),
+        rcs: formData.rcs.trim(),
+      };
+
+      if (isEditingExisting && existingId) {
+        await companyService.updateCompany(existingId, payload, formData.logo);
+      } else {
+        await companyService.createCompany(payload, formData.logo);
       }
 
-      let response;
-      
-      if (isEditingExisting) {
-        // Mettre à jour l'entreprise existante
-        response = await axios.put(`${COMPANY_URL}/${formData.phone}`, formDataToSend, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-      } else {
-        // Créer une nouvelle entreprise
-        response = await axios.post(COMPANY_URL, formDataToSend, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-      }
-      
       Alert.alert(
         'Succès',
-        isEditingExisting 
-          ? 'Entreprise mise à jour avec succès!' 
-          : 'Entreprise créée avec succès!',
+        isEditingExisting ? 'Entreprise mise à jour avec succès!' : 'Entreprise créée avec succès!',
         [
           {
             text: 'OK',
             onPress: () => {
-              // Ne réinitialiser que si c'était une création
+              setRefreshKey(prev => prev + 1);
               if (!isEditingExisting) {
                 setFormData({
                   companyName: '',
@@ -250,26 +189,15 @@ const CreateCompanyScreen = () => {
                   rcs: '',
                   logo: null,
                 });
+                setIsEditingExisting(false);
+                setExistingId(null);
               }
-            }
-          }
+            },
+          },
         ]
       );
-
     } catch (error: any) {
-      console.error('Erreur:', error);
-      
-      let errorMessage = 'Une erreur est survenue';
-      
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.response?.data?.messages) {
-        errorMessage = error.response.data.messages;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      Alert.alert('Erreur', errorMessage);
+      Alert.alert('Erreur', error.message || 'Une erreur est survenue');
     } finally {
       setIsLoading(false);
     }
@@ -285,7 +213,6 @@ const CreateCompanyScreen = () => {
     editable: boolean = true
   ) => {
     const value = formData[field] || '';
-    
     return (
       <View style={CreateCompanyStyles.inputContainer}>
         <Text style={CreateCompanyStyles.label}>{label}</Text>
@@ -295,9 +222,7 @@ const CreateCompanyScreen = () => {
           errors[field as keyof FormErrors] && CreateCompanyStyles.inputWrapperError,
           !editable && CreateCompanyStyles.inputDisabled
         ]}>
-          <View style={CreateCompanyStyles.inputIcon}>
-            {icon}
-          </View>
+          <View style={CreateCompanyStyles.inputIcon}>{icon}</View>
           <TextInput
             style={[
               CreateCompanyStyles.input,
@@ -305,7 +230,7 @@ const CreateCompanyScreen = () => {
               !editable && CreateCompanyStyles.inputTextDisabled
             ]}
             value={value}
-            onChangeText={(text) => handleInputChange(field, text)}
+            onChangeText={text => handleInputChange(field, text)}
             placeholder={placeholder}
             placeholderTextColor="#999"
             keyboardType={keyboardType}
@@ -328,21 +253,19 @@ const CreateCompanyScreen = () => {
       <View style={CreateCompanyStyles.container}>
         <View style={CreateCompanyStyles.loadingContainer}>
           <ActivityIndicator size="large" color="#4a6cf7" />
-          <Text style={{ marginTop: 10, color: '#4a6cf7' }}>
-            Recherche de votre entreprise...
-          </Text>
+          <Text style={{ marginTop: 10, color: '#4a6cf7' }}>Recherche de votre entreprise...</Text>
         </View>
       </View>
     );
   }
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={CreateCompanyStyles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={CreateCompanyStyles.scrollContainer}
         showsVerticalScrollIndicator={true}
         keyboardShouldPersistTaps="handled"
@@ -350,17 +273,12 @@ const CreateCompanyScreen = () => {
         overScrollMode="never"
       >
         <View style={CreateCompanyStyles.formContainer}>
-          
-          {/* En-tête avec indication */}
           <View style={CreateCompanyStyles.header}>
             <Text style={CreateCompanyStyles.title}>
               {isEditingExisting ? 'Modifier mon entreprise' : 'Créer mon entreprise'}
             </Text>
             <Text style={CreateCompanyStyles.subtitle}>
-              {user?.email 
-                ? `Connecté en tant que: ${user.email}`
-                : 'Non connecté'
-              }
+              {user?.email ? `Connecté en tant que: ${user.email}` : 'Non connecté'}
             </Text>
             {isEditingExisting && (
               <View style={CreateCompanyStyles.infoBox}>
@@ -387,11 +305,11 @@ const CreateCompanyScreen = () => {
           >
             {formData.logo ? (
               <View style={{ alignItems: 'center' }}>
-                <Image 
-                  source={{ uri: formData.logo }} 
+                <Image
+                  source={{ uri: formData.logo }}
                   style={CreateCompanyStyles.logoPreview}
                 />
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={CreateCompanyStyles.removeLogoButton}
                   onPress={removeLogo}
                   disabled={isLoading || uploadingLogo}
@@ -411,77 +329,19 @@ const CreateCompanyScreen = () => {
             )}
           </TouchableOpacity>
 
-          {/* Company Name */}
-          {renderInput(
-            'Nom de l\'entreprise *',
-            'companyName',
-            <MaterialIcons name="business" size={22} color="#666" />,
-            'Ex: Ma Société SARL'
-          )}
+          {/* Champs */}
+          {renderInput('Nom de l\'entreprise *', 'companyName', <MaterialIcons name="business" size={22} color="#666" />, 'Ex: Ma Société SARL')}
+          {renderInput('Adresse', 'address', <MaterialIcons name="location-on" size={22} color="#666" />, 'Adresse complète de l\'entreprise', 'default', true)}
+          {renderInput('Téléphone *', 'phone', <Feather name="phone" size={22} color="#666" />, 'Ex: +261 34 12 345 67', 'phone-pad')}
+          {renderInput('Email *', 'email', <MaterialIcons name="email" size={22} color="#666" />, user?.email || 'Votre email', 'email-address', false, false)}
+          {renderInput('NIF *', 'nif', <MaterialIcons name="badge" size={22} color="#666" />, 'Numéro d\'Identification Fiscale', 'numeric')}
+          {renderInput('STAT', 'stat', <FontAwesome name="file-text-o" size={22} color="#666" />, 'Numéro Statistique', 'numeric')}
+          {renderInput('RCS', 'rcs', <Ionicons name="document-text" size={22} color="#666" />, 'Registre du Commerce et des Sociétés')}
 
-          {/* Address */}
-          {renderInput(
-            'Adresse',
-            'address',
-            <MaterialIcons name="location-on" size={22} color="#666" />,
-            'Adresse complète de l\'entreprise',
-            'default',
-            true
-          )}
-
-          {/* Phone */}
-          {renderInput(
-            'Téléphone *',
-            'phone',
-            <Feather name="phone" size={22} color="#666" />,
-            'Ex: +261 34 12 345 67',
-            'phone-pad'
-          )}
-
-          {/* Email - Non modifiable car doit correspondre à l'utilisateur */}
-          {renderInput(
-            'Email *',
-            'email',
-            <MaterialIcons name="email" size={22} color="#666" />,
-            user?.email || 'Votre email',
-            'email-address',
-            false,
-            false // Non modifiable
-          )}
-
-          {/* NIF */}
-          {renderInput(
-            'NIF *',
-            'nif',
-            <MaterialIcons name="badge" size={22} color="#666" />,
-            'Numéro d\'Identification Fiscale',
-            'numeric'
-          )}
-
-          {/* STAT */}
-          {renderInput(
-            'STAT',
-            'stat',
-            <FontAwesome name="file-text-o" size={22} color="#666" />,
-            'Numéro Statistique',
-            'numeric'
-          )}
-
-          {/* RCS */}
-          {renderInput(
-            'RCS',
-            'rcs',
-            <Ionicons name="document-text" size={22} color="#666" />,
-            'Registre du Commerce et des Sociétés'
-          )}
-
-          {/* Submit Button */}
+          {/* Bouton */}
           <View style={CreateCompanyStyles.buttonContainer}>
             <TouchableOpacity
-              style={[
-                CreateCompanyStyles.submitButton,
-                (isLoading || uploadingLogo) && CreateCompanyStyles.submitButtonDisabled
-              ]}
+              style={[CreateCompanyStyles.submitButton, (isLoading || uploadingLogo) && CreateCompanyStyles.submitButtonDisabled]}
               onPress={handleSubmit}
               disabled={isLoading || uploadingLogo}
               activeOpacity={0.8}
@@ -493,16 +353,12 @@ const CreateCompanyScreen = () => {
                   {isEditingExisting ? (
                     <>
                       <MaterialIcons name="save" size={22} color="#fff" style={{ marginRight: 8 }} />
-                      <Text style={CreateCompanyStyles.submitButtonText}>
-                        Mettre à jour l'entreprise
-                      </Text>
+                      <Text style={CreateCompanyStyles.submitButtonText}>Mettre à jour l'entreprise</Text>
                     </>
                   ) : (
                     <>
                       <Entypo name="plus" size={22} color="#fff" style={{ marginRight: 8 }} />
-                      <Text style={CreateCompanyStyles.submitButtonText}>
-                        Créer l'entreprise
-                      </Text>
+                      <Text style={CreateCompanyStyles.submitButtonText}>Créer l'entreprise</Text>
                     </>
                   )}
                 </View>
@@ -523,7 +379,6 @@ const CreateCompanyScreen = () => {
         </View>
       </ScrollView>
 
-      {/* Loading Overlay */}
       {isLoading && (
         <View style={CreateCompanyStyles.loadingOverlay}>
           <ActivityIndicator size="large" color="#4a6cf7" />

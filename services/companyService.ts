@@ -1,118 +1,99 @@
+// companyService.ts
 import axios from "axios";
 import { API_BASE_URL, API_ENDPOINTS } from "../config/api";
 
-const COMPANY_URL = `${API_BASE_URL}${API_ENDPOINTS.COMPANY}`;
+const COMPANY_URL = `${API_BASE_URL}${API_ENDPOINTS.COMPANY}`; // ex: http://10.0.2.2/gestion_entreprises/api/entreprises
 
 export interface CompanyData {
   companyName: string;
   address: string;
   phone: string;
-  identifiant: string;
+  email: string;
   nif: string;
   stat: string;
   rcs: string;
-  logoUrl?: string | null; // Changé de logo à logoUrl pour plus de clarté
+  logoUrl?: string | null;
 }
 
+/* -------------------------------------------------
+   Helper : construit FormData avec blob logo
+-------------------------------------------------- */
+const buildFormData = async (data: CompanyData, logoUri?: string | null): Promise<FormData> => {
+  const fd = new FormData();
+  fd.append("nom", data.companyName.trim());
+  fd.append("adresse", data.address.trim());
+  fd.append("telephone", data.phone.trim());
+  fd.append("email", data.email.trim());
+  fd.append("nif", data.nif.trim());
+  fd.append("stat", data.stat.trim());
+  fd.append("rcs", data.rcs.trim());
+
+  if (logoUri) {
+    const fileName = logoUri.split("/").pop() || "logo.jpg";
+    const response = await fetch(logoUri);
+    const blob = await response.blob();
+    fd.append("logo", blob, fileName);
+  }
+
+  return fd;
+};
+
+/* -------------------------------------------------
+   CRUD
+-------------------------------------------------- */
 export const companyService = {
-  /** ✔ CREATE COMPANY avec URL de logo */
-  createCompany: async (data: CompanyData) => {
+  /* CREATE + logo optionnel */
+  createCompany: async (data: CompanyData, logoUri?: string | null) => {
+    const formData = await buildFormData(data, logoUri);
     try {
-      const response = await axios.post(COMPANY_URL, data);
-      return response.data;
-    } catch (error: any) {
-      console.log("❌ Erreur API createCompany :", error.response?.data);
-
-      throw {
-        message: error.response?.data?.messages || "Une erreur est survenue lors de la création de l'entreprise",
-        code: error.response?.status || 500,
-      };
-    }
-  },
-
-  /** ✔ UPLOAD LOGO séparément (optionnel) */
-  uploadLogo: async (companyId: string, logoUri: string) => {
-    try {
-      // Créer FormData pour l'upload de fichier
-      const formData = new FormData();
-      
-      // Extraire le nom du fichier de l'URI
-      const filename = logoUri.split('/').pop() || 'logo.jpg';
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : 'image/jpeg';
-      
-      // Ajouter le fichier à FormData
-      formData.append('logo', {
-        uri: logoUri,
-        name: filename,
-        type,
-      } as any);
-
-      const response = await axios.post(`${COMPANY_URL}/${companyId}/upload-logo`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      const res = await axios.post(COMPANY_URL, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
-      return response.data;
-    } catch (error: any) {
-      throw {
-        message: error.response?.data?.messages || "Erreur lors du téléchargement du logo",
-      };
+      return res.data; // { id, nom, adresse ..., logo:"abc123.jpg", logo_url:"http://..." }
+    } catch (e: any) {
+      throw e.response?.data?.message || "Erreur création entreprise";
     }
   },
 
-  /** ✔ GET ALL COMPANIES */
+  /* UPDATE (id numérique) + logo optionnel */
+  updateCompany: async (id: number, data: Partial<CompanyData>, logoUri?: string | null) => {
+    const formData = await buildFormData(
+      {
+        companyName: data.companyName ?? "",
+        address: data.address ?? "",
+        phone: data.phone ?? "",
+        email: data.email ?? "",
+        nif: data.nif ?? "",
+        stat: data.stat ?? "",
+        rcs: data.rcs ?? "",
+      },
+      logoUri
+    );
+    try {
+      const res = await axios.post(`${COMPANY_URL}/${id}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return res.data;
+    } catch (e: any) {
+      throw e.response?.data?.message || "Erreur mise à jour entreprise";
+    }
+  },
+
+  /* GET ALL */
   getCompanies: async () => {
-    try {
-      const response = await axios.get(COMPANY_URL);
-      return response.data.data;
-    } catch (error: any) {
-      throw {
-        message:
-          error.response?.data?.messages ||
-          "Impossible de charger les entreprises",
-      };
-    }
+    const res = await axios.get(COMPANY_URL);
+    return res.data.data; // tableau
   },
 
-  /** ✔ GET ONE COMPANY */
-  getCompany: async (id: string) => {
-    try {
-      const response = await axios.get(`${COMPANY_URL}/${id}`);
-      return response.data.data;
-    } catch (error: any) {
-      throw {
-        message:
-          error.response?.data?.messages || "Entreprise introuvable",
-      };
-    }
+  /* GET ONE */
+  getCompany: async (id: number) => {
+    const res = await axios.get(`${COMPANY_URL}/${id}`);
+    return res.data.data; // objet
   },
 
-  /** ✔ UPDATE COMPANY */
-  updateCompany: async (id: string, data: Partial<CompanyData>) => {
-    try {
-      const response = await axios.put(`${COMPANY_URL}/${id}`, data);
-      return response.data;
-    } catch (error: any) {
-      throw {
-        message:
-          error.response?.data?.messages ||
-          "Erreur lors de la mise à jour de l'entreprise",
-      };
-    }
-  },
-
-  /** ✔ DELETE COMPANY */
-  deleteCompany: async (id: string) => {
-    try {
-      const response = await axios.delete(`${COMPANY_URL}/${id}`);
-      return response.data;
-    } catch (error: any) {
-      throw {
-        message:
-          error.response?.data?.messages ||
-          "Erreur lors de la suppression de l'entreprise",
-      };
-    }
+  /* DELETE */
+  deleteCompany: async (id: number) => {
+    const res = await axios.delete(`${COMPANY_URL}/${id}`);
+    return res.data;
   },
 };
