@@ -16,6 +16,7 @@ export const API_ENDPOINTS = {
   LOGIN: '/api/login',
   LOGOUT: '/api/logout',
   PROFILE: '/api/profil',
+  UPDATE_USER: "/api/update",
   CATEGORY: '/api/category',
   PRODUCT: '/api/product',
   CUSTOMER: '/api/customer',

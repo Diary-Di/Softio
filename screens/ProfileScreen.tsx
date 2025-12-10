@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { styles } from '../styles/profileScreenStyles';
 import { useAuth } from '../hooks/useAuth';
 import { router } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 
 interface MenuItemProps {
   iconName: keyof typeof Ionicons.glyphMap;
@@ -20,6 +21,10 @@ interface MenuItemProps {
   onPress: () => void;
   showChevron?: boolean;
 }
+
+type NavigationProp = {
+  navigate: (screen: string) => void;
+};
 
 const MenuItem: React.FC<MenuItemProps> = ({ 
   iconName, 
@@ -44,6 +49,7 @@ const MenuItem: React.FC<MenuItemProps> = ({
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
+  const navigation = useNavigation<NavigationProp>();
 
   if (!user) {
     return (
@@ -99,6 +105,17 @@ export default function ProfileScreen() {
             onPress={() => console.log('Gérer comptes')}
           />
         </View>
+
+        {/* ---------- SECTION SÉCURITÉ ---------- */}
+<View style={styles.section}>
+  <Text style={styles.sectionTitle}>SÉCURITÉ</Text>
+
+  <MenuItem
+    iconName="lock-closed-outline"
+    title="Email et mot de passe"
+    onPress={() => navigation.navigate('SecurityStack')}
+  />
+</View>
 
         {/* ---------- BOUTON DÉCONNEXION ---------- */}
         <TouchableOpacity

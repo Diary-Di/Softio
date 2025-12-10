@@ -33,44 +33,49 @@ const LoginScreen = () => {
   const isFormValid = email.trim().length > 0 && password.trim().length > 0;
 
   const handleLogin = async () => {
-    if (!isFormValid) {
-      setMessageType("error");
-      setMessage("Veuillez saisir l'email et le mot de passe.");
-      return;
-    }
+  if (!isFormValid) {
+    setMessageType('error');
+    setMessage('Veuillez saisir l\'email et le mot de passe.');
+    return;
+  }
 
-    if (!isValidEmail(email)) {
-      setMessageType("error");
-      setMessage("Veuillez saisir un email valide.");
-      return;
-    }
+  if (!isValidEmail(email)) {
+    setMessageType('error');
+    setMessage('Veuillez saisir un email valide.');
+    return;
+  }
 
-    setMessage("");
+  setMessage('');
+  setMessageType('');
 
-    try {
-      const credentials = {
+  try {
+    const res = await fetch('http://localhost/SOFTIO/backend/public/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         email: email.trim().toLowerCase(),
         mot_de_passe: password,
-      };
+      }),
+    });
 
-      const response = await login(credentials);
+    const data = await res.json();
 
-      if (response.success) {
-        setMessageType("success");
-        setMessage("Connexion réussie !");
-
-        setTimeout(() => {
-          router.replace("/"); // Redirection vers la page d'accueil
-        }, 500);
-      } else {
-        setMessageType("error");
-        setMessage(response.message || "Échec de la connexion");
-      }
-    } catch (err: any) {
-      setMessageType("error");
-      setMessage(err.message || "Erreur lors de la connexion");
+    if (!data.success) {
+      // message d’erreur renvoyé par CI
+      throw new Error(data.message);
     }
-  };
+
+    // data.token et data.user existent forcément ici
+    await login(data.token, data.user);
+
+    setMessageType('success');
+    setMessage('Connexion réussie !');
+    setTimeout(() => router.replace('/dashboard'), 500);
+  } catch (err: any) {
+    setMessageType('error');
+    setMessage(err.message || 'Erreur réseau');
+  }
+};
 
   const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 

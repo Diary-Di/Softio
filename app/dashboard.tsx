@@ -12,6 +12,7 @@ import { useAuth } from '../hooks/useAuth';
 import CustomerStackNavigator from '../navigation/CustomerStackNavigator';
 import ProductStackNavigator from '../navigation/ProductStackNavigator';
 import SalesStackNavigator from '../navigation/SalesStackNavigator';
+import SecurityStackNavigator from '../navigation/SecurityStackNavigator';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ProformaScreen from '../screens/ProformaScreen';
@@ -185,6 +186,12 @@ export default function Dashboard() {
             <Ionicons name="business-outline" size={size} color={color} />
           ),
         }}
+      />
+
+      <Drawer.Screen
+        name="SecurityStack"
+        component={SecurityStackNavigator}
+        options={{ drawerItemStyle: { height: 0 } }} // invisible dans le menu
       />
 
     </Drawer.Navigator>

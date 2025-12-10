@@ -1,93 +1,68 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { authService } from "../services/authService";
-import { User } from "../types/api";
-import * as storage from "../utils/storage";
-import { router } from "expo-router";
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import * as storage from '../utils/storage';
+import { User } from '../types/api';
+const [loading, setLoading] = useState(false);
 
-type AuthContextType = {
+type AuthCtx = {
   user: User | null;
   token: string | null;
-  loading: boolean;
-  error: any;
-  register: (data: any) => Promise<any>;
-  login: (credentials: any) => Promise<any>;
+  login: (tok: string, u: User) => Promise<void>;
   logout: () => Promise<void>;
+  updateUser: (fields: { email?: string; password?: string }) => Promise<void>;
+  loading: boolean;
 };
+const AuthContext = createContext<AuthCtx>({} as AuthCtx);
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<any>(null);
 
   useEffect(() => {
-    const loadSession = async () => {
-      try {
-        const savedToken = await storage.getItem("token");
-        const savedUser = await storage.getItem("user");
-
-        if (savedToken && savedUser) {
-          setToken(savedToken);
-          setUser(JSON.parse(savedUser) ?? null);
-        } else {
-          setUser(null);
-        }
-      } catch (e) {
-        console.log("Erreur lors du chargement de la session :", e);
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadSession();
+    (async () => {
+      const [t, u] = await Promise.all([storage.getItem('token'), storage.getItem('user')]);
+      if (t && u) {
+  setToken(t);
+  try {
+    const parsed = JSON.parse(u);
+    if (parsed) setUser(parsed);
+  } catch {
+    // JSON mal-formé -> on efface la clé pour éviter la boucle d’erreurs
+    await storage.deleteItem('user');
+  }
+}
+    })();
   }, []);
 
-  const register = useCallback(async (userData: any) => {
-    setError(null);
-    return await authService.register(userData);
-  }, []);
+  const login = async (tok: string, u: User) => {
+  setLoading(true);
+  try {
+    await storage.setItem('token', tok);
+    await storage.setItem('user', JSON.stringify(u));
+    setToken(tok);
+    setUser(u);
+  } finally {
+    setLoading(false);
+  }
+};
 
-  const login = useCallback(async (credentials: any) => {
-    setError(null);
-    const response = await authService.login(credentials);
-
-    if (response.success && response.token) {
-      await storage.setItem("token", response.token);
-      await storage.setItem("user", JSON.stringify(response.user));
-
-      setToken(response.token);
-      setUser(response.user ?? null);
-    }
-
-    return response;
-  }, []);
-
-  const logout = useCallback(async () => {
-    await storage.deleteItem("token");
-    await storage.deleteItem("user");
-
+  const logout = async () => {
+    await Promise.all([storage.deleteItem('token'), storage.deleteItem('user')]);
     setToken(null);
     setUser(null);
+  };
 
-    router.replace("/(auth)/login");
-  }, []);
+  const updateUser = async ({ email, password }: { email?: string; password?: string }) => {
+    const updated: Partial<User> = { ...user! };
+    if (email) updated.email = email;
+    setUser(updated as User);
+    await storage.setItem('user', JSON.stringify(updated));
+  };
 
   return (
-    <AuthContext.Provider
-      value={{ user, token, loading, error, register, login, logout }}
-    >
+    <AuthContext.Provider value={{ user, token, login, logout, updateUser, loading }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};
+export const useAuth = () => useContext(AuthContext);
