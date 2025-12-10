@@ -13,6 +13,7 @@ import { styles } from '../styles/profileScreenStyles';
 import { useAuth } from '../hooks/useAuth';
 import { router } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
+import { NavigationProp as NativeNavigationProp } from '@react-navigation/native';
 
 interface MenuItemProps {
   iconName: keyof typeof Ionicons.glyphMap;
@@ -22,9 +23,10 @@ interface MenuItemProps {
   showChevron?: boolean;
 }
 
-type NavigationProp = {
-  navigate: (screen: string) => void;
-};
+type NavigationProp = NativeNavigationProp<{
+  SecurityStack: { screen: 'CreateCompany' | 'Security' };
+  ProfileScreen: undefined;
+}>;
 
 const MenuItem: React.FC<MenuItemProps> = ({ 
   iconName, 
@@ -87,7 +89,20 @@ export default function ProfileScreen() {
           
           <Text style={styles.userName}>{user.nom}</Text>
           <Text style={styles.userEmail}>{user.email}</Text>
-        </View>
+
+            <TouchableOpacity
+              style={styles.companyButton}
+              onPress={() =>
+                navigation.navigate({
+                name: 'SecurityStack',
+                params: { screen: 'CreateCompany' },
+              })
+            }
+              >
+              <Text style={styles.companyButtonText}>Mon entreprise</Text>
+            </TouchableOpacity>
+
+          </View>
 
         {/* ---------- SECTION COMPTES ---------- */}
         <View style={styles.section}>
@@ -113,7 +128,12 @@ export default function ProfileScreen() {
   <MenuItem
     iconName="lock-closed-outline"
     title="Email et mot de passe"
-    onPress={() => navigation.navigate('SecurityStack')}
+    onPress={() =>
+        navigation.navigate({
+        name: 'SecurityStack',
+        params: { screen: 'Security' }, // ou 'CreateCompany' selon le besoin
+      })
+    }
   />
 </View>
 

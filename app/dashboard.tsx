@@ -179,16 +179,6 @@ export default function Dashboard() {
       />
 
       <Drawer.Screen
-        name="Entreprise"
-        component={CreateCompanyScreen}
-        options={{
-          drawerIcon: ({ color, size }) => (
-            <Ionicons name="business-outline" size={size} color={color} />
-          ),
-        }}
-      />
-
-      <Drawer.Screen
         name="SecurityStack"
         component={SecurityStackNavigator}
         options={{ drawerItemStyle: { height: 0 } }} // invisible dans le menu
