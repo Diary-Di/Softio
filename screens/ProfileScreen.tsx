@@ -1,19 +1,17 @@
-import React from 'react';
-import { 
-  View, 
-  Text, 
-  Image, 
-  TouchableOpacity, 
-  ScrollView, 
-  SafeAreaView, 
-  StatusBar 
-} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { styles } from '../styles/profileScreenStyles';
-import { useAuth } from '../hooks/useAuth';
+import { NavigationProp as NativeNavigationProp, useNavigation } from '@react-navigation/native';
 import { router } from 'expo-router';
-import { useNavigation } from '@react-navigation/native';
-import { NavigationProp as NativeNavigationProp } from '@react-navigation/native';
+import React from 'react';
+import {
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import { useAuth } from '../hooks/useAuth';
+import { styles } from '../styles/profileScreenStyles';
 
 interface MenuItemProps {
   iconName: keyof typeof Ionicons.glyphMap;
@@ -140,14 +138,17 @@ export default function ProfileScreen() {
         {/* ---------- BOUTON DÉCONNEXION ---------- */}
         <TouchableOpacity
           style={styles.logoutButton}
-          onPress={() => {
-            logout();             
-              router.replace("/(auth)/login");  
+          onPress={async () => {
+            try {
+              await logout();
+            } finally {
+              router.replace('/(auth)/login');
+            }
           }}
->
-  <Ionicons name="log-out-outline" size={20} color="#d93025" />
-  <Text style={styles.logoutText}>Se déconnecter</Text>
-</TouchableOpacity>
+        >
+          <Ionicons name="log-out-outline" size={20} color="#d93025" />
+          <Text style={styles.logoutText}>Se déconnecter</Text>
+        </TouchableOpacity>
 
 
       </ScrollView>

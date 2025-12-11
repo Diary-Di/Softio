@@ -1,28 +1,30 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import Icon from '@expo/vector-icons/MaterialIcons';
+import { useNavigation } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  RefreshControl,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  Image,
-  Alert,
-  Modal,
-  FlatList,
-  ActivityIndicator,
-  RefreshControl,
-  Animated,
-  StyleSheet,
+  View
 } from 'react-native';
-import Icon from '@expo/vector-icons/MaterialIcons';
-import * as ImagePicker from 'expo-image-picker';
-import { 
-  styles 
-} from '../styles/CreateProductStyles';
-import { productService } from '../services/productService';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { categoryService } from '../services/categoryService';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { productService } from '../services/productService';
+import {
+  styles
+} from '../styles/CreateProductStyles';
 
 // Interface pour les catégories
 interface Categorie {
@@ -504,24 +506,25 @@ const CreateProductScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Bannière de succès animée moderne */}
+    <KeyboardAvoidingView
+      style={{ flex: 1, position: 'relative' }} // allow absolute overlay
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={90}
+    >
+      {/* Bannière de succès (overlay absolute, n'affecte pas le flux) */}
       {showSuccessMessage && (
-        <Animated.View 
+        <Animated.View
           style={[
             localStyles.successBanner,
             {
               opacity: fadeAnim,
-              transform: [
-                { translateY: translateYAnim },
-                { scale: scaleAnim }
-              ]
-            }
+              transform: [{ translateY: translateYAnim }, { scale: scaleAnim }],
+            },
           ]}
         >
           <View style={localStyles.bannerContent}>
             <Text style={localStyles.bannerText}>{successMessage}</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={hideSuccessBanner}
               style={localStyles.bannerCloseButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -531,294 +534,296 @@ const CreateProductScreen: React.FC = () => {
           </View>
         </Animated.View>
       )}
+
+      <View style={styles.container}>
+        <KeyboardAwareScrollView
+          enableOnAndroid
+          extraScrollHeight={Platform.OS === 'ios' ? 20 : 120}
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: 10 }}
+        >
       
-      <ScrollView 
-        style={[
-          styles.scrollView, 
-          showSuccessMessage && localStyles.scrollViewWithBanner
-        ]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={showSuccessMessage && { paddingTop: 10 }}
-      >
-        {/* HEADER */}
-        <View style={styles.header}>
-          <TouchableOpacity 
-            onPress={() => navigation.goBack()} 
-            style={styles.backButton} 
-            accessibilityLabel="Retour"
-            disabled={isLoading}
-          >
-            <Ionicons name="arrow-back" size={24} color="#111" />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.title}>Ajouter un produit</Text>
-          </View>
-          <View style={{ width: 32 }} />
-        </View>
-        
-        {/* Référence du produit */}
-        <View style={styles.inputContainer}>
-          <View style={styles.labelContainer}>
-            <Text style={styles.label}>Référence du produit *</Text>
-          </View>
-          <TextInput
-            style={styles.input}
-            value={ref_produit}
-            onChangeText={(text) => updateField('ref_produit', text)}
-            placeholder="Ex: PROD001"
-            placeholderTextColor="#999"
-            returnKeyType="next"
-            editable={!isLoading}
-            autoCapitalize="none"
-            maxLength={50}
-          />
-        </View>
-
-        {/* Désignation */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Désignation *</Text>
-          <TextInput
-            style={[styles.input, styles.multilineInput]}
-            value={designation}
-            onChangeText={(text) => updateField('designation', text)}
-            placeholder="Description du produit"
-            placeholderTextColor="#999"
-            multiline
-            numberOfLines={3}
-            textAlignVertical="top"
-            blurOnSubmit={true}
-            editable={!isLoading}
-          />
-        </View>
-
-        {/* Catégorie */}
-        <View style={styles.inputContainer}>
-          <View style={styles.labelContainer}>
-            <Text style={styles.label}>Catégorie *</Text>
-            {loadingCategories && (
-              <ActivityIndicator size="small" color="#4A90E2" style={styles.loadingIndicator} />
-            )}
-          </View>
-          <TouchableOpacity
-            style={[styles.dropdown, (isLoading || loadingCategories) && { opacity: 0.5 }]}
-            onPress={() => !isLoading && setModalVisible(true)}
-            disabled={isLoading || loadingCategories}
-          >
-            <View style={styles.dropdownContent}>
-              {categorie ? (
-                <View>
-                  <Text style={styles.dropdownTextSelected}>{categorie}</Text>
-                  {categories.find(cat => cat.categorie === categorie)?.description && (
-                    <Text style={styles.dropdownDescription} numberOfLines={1}>
-                      {categories.find(cat => cat.categorie === categorie)?.description}
-                    </Text>
-                  )}
-                </View>
-              ) : (
-                <Text style={styles.dropdownTextPlaceholder}>
-                  {loadingCategories ? 'Chargement...' : 'Sélectionnez une catégorie'}
-                </Text>
-              )}
+          {/* HEADER */}
+          <View style={styles.header}>
+            <TouchableOpacity 
+              onPress={() => navigation.goBack()} 
+              style={styles.backButton} 
+              accessibilityLabel="Retour"
+              disabled={isLoading}
+            >
+              <Ionicons name="arrow-back" size={24} color="#111" />
+            </TouchableOpacity>
+            <View style={styles.headerCenter}>
+              <Text style={styles.title}>Ajouter un produit</Text>
             </View>
-            <Icon name="arrow-drop-down" size={24} color="#666" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Prix actuel */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Prix actuel (€) *</Text>
-          <View style={styles.prixContainer}>
+            <View style={{ width: 32 }} />
+          </View>
+          
+          {/* Référence du produit */}
+          <View style={styles.inputContainer}>
+            <View style={styles.labelContainer}>
+              <Text style={styles.label}>Référence du produit *</Text>
+            </View>
             <TextInput
-              style={[styles.input, styles.prixInput, isLoading && { opacity: 0.5 }]}
-              value={prix_actuel}
-              onChangeText={formatPrix}
-              placeholder="0,00"
+              style={styles.input}
+              value={ref_produit}
+              onChangeText={(text) => updateField('ref_produit', text)}
+              placeholder="Ex: PROD001"
               placeholderTextColor="#999"
-              keyboardType="decimal-pad"
               returnKeyType="next"
               editable={!isLoading}
+              autoCapitalize="none"
+              maxLength={50}
             />
-            <Text style={styles.currency}>€</Text>
           </View>
-          <Text style={styles.hint}>Utilisez le point ou la virgule pour les décimales</Text>
-        </View>
 
-        {/* Quantité disponible */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Quantité disponible</Text>
-          
-          <View style={styles.quantiteContainer}>
-            {/* Bouton Moins */}
-            <TouchableOpacity
-              style={[
-                styles.quantiteButton,
-                qte_disponible <= 0 && styles.quantiteButtonDisabled,
-                isLoading && { opacity: 0.5 }
-              ]}
-              onPress={decrementQuantite}
-              disabled={qte_disponible <= 0 || isLoading}
-              activeOpacity={0.7}
-            >
-              <Icon 
-                name="remove" 
-                size={24} 
-                color={qte_disponible <= 0 ? "#999" : "#FFF"} 
-              />
-            </TouchableOpacity>
-
-            {/* Input de quantité */}
+          {/* Désignation */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Désignation *</Text>
             <TextInput
-              ref={inputRef}
-              style={[styles.quantiteInput, isLoading && { opacity: 0.5 }]}
-              value={qte_disponible.toString()}
-              onChangeText={handleQuantiteChange}
-              keyboardType="numeric"
-              textAlign="center"
-              returnKeyType="done"
-              maxLength={6}
-              onBlur={() => {
-                if (qte_disponible < 0) updateField('qte_disponible', 0);
-              }}
+              style={[styles.input, styles.multilineInput]}
+              value={designation}
+              onChangeText={(text) => updateField('designation', text)}
+              placeholder="Description du produit"
+              placeholderTextColor="#999"
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+              blurOnSubmit={true}
               editable={!isLoading}
             />
+          </View>
 
-            {/* Bouton Plus */}
+          {/* Catégorie */}
+          <View style={styles.inputContainer}>
+            <View style={styles.labelContainer}>
+              <Text style={styles.label}>Catégorie *</Text>
+              {loadingCategories && (
+                <ActivityIndicator size="small" color="#4A90E2" style={styles.loadingIndicator} />
+              )}
+            </View>
             <TouchableOpacity
-              style={[styles.quantiteButton, isLoading && { opacity: 0.5 }]}
-              onPress={incrementQuantite}
-              disabled={isLoading}
-              activeOpacity={0.7}
+              style={[styles.dropdown, (isLoading || loadingCategories) && { opacity: 0.5 }]}
+              onPress={() => !isLoading && setModalVisible(true)}
+              disabled={isLoading || loadingCategories}
             >
-              <Icon name="add" size={24} color="#FFF" />
+              <View style={styles.dropdownContent}>
+                {categorie ? (
+                  <View>
+                    <Text style={styles.dropdownTextSelected}>{categorie}</Text>
+                    {categories.find(cat => cat.categorie === categorie)?.description && (
+                      <Text style={styles.dropdownDescription} numberOfLines={1}>
+                        {categories.find(cat => cat.categorie === categorie)?.description}
+                      </Text>
+                    )}
+                  </View>
+                ) : (
+                  <Text style={styles.dropdownTextPlaceholder}>
+                    {loadingCategories ? 'Chargement...' : 'Sélectionnez une catégorie'}
+                  </Text>
+                )}
+              </View>
+              <Icon name="arrow-drop-down" size={24} color="#666" />
             </TouchableOpacity>
           </View>
-        </View>
 
-        {/* Image du produit */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Image du produit</Text>
-          <View style={styles.imageContainer}>
-            {image_url ? (
+          {/* Prix actuel */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Prix actuel (€) *</Text>
+            <View style={styles.prixContainer}>
+              <TextInput
+                style={[styles.input, styles.prixInput, isLoading && { opacity: 0.5 }]}
+                value={prix_actuel}
+                onChangeText={formatPrix}
+                placeholder="0,00"
+                placeholderTextColor="#999"
+                keyboardType="decimal-pad"
+                returnKeyType="next"
+                editable={!isLoading}
+              />
+               <Text style={styles.currency}>€</Text>
+             </View>
+             <Text style={styles.hint}>Utilisez le point ou la virgule pour les décimales</Text>
+           </View>
+ 
+           {/* Quantité disponible */}
+           <View style={styles.inputContainer}>
+             <Text style={styles.label}>Quantité disponible</Text>
+             
+             <View style={styles.quantiteContainer}>
+               {/* Bouton Moins */}
+               <TouchableOpacity
+                 style={[
+                   styles.quantiteButton,
+                   qte_disponible <= 0 && styles.quantiteButtonDisabled,
+                   isLoading && { opacity: 0.5 }
+                 ]}
+                 onPress={decrementQuantite}
+                 disabled={qte_disponible <= 0 || isLoading}
+                 activeOpacity={0.7}
+               >
+                 <Icon 
+                   name="remove" 
+                   size={24} 
+                   color={qte_disponible <= 0 ? "#999" : "#FFF"} 
+                 />
+               </TouchableOpacity>
+
+               {/* Input de quantité */}
+               <TextInput
+                 ref={inputRef}
+                 style={[styles.quantiteInput, isLoading && { opacity: 0.5 }]}
+                 value={qte_disponible.toString()}
+                 onChangeText={handleQuantiteChange}
+                 keyboardType="numeric"
+                 textAlign="center"
+                 returnKeyType="done"
+                 maxLength={6}
+                 onBlur={() => {
+                   if (qte_disponible < 0) updateField('qte_disponible', 0);
+                 }}
+                 editable={!isLoading}
+               />
+
+               {/* Bouton Plus */}
+               <TouchableOpacity
+                 style={[styles.quantiteButton, isLoading && { opacity: 0.5 }]}
+                 onPress={incrementQuantite}
+                 disabled={isLoading}
+                 activeOpacity={0.7}
+               >
+                 <Icon name="add" size={24} color="#FFF" />
+               </TouchableOpacity>
+             </View>
+           </View>
+
+          {/* Image du produit */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Image du produit</Text>
+            <View style={styles.imageContainer}>
+              {image_url ? (
+                <>
+                  <Image source={{ uri: image_url }} style={styles.imagePreview} />
+                  <View style={styles.imageActions}>
+                    <TouchableOpacity
+                      style={[styles.imageButton, styles.changeButton, (isLoading || uploadingImage) && { opacity: 0.5 }]}
+                      onPress={handleImageImport}
+                      disabled={isLoading || uploadingImage}
+                    >
+                      {uploadingImage ? (
+                        <ActivityIndicator size="small" color="#FFF" />
+                      ) : (
+                        <>
+                          <Icon name="edit" size={20} color="#FFF" />
+                          <Text style={styles.imageButtonText}>Changer</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.imageButton, styles.deleteButton, isLoading && { opacity: 0.5 }]}
+                      onPress={handleImageDelete}
+                      disabled={isLoading}
+                    >
+                      <Icon name="delete" size={20} color="#FFF" />
+                      <Text style={styles.imageButtonText}>Supprimer</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.uploadArea, (isLoading || uploadingImage) && { opacity: 0.5 }]}
+                  onPress={handleImageImport}
+                  disabled={isLoading || uploadingImage}
+                >
+                  {uploadingImage ? (
+                    <ActivityIndicator size="large" color="#4A90E2" />
+                  ) : (
+                    <>
+                      <Icon name="add-photo-alternate" size={50} color="#4A90E2" />
+                      <Text style={styles.uploadText}>
+                        {isLoading ? 'Chargement...' : 'Importer une image'}
+                      </Text>
+                      <Text style={styles.uploadSubtext}>Appuyez pour sélectionner</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+              <Text style={styles.imageHint}>
+                {imageFile ? `Fichier: ${imageFile.name}` : 'Optionnel - Formats: JPG, PNG, GIF'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Espace pour le bouton enregistrer */}
+          <View style={styles.spacer} />
+        </KeyboardAwareScrollView>
+ 
+        {/* Bouton Enregistrer */}
+        <View style={styles.saveButtonContainer}>
+          <TouchableOpacity 
+            style={[
+              styles.saveButton, 
+              (isLoading || loadingCategories || uploadingImage) && { opacity: 0.7 }
+            ]} 
+            onPress={handleSave}
+            activeOpacity={0.8}
+            disabled={isLoading || loadingCategories || uploadingImage}
+          >
+            {isLoading ? (
               <>
-                <Image source={{ uri: image_url }} style={styles.imagePreview} />
-                <View style={styles.imageActions}>
-                  <TouchableOpacity
-                    style={[styles.imageButton, styles.changeButton, (isLoading || uploadingImage) && { opacity: 0.5 }]}
-                    onPress={handleImageImport}
-                    disabled={isLoading || uploadingImage}
-                  >
-                    {uploadingImage ? (
-                      <ActivityIndicator size="small" color="#FFF" />
-                    ) : (
-                      <>
-                        <Icon name="edit" size={20} color="#FFF" />
-                        <Text style={styles.imageButtonText}>Changer</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.imageButton, styles.deleteButton, isLoading && { opacity: 0.5 }]}
-                    onPress={handleImageDelete}
-                    disabled={isLoading}
-                  >
-                    <Icon name="delete" size={20} color="#FFF" />
-                    <Text style={styles.imageButtonText}>Supprimer</Text>
-                  </TouchableOpacity>
-                </View>
+                <ActivityIndicator size="small" color="#FFF" />
+                <Text style={styles.saveButtonText}>Enregistrement...</Text>
               </>
             ) : (
-              <TouchableOpacity
-                style={[styles.uploadArea, (isLoading || uploadingImage) && { opacity: 0.5 }]}
-                onPress={handleImageImport}
-                disabled={isLoading || uploadingImage}
-              >
-                {uploadingImage ? (
-                  <ActivityIndicator size="large" color="#4A90E2" />
-                ) : (
-                  <>
-                    <Icon name="add-photo-alternate" size={50} color="#4A90E2" />
-                    <Text style={styles.uploadText}>
-                      {isLoading ? 'Chargement...' : 'Importer une image'}
-                    </Text>
-                    <Text style={styles.uploadSubtext}>Appuyez pour sélectionner</Text>
-                  </>
-                )}
-              </TouchableOpacity>
+              <>
+                <Icon name="save" size={24} color="#FFF" />
+                <Text style={styles.saveButtonText}>
+                  {loadingCategories ? 'Chargement...' : 'Enregistrer'}
+                </Text>
+              </>
             )}
-            <Text style={styles.imageHint}>
-              {imageFile ? `Fichier: ${imageFile.name}` : 'Optionnel - Formats: JPG, PNG, GIF'}
-            </Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
-        {/* Espace pour le bouton enregistrer */}
-        <View style={styles.spacer} />
-      </ScrollView>
-
-      {/* Bouton Enregistrer */}
-      <View style={styles.saveButtonContainer}>
-        <TouchableOpacity 
-          style={[
-            styles.saveButton, 
-            (isLoading || loadingCategories || uploadingImage) && { opacity: 0.7 }
-          ]} 
-          onPress={handleSave}
-          activeOpacity={0.8}
-          disabled={isLoading || loadingCategories || uploadingImage}
+        {/* Modal pour la sélection des catégories */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={() => setModalVisible(false)}
         >
-          {isLoading ? (
-            <>
-              <ActivityIndicator size="small" color="#FFF" />
-              <Text style={styles.saveButtonText}>Enregistrement...</Text>
-            </>
-          ) : (
-            <>
-              <Icon name="save" size={24} color="#FFF" />
-              <Text style={styles.saveButtonText}>
-                {loadingCategories ? 'Chargement...' : 'Enregistrer'}
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* Modal pour la sélection des catégories */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Sélectionnez une catégorie</Text>
-              <View style={styles.modalHeaderActions}>
-                <TouchableOpacity 
-                  style={styles.refreshButton}
-                  onPress={handleRefreshCategories}
-                  disabled={refreshingCategories}
-                >
-                  <Icon 
-                    name="refresh" 
-                    size={22} 
-                    color={refreshingCategories ? "#999" : "#4A90E2"} 
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={() => setModalVisible(false)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Icon name="close" size={24} color="#666" />
-                </TouchableOpacity>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Sélectionnez une catégorie</Text>
+                <View style={styles.modalHeaderActions}>
+                  <TouchableOpacity 
+                    style={styles.refreshButton}
+                    onPress={handleRefreshCategories}
+                    disabled={refreshingCategories}
+                  >
+                    <Icon 
+                      name="refresh" 
+                      size={22} 
+                      color={refreshingCategories ? "#999" : "#4A90E2"} 
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={() => setModalVisible(false)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Icon name="close" size={24} color="#666" />
+                  </TouchableOpacity>
+                </View>
               </View>
+              {renderModalContent()}
             </View>
-            {renderModalContent()}
           </View>
-        </View>
-      </Modal>
-    </View>
+        </Modal>
+      </View>
+    </KeyboardAvoidingView>
   );
 };
 

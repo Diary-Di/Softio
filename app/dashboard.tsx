@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import {
-  DrawerContentScrollView,
-  DrawerItem,
-  DrawerItemList,
-  createDrawerNavigator,
+    DrawerContentScrollView,
+    DrawerItem,
+    DrawerItemList,
+    createDrawerNavigator,
 } from '@react-navigation/drawer';
+import { useRouter } from 'expo-router';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../hooks/useAuth';
 
@@ -15,8 +16,6 @@ import SalesStackNavigator from '../navigation/SalesStackNavigator';
 import SecurityStackNavigator from '../navigation/SecurityStackNavigator';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import ProformaScreen from '../screens/ProformaScreen';
-import CreateCompanyScreen from '../screens/CreateCompanyScreen';
 
 
 // ---------- Palette ----------
@@ -41,6 +40,7 @@ function getInitials(name?: string) {
 // ---------- Drawer personnalisé ----------
 function ModernDrawer(props: any) {
   const { user, logout } = useAuth();
+  const router = useRouter();
 
   const initials = getInitials(user?.nom);
 
@@ -73,7 +73,13 @@ function ModernDrawer(props: any) {
           icon={({ color, size }) => (
             <Ionicons name="log-out-outline" color={color} size={size} />
           )}
-          onPress={logout}
+          onPress={async () => {
+            try {
+              await logout();
+            } finally {
+              router.replace('/(auth)/login');
+            }
+          }}
           labelStyle={styles.logoutLabel}
           inactiveTintColor={colors.textSecondary}
           activeTintColor={colors.accent}

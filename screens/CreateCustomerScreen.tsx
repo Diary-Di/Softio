@@ -1,21 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from "expo-router";
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
+    Animated,
     KeyboardAvoidingView,
     Modal,
     Platform,
-    ScrollView,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
-    ActivityIndicator,
     TouchableWithoutFeedback,
-    Animated
+    View
 } from 'react-native';
-import styles from '../styles/CreateCustomerStyles';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { customerService } from '../services/customerService';
+import styles from '../styles/CreateCustomerStyles';
 
 export default function CreateCustomerScreen() {
   const router = useRouter();
@@ -248,11 +248,10 @@ export default function CreateCustomerScreen() {
         </Animated.View>
       ) : null}
 
-      <ScrollView
-        contentContainerStyle={[
-          styles.scrollContainer,
-          message ? { paddingTop: Platform.OS === 'ios' ? 90 : 70 } : {}
-        ]}
+      <KeyboardAwareScrollView
+        enableOnAndroid
+        extraScrollHeight={Platform.OS === 'ios' ? 20 : 120}
+        contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
       >
         {/* HEADER */}
@@ -506,7 +505,7 @@ export default function CreateCustomerScreen() {
             <Text style={styles.buttonText}>Enregistrer</Text>
           )}
         </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
   );
 }

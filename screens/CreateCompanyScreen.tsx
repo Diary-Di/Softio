@@ -1,22 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { companyService } from '@/services/companyService';
+import { CreateCompanyStyles } from '@/styles/CreateCompanyStyles';
+import { Entypo, Feather, FontAwesome, Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native'; // ← import
+import * as ImagePicker from 'expo-image-picker';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  Image,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
+  View,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { MaterialIcons, FontAwesome, Ionicons, Feather, Entypo } from '@expo/vector-icons';
-import { CreateCompanyStyles } from '@/styles/CreateCompanyStyles';
-import { companyService } from '@/services/companyService';
-import { useAuth } from '@/hooks/useAuth';
-import { useFocusEffect } from '@react-navigation/native'; // ← import
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 interface CompanyForm {
   companyName: string;
@@ -36,7 +36,7 @@ interface FormErrors {
   nif?: string;
 }
 
-const CreateCompanyScreen = () => {
+export default function CreateCompanyScreen() {
   const { user } = useAuth();
   const [formData, setFormData] = useState<CompanyForm>({
     companyName: '',
@@ -81,7 +81,8 @@ const CreateCompanyScreen = () => {
           stat: userCompany.stat || '',
           rcs: userCompany.rcs || '',
           logo: userCompany.logo
-            ? `http://localhost/SOFTIO/backend/public/uploads/logos/${userCompany.logo}`
+            ? `https://palpebral-unsolemnized-caitlin.ngrok-free.dev/SOFTIO/backend/public/uploads/logos/${userCompany.logo}`
+            //? `http://localhost/SOFTIO/backend/public/uploads/logos/${userCompany.logo}`
             : null,
         });
         setExistingId(userCompany.id);
@@ -236,7 +237,7 @@ const CreateCompanyScreen = () => {
             keyboardType={keyboardType}
             multiline={multiline}
             numberOfLines={multiline ? 4 : 1}
-            onFocus={() => setFocusedField(field)}
+            onFocus={() => { setFocusedField(field); }}
             onBlur={() => setFocusedField(null)}
             editable={!isLoading && !uploadingLogo && editable}
           />
@@ -265,12 +266,12 @@ const CreateCompanyScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
-      <ScrollView
+      <KeyboardAwareScrollView
+        enableOnAndroid
+        extraScrollHeight={Platform.OS === 'ios' ? 20 : 120}
         contentContainerStyle={CreateCompanyStyles.scrollContainer}
         showsVerticalScrollIndicator={true}
         keyboardShouldPersistTaps="handled"
-        alwaysBounceVertical={false}
-        overScrollMode="never"
       >
         <View style={CreateCompanyStyles.formContainer}>
           <View style={CreateCompanyStyles.header}>
@@ -377,7 +378,7 @@ const CreateCompanyScreen = () => {
 
           <View style={{ height: 1 }} />
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {isLoading && (
         <View style={CreateCompanyStyles.loadingOverlay}>
@@ -390,5 +391,3 @@ const CreateCompanyScreen = () => {
     </KeyboardAvoidingView>
   );
 };
-
-export default CreateCompanyScreen;

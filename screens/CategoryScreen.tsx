@@ -1,24 +1,25 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  RefreshControl,
-  Text,
-  TouchableOpacity,
-  View,
-  TextInput,
-  Pressable,
-  LayoutAnimation,
-  Platform,
-  UIManager,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    KeyboardAvoidingView,
+    LayoutAnimation,
+    Platform,
+    Pressable,
+    RefreshControl,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    UIManager,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { productScreenStyles as styles } from '../styles/productScreenStyles';
 import { categoryService } from '../services/categoryService';
+import { productScreenStyles as styles } from '../styles/productScreenStyles';
 
 type Category = {
   categorie: string;
@@ -348,76 +349,83 @@ export default function CategoryScreen({ onScroll }: Props) {
 
   /* --------------------  MAIN RENDER  -------------------- */
   return (
-    <SafeAreaView style={styles.safeArea}>
-      {renderHeader()}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={80}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        {renderHeader()}
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <View style={[styles.searchInputContainer, searchFocused && styles.searchInputFocused]}>
-          <Ionicons 
-            name="search" 
-            size={20} 
-            color={searchFocused ? "#4F46E5" : "#9CA3AF"} 
-            style={styles.searchIcon}
-          />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Rechercher une catégorie..."
-            placeholderTextColor="#9CA3AF"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-            returnKeyType="search"
-            clearButtonMode="while-editing"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity
-              style={styles.clearButton}
-              onPress={clearSearch}
-              accessibilityLabel="Effacer la recherche"
-            >
-              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
-          )}
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <View style={[styles.searchInputContainer, searchFocused && styles.searchInputFocused]}>
+            <Ionicons 
+              name="search" 
+              size={20} 
+              color={searchFocused ? "#4F46E5" : "#9CA3AF"} 
+              style={styles.searchIcon}
+            />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Rechercher une catégorie..."
+              placeholderTextColor="#9CA3AF"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                style={styles.clearButton}
+                onPress={clearSearch}
+                accessibilityLabel="Effacer la recherche"
+              >
+                <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
-      </View>
 
-      {/* Category List */}
-      <FlatList
-        data={filteredCategories}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.categorie}
-        contentContainerStyle={
-          filteredCategories.length ? styles.listContainer : styles.listContainerCenter
-        }
-        showsVerticalScrollIndicator={false}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#4F46E5"
-            colors={['#4F46E5']}
-          />
-        }
-        ListEmptyComponent={renderEmptyList}
-        initialNumToRender={8}
-        maxToRenderPerBatch={10}
-        windowSize={7}
-        removeClippedSubviews
-        keyboardShouldPersistTaps="handled"
-      />
+        {/* Category List */}
+        <FlatList
+          data={filteredCategories}
+          keyboardShouldPersistTaps='handled'
+          keyboardDismissMode='on-drag'
+          renderItem={renderItem}
+          keyExtractor={(item) => item.categorie}
+          contentContainerStyle={
+            filteredCategories.length ? styles.listContainer : styles.listContainerCenter
+          }
+          showsVerticalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#4F46E5"
+              colors={['#4F46E5']}
+            />
+          }
+          ListEmptyComponent={renderEmptyList}
+          initialNumToRender={8}
+          maxToRenderPerBatch={10}
+          windowSize={7}
+          removeClippedSubviews
+        />
 
-      {/* FAB */}
-      <TouchableOpacity 
-        style={styles.fab} 
-        onPress={handleAddCategory}
-        activeOpacity={0.85}
-      >
-        <Ionicons name="add" size={26} color="#fff" />
-      </TouchableOpacity>
-    </SafeAreaView>
+        {/* FAB */}
+        <TouchableOpacity 
+          style={styles.fab} 
+          onPress={handleAddCategory}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="add" size={26} color="#fff" />
+        </TouchableOpacity>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }

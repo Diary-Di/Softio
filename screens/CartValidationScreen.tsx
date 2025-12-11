@@ -1,76 +1,60 @@
-// screens/CartValidationScreen.tsx
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
-import { useCallback, useState, useEffect, useRef } from 'react';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   SafeAreaView,
-  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
-  Modal,
-  Animated,
+  View
 } from 'react-native';
-import { validationStyles } from '../styles/CartValidationStyles';
-import { Ionicons } from '@expo/vector-icons';
-import { cartService, CartItem, SaleCreationData, PaymentMethod } from '../services/cartService';
-import { customerService, Customer } from '../services/customerService';
+import { KeyboardAccessoryView } from 'react-native-keyboard-accessory';
 import CustomerCreateModal from '../components/CustomerCreateModal';
 import CustomerSearchModal from '../components/customerSearchModal';
+import InvoicePreviewModal from '../components/InvoicePreviewModal';
+import { CartItem, cartService, PaymentMethod, SaleCreationData } from '../services/cartService';
+import { Customer, customerService } from '../services/customerService';
+import { buildInvoiceHtml, generateInvoicePdf } from '../services/inVoiceService';
+import { validationStyles as baseStyles, proformaValidationStyles } from '../styles/CartValidationStyles';
+import { PaperFormat, SaleInvoiceData } from '../types/inVoice';
 
+type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
-// Fonction pour formater les prix avec séparateurs de milliers
+// Types & helpers
 const formatPrice = (price: number | undefined): string => {
   const value = price || 0;
-  const formattedValue = value.toLocaleString('fr-FR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
-  return `€ ${formattedValue}`;
+  return `€ ${value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
-
-// Formater l'entrée numérique avec séparateurs
 const formatNumberInput = (value: string): string => {
   if (!value) return '';
-  const cleanValue = value.replace(/[^0-9.]/g, '');
-  const numValue = parseFloat(cleanValue);
-  if (isNaN(numValue)) return '';
-  return numValue.toLocaleString('fr-FR', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  });
+  const clean = value.replace(/[^0-9.]/g, '');
+  const n = parseFloat(clean);
+  return isNaN(n) ? '' : n.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+};
+const cleanNumberValue = (value: string): string => value.replace(/[^0-9.]/g, '');
+const getItemPrice = (item: CartItem): number => item.prix_unitaire || item.prix_actuel || 0;
+const getCustomerDisplayName = (c: Customer): string => {
+  if (c.type === 'entreprise' && c.sigle) return c.sigle;
+  if (c.nom && c.prenoms) return `${c.prenoms} ${c.nom}`;
+  if (c.nom) return c.nom;
+  if (c.prenoms) return c.prenoms;
+  return c.email || `Client #${c.identifiant}`;
+};
+const getPaymentMethodName = (m: PaymentMethod | null): string => {
+  if (!m) return 'Non spécifié';
+  return PAYMENT_METHODS.find(p => p.id === m)?.name || 'Non spécifié';
 };
 
-// Nettoyer la valeur numérique
-const cleanNumberValue = (value: string): string => {
-  return value.replace(/[^0-9.]/g, '');
-};
-
-// Obtenir le prix unitaire
-const getItemPrice = (item: CartItem): number => {
-  return item.prix_unitaire || item.prix_actuel || 0;
-};
-
-// Obtenir le nom d'affichage du client
-const getCustomerDisplayName = (customer: Customer): string => {
-  if (customer.type === 'entreprise' && customer.sigle) {
-    return customer.sigle;
-  }
-  if (customer.nom && customer.prenoms) {
-    return `${customer.prenoms} ${customer.nom}`;
-  }
-  if (customer.nom) {
-    return customer.nom;
-  }
-  if (customer.prenoms) {
-    return customer.prenoms;
-  }
-  return customer.email || `Client #${customer.identifiant}`;
-};
-
-// Méthodes de paiement
 const PAYMENT_METHODS = [
   { id: 'cash' as PaymentMethod, name: 'Espèces', icon: 'cash-outline', color: '#34C759', description: 'Paiement en espèces' },
   { id: 'card' as PaymentMethod, name: 'Carte bancaire', icon: 'card-outline', color: '#007AFF', description: 'Paiement par carte' },
@@ -79,696 +63,837 @@ const PAYMENT_METHODS = [
   { id: 'check' as PaymentMethod, name: 'Chèque', icon: 'document-text-outline', color: '#FF3B30', description: 'Paiement par chèque' }
 ];
 
+// Cartes compactes - Remplacer ClientCompact
+const ClientSection = ({ customer, onSearchPress, onAddPress, onClearPress }: any) => {
+  if (customer) {
+    // Affichage du client sélectionné
+    return (
+      <View style={stylesLocal.card}>
+        <View style={stylesLocal.clientSelectedHeader}>
+          <Ionicons name="person-circle" size={40} color="#34C759" />
+          <View style={{ marginLeft: 12, flex: 1 }}>
+            <Text numberOfLines={1} style={stylesLocal.cardTitle}>
+              {customer.type === 'entreprise' && customer.sigle 
+                ? customer.sigle 
+                : `${customer.prenoms || ''} ${customer.nom || ''}`.trim()}
+            </Text>
+            <Text style={stylesLocal.cardSub}>{customer.email || 'Pas d\'email'}</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => {
+              onClearPress && onClearPress();
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+            style={{ padding: 8 }}
+          >
+            <Ionicons name="close-circle" size={24} color="#DC2626" />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // Pas de client sélectionné : afficher deux boutons
+  return (
+    <View style={stylesLocal.clientButtonsContainer}>
+      <TouchableOpacity 
+        style={[stylesLocal.clientButton, stylesLocal.clientButtonSecondary]}
+        onPress={onSearchPress}
+      >
+        <Ionicons name="search" size={20} color="#007AFF" />
+        <Text style={stylesLocal.clientButtonText}>Rechercher</Text>
+      </TouchableOpacity>
+      
+      <TouchableOpacity 
+        style={[stylesLocal.clientButton, stylesLocal.clientButtonPrimary]}
+        onPress={onAddPress}
+      >
+        <Ionicons name="add-circle" size={20} color="#FFF" />
+        <Text style={[stylesLocal.clientButtonText, stylesLocal.clientButtonTextPrimary]}>
+          Ajouter
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+// Résumé du panier
+const SummaryCart = ({ cart, discount, net, onDiscountChange, discountType, setDiscountType }: any) => (
+  <View style={stylesLocal.card}>
+    <Text style={stylesLocal.cardTitle}>Récapitulatif ({cart.length} article{cart.length > 1 ? 's' : ''})</Text>
+    <View style={stylesLocal.sep} />
+    {cart.map((i: CartItem) => (
+      <View key={i.id} style={stylesLocal.itemRow}>
+        <Text style={stylesLocal.itemName} numberOfLines={1}>{i.designation}</Text>
+        <Text style={stylesLocal.itemQty}>×{i.quantiteAcheter}</Text>
+        <Text style={stylesLocal.itemTotal}>{formatPrice(i.montant)}</Text>
+      </View>
+    ))}
+    <View style={stylesLocal.sep} />
+    <View style={stylesLocal.discountRow}>
+      <Text style={stylesLocal.greyLabel}>Remise</Text>
+      <View style={stylesLocal.discountRight}>
+        <TogglePercentEuro value={discountType} onChange={setDiscountType} />
+        <TextInput
+          style={stylesLocal.discountInput}
+          keyboardType="decimal-pad"
+          value={discountType === 'percent' ? discount : formatNumberInput(discount)}
+          onChangeText={v => onDiscountChange(cleanNumberValue(v))}
+          placeholder="0"
+        />
+      </View>
+    </View>
+    <View style={stylesLocal.sep} />
+    <View style={stylesLocal.totalRow}>
+      <Text style={stylesLocal.totalLabel}>Net à payer</Text>
+      <Text style={stylesLocal.totalAmount}>{formatPrice(net)}</Text>
+    </View>
+  </View>
+);
+
+const TogglePercentEuro = ({ value, onChange }: any) => (
+  <View style={stylesLocal.toggle}>
+    <TouchableOpacity style={[stylesLocal.toggleBtn, value === 'percent' && stylesLocal.toggleActive]} onPress={() => onChange('percent')}>
+      <Text style={[stylesLocal.toggleTxt, value === 'percent' && stylesLocal.toggleTxtActive]}>%</Text>
+    </TouchableOpacity>
+    <TouchableOpacity style={[stylesLocal.toggleBtn, value === 'amount' && stylesLocal.toggleActive]} onPress={() => onChange('amount')}>
+      <Text style={[stylesLocal.toggleTxt, value === 'amount' && stylesLocal.toggleTxtActive]}>€</Text>
+    </TouchableOpacity>
+  </View>
+);
+
+const PaymentCompact = ({ method, amountPaid, onMethod, onAmount, change, remaining, net }: any) => (
+  <View style={stylesLocal.card}>
+    <Text style={stylesLocal.cardTitle}>Paiement</Text>
+    <TouchableOpacity style={stylesLocal.methodPicker} onPress={onMethod}>
+      <Ionicons
+  name={
+    (method
+      ? PAYMENT_METHODS.find(p => p.id === method)?.icon || 'card'
+      : 'card') as IoniconsName
+  }
+  size={24}
+  color="#007AFF"
+/>
+      <Text style={{ marginLeft: 8, flex: 1, fontSize: 16, fontWeight: '500' }}>
+        {method ? getPaymentMethodName(method) : 'Mode de paiement'}
+      </Text>
+      <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+    </TouchableOpacity>
+
+    <Text style={[stylesLocal.greyLabel, { marginTop: 12 }]}>Montant reçu</Text>
+    <View style={stylesLocal.amountWrap}>
+      <Text style={stylesLocal.euroSym}>€</Text>
+      <TextInput
+        style={stylesLocal.amountInput}
+        keyboardType="decimal-pad"
+        value={formatNumberInput(amountPaid)}
+        onChangeText={onAmount}
+        placeholder="0,00"
+      />
+    </View>
+
+    {amountPaid > 0 && (
+      <View style={[stylesLocal.changeBox, amountPaid >= net ? stylesLocal.changeGreen : stylesLocal.changeRed]}>
+        <Text style={stylesLocal.changeTxt}>
+          {amountPaid >= net ? `Monnaie : ${formatPrice(change)}` : `Reste dû : ${formatPrice(remaining)}`}
+        </Text>
+      </View>
+    )}
+  </View>
+);
+
+const ConditionInput = ({ value, onChange }: any) => (
+  <View style={stylesLocal.card}>
+    <Text style={stylesLocal.cardTitle}>Conditions</Text>
+    <TextInput
+      style={stylesLocal.conditionInput}
+      value={value}
+      onChangeText={onChange}
+      placeholder="Ex : Payé comptant, 30 jours, …"
+      multiline
+    />
+  </View>
+);
+
+const ActionBar = ({ onPreview, onSubmit, loading, valid }: any) => (
+  <View style={stylesLocal.actionBar}>
+    <TouchableOpacity style={stylesLocal.previewBtn} onPress={onPreview} disabled={!valid}>
+      <Ionicons name="document-text-outline" size={22} color="#FFF" />
+    </TouchableOpacity>
+    <TouchableOpacity style={[stylesLocal.submitBtn, !valid && stylesLocal.disabledBtn]} onPress={onSubmit} disabled={!valid || loading}>
+      {loading ? <ActivityIndicator color="#FFF" /> : <Text style={stylesLocal.submitTxt}>Valider</Text>}
+    </TouchableOpacity>
+  </View>
+);
+
+// Header de navigation
+const ValidationHeader = ({ onBack, onCancel, title }: any) => (
+  <View style={stylesLocal.header}>
+    <TouchableOpacity 
+      style={stylesLocal.headerButton}
+      onPress={onBack}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    >
+      <Ionicons name="arrow-back" size={24} color="#007AFF" />
+    </TouchableOpacity>
+    
+    <Text style={stylesLocal.headerTitle}>{title}</Text>
+    
+    <TouchableOpacity 
+      style={stylesLocal.headerButton}
+      onPress={onCancel}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    >
+      <Ionicons name="close" size={24} color="#DC2626" />
+    </TouchableOpacity>
+  </View>
+);
+
+// Liste ergonomique des formats utilisables
+const PDF_FORMATS: { id: PaperFormat; label: string; desc: string; icon: IoniconsName }[] = [
+  { id: 'A4',   label: 'A4',   desc: 'Format standard A4 (portrait)', icon: 'document-text' },
+  { id: 'A5',   label: 'A5',   desc: 'Format A5 (plus compact)', icon: 'document-text' },
+  { id: 'BL-A4',label: 'BL-A4',desc: 'Bon de livraison A4', icon: 'cube' },
+  { id: 'BL-A5',label: 'BL-A5',desc: 'Bon de livraison A5', icon: 'cube' },
+  { id: 'T80',  label: 'Ticket 80mm', desc: 'Ticket thermique 80mm', icon: 'receipt' },
+  { id: 'T58',  label: 'Ticket 58mm', desc: 'Ticket thermique 58mm', icon: 'receipt' },
+];
+
+// Bouton affichant le format courant et ouvrant la modal
+const FormatPickerButton = ({ current, onOpen }: { current: PaperFormat; onOpen: () => void }) => (
+  <TouchableOpacity style={stylesLocal.formatPickerBtn} onPress={onOpen}>
+    <Ionicons name={current.startsWith('T') ? 'receipt' : (current.startsWith('BL') ? 'cube' : 'document-text')} size={18} color="#FFF" />
+    <Text style={stylesLocal.formatPickerText}>{current}</Text>
+    <Ionicons name="chevron-down" size={16} color="#FFF" style={{ marginLeft: 8 }} />
+  </TouchableOpacity>
+);
+
+// Modal ergonomique de sélection de format
+const renderFormatModal = (visible: boolean, onClose: () => void, onSelect: (f: PaperFormat) => void, current: PaperFormat) => (
+  <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <View style={baseStyles.modalOverlay}>
+      <View style={[baseStyles.modalContent, { padding: 12 }]}>
+        <Text style={baseStyles.modalTitle}>Choisir le format du document</Text>
+        <Text style={{ textAlign: 'center', color: '#6B7280', marginBottom: 12 }}>
+          Sélectionnez le format adapté (PDF / ticket / bon de livraison)
+        </Text>
+
+        <FlatList
+          data={PDF_FORMATS}
+          keyExtractor={i => i.id}
+          contentContainerStyle={{ paddingBottom: 24 }}
+          renderItem={({ item }) => {
+            const active = item.id === current;
+            return (
+              <TouchableOpacity
+                style={[
+                  baseStyles.paymentMethodItem,
+                  { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+                  active && baseStyles.paymentMethodItemSelected
+                ]}
+                onPress={() => { onSelect(item.id); onClose(); }}
+              >
+                <View style={[baseStyles.paymentMethodIconContainer, { backgroundColor: active ? '#007AFF' : '#E5E7EB' }]}>
+                  <Ionicons name={item.icon as any} size={20} color={active ? '#FFF' : '#111827'} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: '#000' }}>{item.label}</Text>
+                  <Text style={{ fontSize: 13, color: '#6B7280' }}>{item.desc}</Text>
+                </View>
+                {active && (
+                  <View style={baseStyles.paymentMethodCheckmark}>
+                    <Ionicons name="checkmark" size={20} color="#007AFF" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          }}
+        />
+
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+          <TouchableOpacity onPress={onClose} style={{ padding: 10 }}>
+            <Text style={{ color: '#6B7280' }}>Fermer</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  </Modal>
+);
+
 export default function CartValidationScreen({ route, navigation }: any) {
-  // États
-  const { cart = [], totalAmount = 0, totalItems = 0, onSaleCompleted } = route.params || {};
+  const { cart = [], totalAmount = 0, totalItems = 0, onSaleCompleted, mode = 'sale' } = route.params || {};
+  const isProforma = mode === 'proforma';
+  const styles = isProforma ? proformaValidationStyles : baseStyles;
+
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
   const [discount, setDiscount] = useState<string>('');
   const [discountType, setDiscountType] = useState<'percent' | 'amount'>('percent');
   const [amountPaid, setAmountPaid] = useState<string>('');
-  const [condition, setCondition] = useState<string>('');
+  const [condition, setCondition] = useState<string>('Payé comptant');
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showCustomerSearchModal, setShowCustomerSearchModal] = useState(false);
   const [showCustomerCreateModal, setShowCustomerCreateModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
-  
-  const amountPaidInputRef = useRef<TextInput>(null);
-  const conditionInputRef = useRef<TextInput>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState('');
+  const [selectedFormat, setSelectedFormat] = useState<PaperFormat>('A4');
+  const [saleCreatedPendingPreview, setSaleCreatedPendingPreview] = useState(false);
+  const [showFormatModal, setShowFormatModal] = useState(false);
 
-  // Initialisation
-  const safeCart: CartItem[] = Array.isArray(cart) ? cart : [];
-  const subtotal = totalAmount || 0;
-  const discountValue = parseFloat(discount) || 0;
-  
-  // Calculs
-  const calculateDiscountAmount = () => {
-    if (discountType === 'percent') {
-      return subtotal * (discountValue / 100);
-    } else {
-      return Math.min(discountValue, subtotal);
-    }
-  };
+  // Key used for persisting the screen state
+  const CART_VALIDATION_STATE_KEY = 'CartValidationScreenState';
 
-  const discountAmount = calculateDiscountAmount();
-  const netAmount = Math.max(0, subtotal - discountAmount);
-  const paidAmount = parseFloat(amountPaid) || 0;
-  const changeAmount = Math.max(0, paidAmount - netAmount);
-  const remainingAmount = Math.max(0, netAmount - paidAmount);
-
-  // Afficher le message de succès et préparer la navigation
-  const showSuccessPopup = useCallback((message: string) => {
-    setSuccessMessage(message);
-    setShowSuccessMessage(true);
-    
-    // Animation d'entrée
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      })
-    ]).start();
-
-    // Planifier la disparition du message et la navigation
-    setTimeout(() => {
-      hideSuccessPopupAndNavigate();
-    }, 2000); // 2 secondes
-  }, [fadeAnim, slideAnim]);
-
-  // Cacher le message de succès et naviguer
-  const hideSuccessPopupAndNavigate = useCallback(() => {
-    // Animation de sortie
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 50,
-        duration: 300,
-        useNativeDriver: true,
-      })
-    ]).start(() => {
-      setShowSuccessMessage(false);
-      
-      // Appeler le callback pour vider le panier
-      if (onSaleCompleted) {
-        onSaleCompleted();
+  // Load persisted screen state on mount
+  useEffect(() => {
+    let mounted = true;
+    const restore = async () => {
+      try {
+        const raw = await AsyncStorage.getItem(CART_VALIDATION_STATE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (!mounted || !data) return;
+        // restore safe subset of state (guarded)
+        if (data.selectedCustomer) setSelectedCustomer(data.selectedCustomer);
+        if (data.selectedPaymentMethod) setSelectedPaymentMethod(data.selectedPaymentMethod);
+        if (typeof data.discount === 'string') setDiscount(data.discount);
+        if (data.discountType) setDiscountType(data.discountType);
+        if (typeof data.amountPaid === 'string') setAmountPaid(data.amountPaid);
+        if (typeof data.condition === 'string') setCondition(data.condition);
+        // If cart was persisted in params, you can rely on route params. Otherwise components reading route.params will still work.
+      } catch (e) {
+        console.warn('Impossible de restaurer l\'état du formulaire', e);
       }
-      
-      // Naviguer vers l'écran précédent (panier)
-      navigation.goBack();
-    });
-  }, [fadeAnim, slideAnim, navigation, onSaleCompleted]);
+    };
+    restore();
+    return () => { mounted = false; };
+  }, []);
 
-  // Gérer la fermeture manuelle du message
-  const handleCloseSuccessPopup = useCallback(() => {
-    hideSuccessPopupAndNavigate();
-  }, [hideSuccessPopupAndNavigate]);
-
-  // Charger les clients
+  // Persist relevant state with debounce to avoid too many writes
   useEffect(() => {
-    loadCustomers();
-  }, []);
+    const payload = {
+      selectedCustomer,
+      selectedPaymentMethod,
+      discount,
+      discountType,
+      amountPaid,
+      condition,
+      // include a snapshot of the cart/amounts to be safe
+      cart: Array.isArray(cart) ? cart : [],
+      totalAmount,
+      totalItems,
+      mode,
+      savedAt: Date.now(),
+    };
 
-  // Focus sur champ montant payé et condition
-  useEffect(() => {
-    if (selectedPaymentMethod && amountPaidInputRef.current && netAmount > 0) {
-      setTimeout(() => {
-        amountPaidInputRef.current?.focus();
-        setAmountPaid(netAmount.toFixed(2));
-        setCondition(paidAmount >= netAmount ? 'Payé comptant' : 'À crédit');
-      }, 100);
-    }
-  }, [selectedPaymentMethod, netAmount]);
-
-  // Mettre à jour la condition quand le montant payé change
-  useEffect(() => {
-    if (paidAmount >= netAmount) {
-      setCondition('Payé comptant');
-    } else {
-      setCondition('À crédit');
-    }
-  }, [paidAmount, netAmount]);
-
-  // Fonctions
-  const loadCustomers = async () => {
-    try {
-      setIsLoadingCustomers(true);
-      const allCustomers = await customerService.getCustomers();
-      setCustomers(allCustomers);
-    } catch (error) {
-      console.error('Erreur chargement clients:', error);
-    } finally {
-      setIsLoadingCustomers(false);
-    }
-  };
-
-  const openSearchModal = useCallback(() => {
-    setShowCustomerSearchModal(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, []);
-
-  const openCreateModal = useCallback(() => {
-    setShowCustomerCreateModal(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, []);
-
-  const openPaymentModal = useCallback(() => {
-    setShowPaymentModal(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, []);
-
-  const closeAllModals = useCallback(() => {
-    setShowCustomerSearchModal(false);
-    setShowCustomerCreateModal(false);
-    setShowPaymentModal(false);
-  }, []);
-
-  const handleSelectCustomer = useCallback((customer: Customer) => {
-    setSelectedCustomer(customer);
-    closeAllModals();
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [closeAllModals]);
-
-  const handleCustomerCreated = useCallback((customer: Customer) => {
-    setSelectedCustomer(customer);
-    setCustomers(prev => {
-      const exists = prev.some(c => c.identifiant === customer.identifiant);
-      if (exists) return prev.map(c => c.identifiant === customer.identifiant ? customer : c);
-      return [customer, ...prev];
-    });
-    closeAllModals();
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Succès', 'Client créé avec succès');
-  }, [closeAllModals]);
-
-  const handlePaymentMethodSelect = useCallback((method: PaymentMethod) => {
-    setSelectedPaymentMethod(method);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setShowPaymentModal(false);
-  }, []);
-
-  const switchToCreate = useCallback(() => {
-    setShowCustomerSearchModal(false);
-    setShowCustomerCreateModal(true);
-  }, []);
-
-  const switchToSearch = useCallback(() => {
-    setShowCustomerCreateModal(false);
-    setShowCustomerSearchModal(true);
-  }, []);
-
-  const handleOpenSearchModal = useCallback(() => {
-    loadCustomers();
-    setShowCustomerSearchModal(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, []);
-
-  const handleDiscountTypeChange = useCallback((type: 'percent' | 'amount') => {
-    setDiscountType(type);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setDiscount('');
-  }, []);
-
-  const getPaymentMethodName = (method: PaymentMethod | null): string => {
-    if (!method) return 'Non spécifié';
-    const payment = PAYMENT_METHODS.find(p => p.id === method);
-    return payment?.name || 'Non spécifié';
-  };
-
-  // Validation finale
-  const handleFinalSubmit = useCallback(async () => {
-    if (!selectedCustomer) {
-      Alert.alert('Client requis', 'Veuillez sélectionner ou créer un client');
-      return;
-    }
-    if (!selectedPaymentMethod) {
-      Alert.alert('Mode de paiement requis', 'Veuillez sélectionner un mode de paiement');
-      return;
-    }
-    if (safeCart.length === 0) {
-      Alert.alert('Panier vide', 'Ajoutez des produits avant de valider');
-      return;
-    }
-    if (!condition.trim()) {
-      Alert.alert('Condition requise', 'Veuillez saisir la condition de paiement');
-      return;
-    }
-
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setIsSubmitting(true);
-
-    try {
-      // Validation stock
-      const stockValidation = await cartService.validateStock(safeCart);
-      if (!stockValidation.valid) {
-        const errorMessages = stockValidation.results.filter(r => !r.valid).map(r => r.message).join('\n');
-        Alert.alert('Stock insuffisant', errorMessages);
-        setIsSubmitting(false);
-        return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        await AsyncStorage.setItem(CART_VALIDATION_STATE_KEY, JSON.stringify(payload));
+      } catch (e) {
+        console.warn('Erreur lors de la sauvegarde de l\'état', e);
       }
+    }, 400); // 400ms debounce
 
-      // Notes de vente
-      const notes = [
-        `Condition: ${condition}`,
-        paidAmount >= netAmount 
-          ? `Monnaie rendue: ${formatPrice(changeAmount)}`
-          : `Reste dû: ${formatPrice(remainingAmount)}`,
-      ];
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCustomer, selectedPaymentMethod, discount, discountType, amountPaid, condition, cart, totalAmount, totalItems, mode]);
+  
+   const safeCart: CartItem[] = Array.isArray(cart) ? cart : [];
+   const subtotal = totalAmount || 0;
+   const discountValue = parseFloat(discount) || 0;
+   const discountAmount = discountType === 'percent' ? subtotal * (discountValue / 100) : Math.min(discountValue, subtotal);
+   const netAmount = Math.max(0, subtotal - discountAmount);
+   const paidAmount = parseFloat(amountPaid) || 0;
+   const changeAmount = Math.max(0, paidAmount - netAmount);
+   const remainingAmount = Math.max(0, netAmount - paidAmount);
 
-      // Création des données de vente
-      const saleData: SaleCreationData = {
-        cartItems: safeCart,
-        clientId: selectedCustomer.identifiant, // Utilisation de identifiant
-        paymentInfo: {
-          method: selectedPaymentMethod,
-          amount_paid: paidAmount,
-          discount_amount: discountValue,
-          discount_type: discountType,
-          condition: condition,
-          change_amount: changeAmount,
-          remaining_amount: remainingAmount
-        },
-        notes: notes.join('\n'),
-        subtotal: subtotal,
-        net_amount: netAmount
-      };
+   const step = selectedCustomer ? (selectedPaymentMethod ? 3 : 2) : 1;
+   const readyToSubmit = selectedCustomer && selectedPaymentMethod && condition.trim() && safeCart.length > 0;
 
-      // Création vente
-      const saleResponse = await cartService.createSale(saleData);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+   // Invoice data (réinstallée : suppose qu'un client est présent quand on l'appelle)
+   const buildSaleInvoiceData = (): SaleInvoiceData => ({
+     saleId: String(Date.now()),
+     date: new Date().toLocaleDateString('fr-FR'),
+     customer: {
+       name: getCustomerDisplayName(selectedCustomer!),
+       email: selectedCustomer?.email,
+       phone: selectedCustomer?.telephone,
+       address: selectedCustomer?.adresse,
+     },
+     items: safeCart.map(i => ({
+       ref: i.ref_produit || 'N/A',
+       designation: i.designation || 'Produit',
+       qty: i.quantiteAcheter || 0,
+       unitPrice: getItemPrice(i),
+       total: i.montant || 0,
+     })),
+     subtotal,
+     discountAmount,
+     netAmount,
+     paidAmount,
+     changeAmount,
+     remainingAmount,
+     paymentMethod: getPaymentMethodName(selectedPaymentMethod!),
+     condition,
+   });
 
-      // AFFICHER LE MESSAGE DE SUCCÈS POPUP UNIQUEMENT ICI
-      showSuccessPopup('Vente enregistrée avec succès!');
+   const openPreview = () => {
+     if (!selectedCustomer || safeCart.length === 0) return;
+     const html = buildInvoiceHtml(buildSaleInvoiceData(), selectedFormat);
+     setPreviewHtml(html);
+     setShowPreviewModal(true);
+   };
 
-    } catch (error: any) {
-      console.error('Erreur création vente:', error);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Erreur', error.message || 'Impossible d\'enregistrer la vente');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [selectedCustomer, selectedPaymentMethod, safeCart, netAmount, paidAmount, changeAmount, remainingAmount, condition, subtotal, discountValue, discountType, showSuccessPopup]);
+   const handlePrint = async () => {
+     await Print.printAsync({ html: previewHtml });
+   };
 
-  // Modal paiement
+   const handleSharePdf = async () => {
+     const base64 = await generateInvoicePdf(buildSaleInvoiceData(), selectedFormat);
+     const uri = `data:application/pdf;base64,${base64}`;
+     await Sharing.shareAsync(uri, { mimeType: 'application/pdf', UTI: '.pdf' });
+   };
+
+   const loadCustomers = async () => {
+     try {
+       setIsLoadingCustomers(true);
+       const all = await customerService.getCustomers();
+       setCustomers(all);
+     } catch (e) {
+       console.error(e);
+     } finally {
+       setIsLoadingCustomers(false);
+     }
+   };
+
+   useEffect(() => { loadCustomers(); }, []);
+
+   useEffect(() => {
+     if (selectedPaymentMethod && netAmount > 0) {
+       setAmountPaid(netAmount.toFixed(2));
+       setCondition(paidAmount >= netAmount ? 'Payé comptant' : 'À crédit');
+     }
+   }, [selectedPaymentMethod, netAmount]);
+
+   useEffect(() => {
+     setCondition(paidAmount >= netAmount ? 'Payé comptant' : 'À crédit');
+   }, [paidAmount, netAmount]);
+
+   const closeAllModals = () => {
+     setShowCustomerSearchModal(false);
+     setShowCustomerCreateModal(false);
+     setShowPaymentModal(false);
+   };
+
+   const handleFinalSubmit = async () => {
+     if (!readyToSubmit) return;
+     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+     setIsSubmitting(true);
+     try {
+       const stockValidation = await cartService.validateStock(safeCart);
+       if (!stockValidation.valid) {
+         const msgs = stockValidation.results.filter(r => !r.valid).map(r => r.message).join('\n');
+         Alert.alert('Stock insuffisant', msgs);
+         setIsSubmitting(false);
+         return;
+       }
+       const notes = [
+         `Condition: ${condition}`,
+         paidAmount >= netAmount ? `Monnaie: ${formatPrice(changeAmount)}` : `Reste dû: ${formatPrice(remainingAmount)}`,
+       ];
+       const saleData: SaleCreationData = {
+         cartItems: safeCart,
+         clientId: selectedCustomer!.identifiant,
+         paymentInfo: {
+           method: selectedPaymentMethod!,
+           amount_paid: paidAmount,
+           discount_amount: discountAmount,
+           discount_type: discountType,
+           condition,
+           change_amount: changeAmount,
+           remaining_amount: remainingAmount
+         },
+         notes: notes.join('\n'),
+         subtotal,
+         net_amount: netAmount
+       };
+      await cartService.createSale(saleData);
+      // clear persisted state after successful creation
+      try { await AsyncStorage.removeItem(CART_VALIDATION_STATE_KEY); } catch (e) { console.warn('Unable to clear saved state', e); }
+       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+       const html = buildInvoiceHtml(buildSaleInvoiceData(), selectedFormat);
+       setPreviewHtml(html);
+       setSaleCreatedPendingPreview(true);
+       setShowPreviewModal(true);
+     } catch (e: any) {
+       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+       Alert.alert('Erreur', e.message || 'Impossible d’enregistrer la vente');
+     } finally {
+       setIsSubmitting(false);
+     }
+   };
+
   const renderPaymentModal = () => (
     <Modal visible={showPaymentModal} transparent animationType="slide" onRequestClose={() => setShowPaymentModal(false)}>
-      <View style={validationStyles.modalOverlay}>
-        <View style={validationStyles.modalContent}>
-          <View style={validationStyles.modalHeader}>
-            <View style={validationStyles.modalHandle}><View style={validationStyles.modalHandle} /></View>
-            <Text style={validationStyles.modalTitle}>Sélectionner le mode de paiement</Text>
-            <TouchableOpacity style={validationStyles.modalCloseButton} onPress={() => setShowPaymentModal(false)}>
+      <View style={baseStyles.modalOverlay}>
+        <View style={baseStyles.modalContent}>
+          <View style={baseStyles.modalHeader}>
+            <View style={baseStyles.modalHandle} />
+            <Text style={baseStyles.modalTitle}>Mode de paiement</Text>
+            <TouchableOpacity style={baseStyles.modalCloseButton} onPress={() => setShowPaymentModal(false)}>
               <Ionicons name="close" size={24} color="#666" />
             </TouchableOpacity>
           </View>
-          <ScrollView style={validationStyles.paymentMethodsList}>
-            {PAYMENT_METHODS.map((method) => (
+          <FlatList
+            data={PAYMENT_METHODS}
+            keyExtractor={item => item.id}
+            renderItem={({ item }) => (
               <TouchableOpacity
-                key={method.id}
-                style={[validationStyles.paymentMethodItem, selectedPaymentMethod === method.id && validationStyles.paymentMethodItemSelected]}
-                onPress={() => handlePaymentMethodSelect(method.id)}
-                activeOpacity={0.7}
+                style={[baseStyles.paymentMethodItem, selectedPaymentMethod === item.id && baseStyles.paymentMethodItemSelected]}
+                onPress={() => {
+                  setSelectedPaymentMethod(item.id);
+                  setShowPaymentModal(false);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
               >
-                <View style={[validationStyles.paymentMethodIconContainer, { backgroundColor: method.color }]}>
-                  <Ionicons name={method.icon as any} size={24} color="#FFFFFF" />
+                <View style={[baseStyles.paymentMethodIconContainer, { backgroundColor: item.color }]}>
+                  <Ionicons name={item.icon as any} size={24} color="#FFF" />
                 </View>
-                <View style={validationStyles.paymentMethodInfo}>
-                  <Text style={validationStyles.paymentMethodName}>{method.name}</Text>
-                  <Text style={validationStyles.paymentMethodDescription}>{method.description}</Text>
+                <View style={baseStyles.paymentMethodInfo}>
+                  <Text style={baseStyles.paymentMethodName}>{item.name}</Text>
+                  <Text style={baseStyles.paymentMethodDescription}>{item.description}</Text>
                 </View>
-                {selectedPaymentMethod === method.id && (
-                  <View style={validationStyles.paymentMethodCheckmark}>
+                {selectedPaymentMethod === item.id && (
+                  <View style={baseStyles.paymentMethodCheckmark}>
                     <Ionicons name="checkmark" size={20} color="#007AFF" />
                   </View>
                 )}
               </TouchableOpacity>
-            ))}
-          </ScrollView>
+            )}
+          />
         </View>
       </View>
     </Modal>
   );
 
   return (
-    <SafeAreaView style={validationStyles.safeArea}>
-      {/* Header */}
-      <View style={validationStyles.header}>
-        <TouchableOpacity style={validationStyles.backButton} onPress={() => navigation.goBack()} disabled={isSubmitting}>
-          <Ionicons name="arrow-back" size={24} color="#007AFF" />
-        </TouchableOpacity>
-        <View style={validationStyles.headerTitleContainer}>
-          <Text style={validationStyles.headerTitle}>Validation</Text>
-          <View style={validationStyles.headerBadge}>
-            <Text style={validationStyles.headerBadgeText}>{totalItems}</Text>
-          </View>
-        </View>
-        <View style={{ width: 40 }} />
-      </View>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={90}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <ValidationHeader 
+          onBack={() => navigation.goBack()}
+          onCancel={() => {
+            Alert.alert(
+              'Annuler la validation',
+              'Voulez-vous quitter et annuler la validation en cours ? Vos modifications seront sauvegardées localement.',
+              [
+                { text: 'Non', style: 'cancel' },
+                { text: 'Oui, annuler', style: 'destructive', onPress: () => navigation.goBack() }
+              ]
+            );
+          }}
+          title={isProforma ? 'Proforma' : 'Validation de vente'}
+        />
 
-      {/* Contenu principal */}
-      <ScrollView style={validationStyles.container} contentContainerStyle={validationStyles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        
-        {/* Section Client */}
-        <View style={validationStyles.section}>
-          <Text style={validationStyles.sectionTitle}>CLIENT</Text>
-          <View style={validationStyles.clientButtonsContainer}>
-            <TouchableOpacity style={validationStyles.clientButton} onPress={handleOpenSearchModal} disabled={isSubmitting}>
-              <Ionicons name="search" size={24} color="#007AFF" />
-              <Text style={validationStyles.clientButtonText}>Rechercher</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[validationStyles.clientButton, validationStyles.clientButtonPrimary]} onPress={openCreateModal} disabled={isSubmitting}>
-              <Ionicons name="person-add" size={24} color="#FFF" />
-              <Text style={validationStyles.clientButtonTextPrimary}>Nouveau</Text>
-            </TouchableOpacity>
-          </View>
+        <FlatList
+          data={[]}
+          keyboardShouldPersistTaps='handled'
+          keyboardDismissMode='on-drag'
+          ListHeaderComponent={
+            <>
+              <ClientSection 
+                customer={selectedCustomer}
+                onSearchPress={() => {
+                  setShowCustomerSearchModal(true);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+                onAddPress={() => {
+                  setShowCustomerCreateModal(true);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+                onClearPress={() => {
+                  setSelectedCustomer(null);
+                }}
+              />
+              <SummaryCart
+                cart={safeCart}
+                discount={discount}
+                net={netAmount}
+                onDiscountChange={setDiscount}
+                discountType={discountType}
+                setDiscountType={setDiscountType}
+              />
+            </>
+          }
+          ListFooterComponent={
+            <>
+              <PaymentCompact
+                method={selectedPaymentMethod}
+                amountPaid={amountPaid}
+                onMethod={() => { setShowPaymentModal(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                onAmount={(v: string) => setAmountPaid(cleanNumberValue(v))}
+                change={changeAmount}
+                remaining={remainingAmount}
+                net={netAmount}
+              />
 
-          {/* Client sélectionné */}
-          {selectedCustomer ? (
-            <View style={validationStyles.selectedClientCard}>
-              <View style={validationStyles.selectedClientHeader}>
-                <View style={[validationStyles.clientAvatar, { backgroundColor: selectedCustomer.type === 'entreprise' ? '#E8F4FF' : '#F0F8FF' }]}>
-                  <Ionicons name={selectedCustomer.type === 'entreprise' ? 'business' : 'person'} size={24} color={selectedCustomer.type === 'entreprise' ? '#0056B3' : '#007AFF'} />
-                </View>
-                
-                <View style={validationStyles.selectedClientInfo}>
-                  <Text style={validationStyles.selectedClientName}>{getCustomerDisplayName(selectedCustomer)}</Text>
-                  <View style={validationStyles.selectedClientDetails}>
-                    <View style={validationStyles.clientDetailRow}>
-                      <Ionicons name="mail" size={14} color="#8E8E93" style={{ marginRight: 4 }} />
-                      <Text style={validationStyles.selectedClientEmail}>
-                          {selectedCustomer.email || 'Aucun email'}
-                      </Text>
-                    </View>
-                    {selectedCustomer.telephone && (
-                      <View style={validationStyles.clientDetailRow}>
-                        <Ionicons name="call" size={14} color="#8E8E93" style={{ marginRight: 4 }} />
-                        <Text style={validationStyles.selectedClientPhone}>{selectedCustomer.telephone}</Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
+              <ConditionInput value={condition} onChange={setCondition} />
 
-                <TouchableOpacity style={validationStyles.changeClientButton} onPress={handleOpenSearchModal}>
-                  <Ionicons name="create" size={18} color="#007AFF" />
-                </TouchableOpacity>
-
-              </View>
-            </View>
-          ) : (
-            <View style={validationStyles.noClientCard}>
-              <View style={validationStyles.noClientIconContainer}>
-                <Ionicons name="person-outline" size={48} color="#D1D1D6" />
-              </View>
-              <Text style={validationStyles.noClientText}>Aucun client sélectionné</Text>
-              <Text style={validationStyles.noClientSubtext}>Choisissez un client existant ou créez-en un nouveau</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Section Récapitulatif */}
-        <View style={validationStyles.section}>
-          <View style={validationStyles.sectionHeader}>
-            <Text style={validationStyles.sectionTitle}>RÉCAPITULATIF</Text>
-            <View style={validationStyles.itemsCountBadge}>
-              <Text style={validationStyles.itemsCountText}>{safeCart.length} article(s)</Text>
-            </View>
-          </View>
-
-          {/* Articles */}
-          <View style={validationStyles.summaryCard}>
-            {safeCart.map((item: CartItem, index: number) => {
-              const itemPrice = getItemPrice(item);
-              const itemAmount = item.montant || 0;
-              const itemQuantity = item.quantiteAcheter || 0;
-              
-              return (
-                <View key={item.id || index} style={[validationStyles.summaryItem, index !== safeCart.length - 1 && validationStyles.summaryItemBorder]}>
-                  <View style={validationStyles.summaryItemMain}>
-                    <View style={validationStyles.summaryItemHeader}>
-                      <Text style={validationStyles.summaryItemName} numberOfLines={1}>{item.designation || 'Produit sans nom'}</Text>
-                      <Text style={validationStyles.summaryItemPrice}>{formatPrice(itemAmount)}</Text>
-                    </View>
-                    <Text style={validationStyles.summaryItemRef}>{item.ref_produit || 'N/A'}</Text>
-                    <View style={validationStyles.summaryItemDetails}>
-                      <View style={validationStyles.quantityBadge}>
-                        <Text style={validationStyles.quantityBadgeText}>{itemQuantity.toLocaleString('fr-FR')}</Text>
-                      </View>
-                      <Text style={validationStyles.summaryItemDetailText}>× {formatPrice(itemPrice)}</Text>
-                    </View>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-
-          {/* Totaux avec remise */}
-          <View style={validationStyles.totalCard}>
-            {/* Sous-total */}
-            <View style={validationStyles.totalRow}>
-              <Text style={validationStyles.totalLabel}>Sous-total</Text>
-              <Text style={validationStyles.totalValue}>{formatPrice(subtotal)}</Text>
-            </View>
-
-            {/* Remise */}
-            <View style={validationStyles.totalRow}>
-              <View style={validationStyles.discountContainer}>
-                <Text style={validationStyles.totalLabel}>Remise</Text>
-                <View style={validationStyles.discountControls}>
-                  <View style={validationStyles.discountTypeButtons}>
-                    <TouchableOpacity style={[validationStyles.discountTypeButton, discountType === 'percent' && validationStyles.discountTypeButtonActive]} onPress={() => handleDiscountTypeChange('percent')}>
-                      <Text style={[validationStyles.discountTypeButtonText, discountType === 'percent' && validationStyles.discountTypeButtonTextActive]}>%</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[validationStyles.discountTypeButton, discountType === 'amount' && validationStyles.discountTypeButtonActive]} onPress={() => handleDiscountTypeChange('amount')}>
-                      <Text style={[validationStyles.discountTypeButtonText, discountType === 'amount' && validationStyles.discountTypeButtonTextActive]}>€</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <TextInput
-                    style={validationStyles.discountInput}
-                    value={formatNumberInput(discount)}
-                    onChangeText={(value) => {
-                      const numericValue = cleanNumberValue(value);
-                      const parts = numericValue.split('.');
-                      if (parts.length > 1) {
-                        parts[1] = parts[1].slice(0, 2);
-                        setDiscount(parts.join('.'));
-                      } else {
-                        setDiscount(numericValue);
-                      }
-                    }}
-                    placeholder={discountType === 'percent' ? "0,00" : "0,00"}
-                    keyboardType="decimal-pad"
-                    textAlign="right"
-                    maxLength={discountType === 'percent' ? 10 : 15}
-                  />
-                </View>
-              </View>
-              <Text style={[validationStyles.totalValue, { color: '#FF9500' }]}>-{formatPrice(discountAmount)}</Text>
-            </View>
-
-            {/* Séparateur */}
-            <View style={validationStyles.totalDivider} />
-
-            {/* Net à payer */}
-            <View style={validationStyles.totalRow}>
-              <Text style={validationStyles.totalLabelMain}>NET À PAYER</Text>
-              <Text style={[validationStyles.totalValueMain, { color: discountAmount > 0 ? '#FF9500' : '#007AFF' }]}>{formatPrice(netAmount)}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Section Paiement */}
-        <View style={validationStyles.section}>
-          <View style={validationStyles.sectionHeader}>
-            <Text style={validationStyles.sectionTitle}>PAIEMENT</Text>
-          </View>
-
-          {/* Mode de paiement */}
-          <View style={validationStyles.paymentSection}>
-            <Text style={validationStyles.paymentLabel}>Mode de paiement *</Text>
-            {selectedPaymentMethod ? (
-              <TouchableOpacity style={validationStyles.selectedPaymentMethodCard} onPress={openPaymentModal} activeOpacity={0.7}>
-                <View style={[validationStyles.selectedPaymentIcon, { backgroundColor: PAYMENT_METHODS.find(p => p.id === selectedPaymentMethod)?.color || '#007AFF' }]}>
-                  <Ionicons name={PAYMENT_METHODS.find(p => p.id === selectedPaymentMethod)?.icon as any || 'card-outline'} size={20} color="#FFFFFF" />
-                </View>
-                <View style={validationStyles.selectedPaymentInfo}>
-                  <Text style={validationStyles.selectedPaymentName}>{getPaymentMethodName(selectedPaymentMethod)}</Text>
-                  <Text style={validationStyles.selectedPaymentDescription}>{PAYMENT_METHODS.find(p => p.id === selectedPaymentMethod)?.description}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={validationStyles.selectPaymentMethodButton} onPress={openPaymentModal} activeOpacity={0.7}>
-                <Ionicons name="card-outline" size={24} color="#007AFF" style={{ marginRight: 8 }} />
-                <Text style={validationStyles.selectPaymentMethodText}>Sélectionner le mode de paiement</Text>
-                <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Montant payé par le client */}
-          {selectedPaymentMethod && netAmount > 0 && (
-            <View style={validationStyles.amountPaidSection}>
-              <Text style={validationStyles.amountPaidLabel}>Montant payé par le client *</Text>
-              <View style={validationStyles.amountPaidContainer}>
-                <Text style={validationStyles.amountPaidSymbol}>€</Text>
-                <TextInput
-                  ref={amountPaidInputRef}
-                  style={validationStyles.amountPaidInput}
-                  value={formatNumberInput(amountPaid)}
-                  onChangeText={(value) => {
-                    const numericValue = cleanNumberValue(value);
-                    const parts = numericValue.split('.');
-                    if (parts.length > 1) {
-                      parts[1] = parts[1].slice(0, 2);
-                      setAmountPaid(parts.join('.'));
-                    } else {
-                      setAmountPaid(numericValue);
+              {/* Format picker placé au-dessus de la barre d'action pour un accès rapide
+							--- onOpen bloque si pas de client ou panier vide */}
+              <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
+                <FormatPickerButton
+                  current={selectedFormat}
+                  onOpen={() => {
+                    if (!selectedCustomer || safeCart.length === 0) {
+                      Alert.alert(
+                        'Format indisponible',
+                        'Sélectionnez d’abord un client et ajoutez des articles avant de changer le format.'
+                      );
+                      return;
                     }
+                    setShowFormatModal(true);
                   }}
-                  placeholder="0,00"
-                  keyboardType="decimal-pad"
-                  textAlign="right"
-                  maxLength={15}
                 />
               </View>
 
-              {/* Monnaie à rendre ou Reste dû */}
-              {paidAmount > 0 && (
-                <View style={validationStyles.changeSection}>
-                  {paidAmount >= netAmount ? (
-                    // Cas 1: Client a payé suffisamment - Monnaie à rendre
-                    <>
-                      <View style={validationStyles.changeRow}>
-                        <Text style={validationStyles.changeLabel}>Monnaie à rendre</Text>
-                        <Text style={[validationStyles.changeValue, { color: '#34C759' }]}>
-                          {formatPrice(changeAmount)}
-                        </Text>
-                      </View>
-                      {changeAmount > 0 && (
-                        <View style={validationStyles.changeBreakdown}>
-                          <Text style={validationStyles.changeBreakdownText}>
-                            {`Client paye ${formatPrice(paidAmount)} - Net à payer ${formatPrice(netAmount)} = `}
-                            <Text style={{ color: '#34C759', fontWeight: '600' }}>
-                              {formatPrice(changeAmount)} à rendre
-                            </Text>
-                          </Text>
-                        </View>
-                      )}
-                    </>
-                  ) : (
-                    // Cas 2: Client n'a pas payé suffisamment - Reste dû
-                    <>
-                      <View style={validationStyles.changeRow}>
-                        <Text style={[validationStyles.changeLabel, { color: '#FF3B30' }]}>Reste dû</Text>
-                        <Text style={[validationStyles.changeValue, { color: '#FF3B30' }]}>
-                          {formatPrice(remainingAmount)}
-                        </Text>
-                      </View>
-                      <View style={validationStyles.changeBreakdown}>
-                        <Text style={[validationStyles.changeBreakdownText, { color: '#FF3B30' }]}>
-                          {`Net à payer ${formatPrice(netAmount)} - Client paye ${formatPrice(paidAmount)} = `}
-                          <Text style={{ color: '#FF3B30', fontWeight: '600' }}>
-                            {formatPrice(remainingAmount)} restant à payer
-                          </Text>
-                        </Text>
-                      </View>
-                    </>
-                  )}
-                  
-                  {/* Champ Condition - TextInput */}
-                  <View style={validationStyles.conditionSection}>
-                    <Text style={validationStyles.conditionLabel}>Condition *</Text>
-                    <TextInput
-                      ref={conditionInputRef}
-                      style={validationStyles.conditionInput}
-                      value={condition}
-                      onChangeText={setCondition}
-                      placeholder="Ex: Payé comptant, À crédit, 50% d'acompte..."
-                      multiline
-                      maxLength={200}
-                      textAlignVertical="top"
-                    />
-                    <Text style={validationStyles.conditionHelpText}>
-                      {paidAmount >= netAmount 
-                        ? 'Le client a réglé la totalité de la commande'
-                        : 'Le client devra régler le reste ultérieurement'}
-                    </Text>
-                  </View>
-                </View>
-              )}
-            </View>
-          )}
-        </View>
-      </ScrollView>
+              {/* Barre d'actions (preview / valider) */}
+              <ActionBar onPreview={openPreview} onSubmit={handleFinalSubmit} loading={isSubmitting} valid={readyToSubmit} />
 
-      {/* Footer */}
-      <View style={validationStyles.footer}>
-        <View style={validationStyles.footerTotal}>
-          <Text style={validationStyles.footerTotalLabel}>Net à payer</Text>
-          <Text style={validationStyles.footerTotalAmount}>{formatPrice(netAmount)}</Text>
-        </View>
-        <TouchableOpacity
-          style={[
-            validationStyles.validateButton,
-            (!selectedCustomer || !selectedPaymentMethod || !condition.trim() || isSubmitting || safeCart.length === 0) && 
-            validationStyles.validateButtonDisabled
-          ]}
-          onPress={handleFinalSubmit}
-          disabled={!selectedCustomer || !selectedPaymentMethod || !condition.trim() || isSubmitting || safeCart.length === 0}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator color="white" size="small" />
-          ) : (
-            <>
-              <Text style={validationStyles.validateButtonText}>
-                {paidAmount >= netAmount ? 'Confirmer la vente' : 'Confirmer le crédit'}
-              </Text>
-              <Ionicons name="checkmark-circle" size={20} color="#FFF" style={{ marginLeft: 8 }} />
+              <View style={{ height: 40 }} />
             </>
-          )}
-        </TouchableOpacity>
-      </View>
+          }
+          keyExtractor={() => 'k'}
+          renderItem={() => null}
+          contentContainerStyle={{ paddingBottom: 24 }}
+        />
 
-      {/* Message de succès UNIQUEMENT après validation de vente */}
-      {showSuccessMessage && (
-        <Animated.View 
-          style={[
-            validationStyles.successToast,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }]
+        <CustomerSearchModal
+          visible={showCustomerSearchModal}
+          onClose={closeAllModals}
+          onSelectCustomer={(c: Customer) => {
+            setSelectedCustomer(c);
+            closeAllModals();
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }}
+          onSwitchToCreate={() => {
+            setShowCustomerSearchModal(false);
+            setShowCustomerCreateModal(true);
+          }}
+          initialCustomers={customers}
+          isLoading={isLoadingCustomers}
+        />
+
+        <CustomerCreateModal
+          visible={showCustomerCreateModal}
+          onClose={closeAllModals}
+          onCustomerCreated={(c: Customer) => {
+            setSelectedCustomer(c);
+            setCustomers(prev => [c, ...prev.filter(x => x.identifiant !== c.identifiant)]);
+            closeAllModals();
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            Alert.alert('Succès', 'Client créé');
+          }}
+          onSwitchToSearch={() => {
+            setShowCustomerCreateModal(false);
+            setShowCustomerSearchModal(true);
+          }}
+          existingCustomers={customers}
+        />
+
+        <InvoicePreviewModal
+          visible={showPreviewModal}
+          onClose={() => {
+            setShowPreviewModal(false);
+            if (saleCreatedPendingPreview) {
+              setSaleCreatedPendingPreview(false);
+              if (onSaleCompleted) onSaleCompleted();
+              navigation.goBack();
             }
-          ]}
-        >
-          <View style={validationStyles.successToastContent}>
-            <View style={validationStyles.successToastIcon}>
-              <Ionicons name="checkmark-circle" size={24} color="#FFF" />
-            </View>
-            <Text style={validationStyles.successToastText}>{successMessage}</Text>
-            <TouchableOpacity 
-              style={validationStyles.successToastClose}
-              onPress={handleCloseSuccessPopup}
-            >
-              <Ionicons name="close" size={20} color="#FFF" />
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      )}
+          }}
+          html={previewHtml}
+          selectedFormat={selectedFormat}
+          onChangeFormat={f => {
+            setSelectedFormat(f);
+            setPreviewHtml(buildInvoiceHtml(buildSaleInvoiceData(), f));
+          }}
+          onPrint={handlePrint}
+          onShare={handleSharePdf}
+          onDone={() => {
+            setSaleCreatedPendingPreview(false);
+            if (onSaleCompleted) onSaleCompleted();
+            navigation.goBack();
+          }}
+        />
 
-      {/* Modals */}
-      <CustomerSearchModal
-        visible={showCustomerSearchModal}
-        onClose={closeAllModals}
-        onSelectCustomer={handleSelectCustomer}
-        onSwitchToCreate={switchToCreate}
-        initialCustomers={customers}
-        isLoading={isLoadingCustomers}
-      />
+        {renderPaymentModal()}
 
-      <CustomerCreateModal
-        visible={showCustomerCreateModal}
-        onClose={closeAllModals}
-        onCustomerCreated={handleCustomerCreated}
-        onSwitchToSearch={switchToSearch}
-        existingCustomers={customers}
-      />
+        {/* Modal de sélection de format : wrapper onSelect empêche l'application si pas de client / panier */}
+        {renderFormatModal(
+          showFormatModal,
+          () => setShowFormatModal(false),
+          (f: PaperFormat) => {
+            if (!selectedCustomer || safeCart.length === 0) {
+              Alert.alert(
+                'Format indisponible',
+                'Sélectionnez d’abord un client et ajoutez des articles avant de changer le format.'
+              );
+              return;
+            }
+            setSelectedFormat(f);
+            // Mettre à jour le preview si la preview est ouverte
+            if (showPreviewModal) {
+              setPreviewHtml(buildInvoiceHtml(buildSaleInvoiceData(), f));
+            }
+          },
+          selectedFormat
+        )}
 
-      {renderPaymentModal()}
-    </SafeAreaView>
+        <KeyboardAccessoryView alwaysVisible={false} androidAdjustResize>
+          <View />
+        </KeyboardAccessoryView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
+
+/* Styles supplémentaires */
+const stylesLocal = StyleSheet.create({
+  // Header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  headerButton: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000',
+    flex: 1,
+    textAlign: 'center',
+  },
+
+  clientButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    marginBottom: 8,
+  },
+  clientButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  clientButtonSecondary: {
+    backgroundColor: '#FFF',
+  },
+  clientButtonPrimary: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  clientButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  clientButtonTextPrimary: {
+    color: '#FFF',
+  },
+  clientSelectedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  card: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  cardTitle: { fontSize: 17, fontWeight: '600', color: '#000', marginBottom: 8 },
+  cardSub: { fontSize: 14, color: '#8E8E93', marginTop: 2 },
+  sep: { height: 1, backgroundColor: '#F2F2F7', marginVertical: 10 },
+  itemRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 4 },
+  itemName: { flex: 1, fontSize: 15, color: '#000' },
+  itemQty: { fontSize: 14, color: '#8E8E93', marginHorizontal: 8 },
+  itemTotal: { fontSize: 15, fontWeight: '600', color: '#000' },
+  discountRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  discountRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  discountInput: { width: 70, borderWidth: 1, borderColor: '#E5EAEA', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, textAlign: 'right', fontSize: 16 },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
+  totalLabel: { fontSize: 16, fontWeight: '600', color: '#000' },
+  totalAmount: { fontSize: 20, fontWeight: '700', color: '#007AFF' },
+  greyLabel: { fontSize: 14, color: '#8E8E93', marginBottom: 4 },
+  toggle: { flexDirection: 'row', backgroundColor: '#F2F2F7', borderRadius: 8, padding: 2 },
+  toggleBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
+  toggleActive: { backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
+  toggleTxt: { fontSize: 14, fontWeight: '600', color: '#8E8E93' },
+  toggleTxtActive: { color: '#007AFF' },
+  methodPicker: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
+  amountWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8F8F8', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginTop: 4 },
+  euroSym: { fontSize: 20, fontWeight: '600', color: '#007AFF', marginRight: 8 },
+  amountInput: { flex: 1, fontSize: 24, fontWeight: '700', textAlign: 'right' },
+  changeBox: { borderRadius: 8, paddingVertical: 8, paddingHorizontal: 10, marginTop: 10, alignItems: 'center' },
+  changeGreen: { backgroundColor: '#D1FAE5' },
+  changeRed: { backgroundColor: '#FEE2E2' },
+  changeTxt: { fontSize: 14, fontWeight: '600' },
+  conditionInput: { backgroundColor: '#F8F8F8', borderRadius: 8, padding: 10, fontSize: 16, minHeight: 60, textAlignVertical: 'top', borderWidth: 1, borderColor: '#E5E5EA' },
+  actionBar: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 },
+  previewBtn: { backgroundColor: '#007AFF', borderRadius: 12, padding: 12 },
+  submitBtn: { flex: 1, backgroundColor: '#007AFF', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  disabledBtn: { backgroundColor: '#C7C7CC' },
+  submitTxt: { color: '#FFF', fontSize: 16, fontWeight: '600' },
+  formatPickerBtn: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  formatPickerText: {
+    color: '#FFF',
+    fontWeight: '600',
+    marginLeft: 8,
+    fontSize: 14,
+  },
+});

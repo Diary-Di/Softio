@@ -1,19 +1,20 @@
-import React, { useState, useRef } from "react";
+import { useRouter } from "expo-router";
+import { useRef, useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
+  ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Image,
+  Text,
+  TextInput,
+  TouchableOpacity,
   TouchableWithoutFeedback,
-  ActivityIndicator,
+  View,
 } from "react-native";
-import { styles } from "../../styles/loginStyles";
-import { useRouter } from "expo-router";
 import { useAuth } from "../../hooks/useAuth";
+import { authService } from "../../services/authService";
+import { styles } from "../../styles/loginStyles";
 
 const LoginScreen = () => {
   const router = useRouter();
@@ -33,49 +34,54 @@ const LoginScreen = () => {
   const isFormValid = email.trim().length > 0 && password.trim().length > 0;
 
   const handleLogin = async () => {
-  if (!isFormValid) {
-    setMessageType('error');
-    setMessage('Veuillez saisir l\'email et le mot de passe.');
-    return;
-  }
-
-  if (!isValidEmail(email)) {
-    setMessageType('error');
-    setMessage('Veuillez saisir un email valide.');
-    return;
-  }
-
-  setMessage('');
-  setMessageType('');
-
-  try {
-    const res = await fetch('http://localhost/SOFTIO/backend/public/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: email.trim().toLowerCase(),
-        mot_de_passe: password,
-      }),
-    });
-
-    const data = await res.json();
-
-    if (!data.success) {
-      // message d’erreur renvoyé par CI
-      throw new Error(data.message);
+    if (!isFormValid) {
+      setMessageType('error');
+      setMessage('Veuillez saisir l\'email et le mot de passe.');
+      return;
     }
 
-    // data.token et data.user existent forcément ici
-    await login(data.token, data.user);
+    if (!isValidEmail(email)) {
+      setMessageType('error');
+      setMessage('Veuillez saisir un email valide.');
+      return;
+    }
 
-    setMessageType('success');
-    setMessage('Connexion réussie !');
-    setTimeout(() => router.replace('/dashboard'), 500);
-  } catch (err: any) {
-    setMessageType('error');
-    setMessage(err.message || 'Erreur réseau');
-  }
-};
+    setMessage('');
+    setMessageType('');
+
+    try {
+      // Utilise le service centralisé (qui utilise API_ENDPOINTS)
+      const res = await authService.login({
+        email: email.trim().toLowerCase(),
+        mot_de_passe: password,
+      });
+
+      if (!res || !res.success) {
+        throw new Error(res?.message || 'Erreur d\'authentification');
+      }
+
+      const token = res.token;
+      const user = res.user;
+      if (!token || !user) {
+        throw new Error('Réponse du serveur invalide : token ou utilisateur manquant');
+      }
+
+      await login(token, user);
+
+      setMessageType('success');
+      setMessage('Connexion réussie !');
+      setTimeout(() => router.replace('/dashboard'), 500);
+    } catch (err: any) {
+      // Erreur réseau ou réponse non OK
+      console.error('Login error:', err);
+      setMessageType('error');
+      if (err.message && err.message.includes('Network request failed')) {
+        setMessage('Erreur réseau : impossible de joindre le serveur. Vérifiez l\'URL (évite "localhost" depuis un appareil) et la connexion.');
+      } else {
+        setMessage(err.message || 'Erreur réseau');
+      }
+    }
+  };
 
   const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 

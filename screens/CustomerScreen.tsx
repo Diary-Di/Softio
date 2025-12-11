@@ -1,25 +1,26 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { useState, useEffect, useCallback } from "react";
-import { 
-  Alert, 
-  FlatList, 
-  LayoutAnimation, 
-  Linking, 
-  Platform, 
-  Pressable, 
-  Text, 
-  TouchableOpacity, 
-  UIManager, 
-  View, 
-  RefreshControl, 
-  ActivityIndicator,
-  TextInput 
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useCallback, useEffect, useState } from "react";
+import {
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    KeyboardAvoidingView,
+    LayoutAnimation,
+    Linking,
+    Platform,
+    Pressable,
+    RefreshControl,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    UIManager,
+    View
 } from "react-native";
 import FloatingBottomBarCustomer from '../components/FloatingBottomBarCustomer';
+import { Customer, customerService } from '../services/customerService'; // Importer le type Customer
 import styles from "../styles/CustomerScreenStyles";
 import { productScreenStyles as productStyles } from '../styles/productScreenStyles';
-import { customerService, Customer } from '../services/customerService'; // Importer le type Customer
 
 const ITEMS_PER_PAGE = 10;
 
@@ -128,6 +129,38 @@ export default function CustomerScreen() {
       return `${customer.prenoms?.[0] || ''}${customer.nom?.[0] || ''}`.toUpperCase();
     } else {
       return customer.sigle?.[0] || 'E';
+    }
+  };
+
+  // Nouvelle fonction : nettoyer le numéro et ouvrir le dialer
+  const cleanPhone = (phone: string) => {
+    // Conserver chiffres et + (pour les numéros internationaux), retirer espaces, parenthèses, tirets, etc.
+    return phone.replace(/[^0-9+]/g, '');
+  };
+
+  const initiateCall = async (phone?: string) => {
+    if (!phone) {
+      Alert.alert("Numéro invalide", "Aucun numéro de téléphone disponible pour cet utilisateur.");
+      return;
+    }
+
+    const cleaned = cleanPhone(phone);
+    if (!cleaned) {
+      Alert.alert("Numéro invalide", "Le numéro de téléphone n'est pas valide.");
+      return;
+    }
+
+    const url = `tel:${cleaned}`;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert("Appel impossible", "Votre appareil ne peut pas passer d'appels.");
+      }
+    } catch (err: any) {
+      console.error("Erreur appel:", err);
+      Alert.alert("Erreur", "Impossible de lancer l'appel. Vérifiez votre appareil.");
     }
   };
 
@@ -277,13 +310,7 @@ export default function CustomerScreen() {
       {item.telephone && (
         <Pressable
           style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.8 : 1 }]}
-          onPress={() => {
-            const url = `tel:${item.telephone}`;
-            Linking.canOpenURL(url).then((supported) => {
-              if (supported) Linking.openURL(url);
-              else Alert.alert("Appel impossible", "Votre appareil ne peut pas passer d'appels.");
-            });
-          }}
+          onPress={() => initiateCall(item.telephone)}
         >
           <Ionicons name="call" size={24} color="#2563EB" />
         </Pressable>
@@ -378,178 +405,186 @@ export default function CustomerScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* En-tête avec titre */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Clients</Text>
-        <Text style={styles.subtitle}>
-          {filteredCustomers.length} client{filteredCustomers.length > 1 ? 's' : ''}
-          {customerType !== 'all' && ` (${customerType}s)`}
-        </Text>
-      </View>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={80}
+    >
+      <View style={styles.container}>
+       {/* En-tête avec titre */}
+       <View style={styles.header}>
+         <Text style={styles.title}>Clients</Text>
+         <Text style={styles.subtitle}>
+           {filteredCustomers.length} client{filteredCustomers.length > 1 ? 's' : ''}
+           {customerType !== 'all' && ` (${customerType}s)`}
+         </Text>
+       </View>
 
-      {/* Barre de recherche */}
-      <View style={styles.searchContainer}>
-        <View style={[styles.searchInputContainer, searchFocused && styles.searchInputFocused]}>
-          <Ionicons 
-            name="search" 
-            size={20} 
-            color={searchFocused ? "#4F46E5" : "#9CA3AF"} 
-            style={styles.searchIcon}
-          />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Rechercher un client..."
-            placeholderTextColor="#9CA3AF"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-            returnKeyType="search"
-            clearButtonMode="while-editing"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity
-              style={styles.clearButton}
-              onPress={clearSearch}
-              accessibilityLabel="Effacer la recherche"
-            >
-              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+       {/* Barre de recherche */}
+       <View style={styles.searchContainer}>
+         <View style={[styles.searchInputContainer, searchFocused && styles.searchInputFocused]}>
+           <Ionicons 
+             name="search" 
+             size={20} 
+             color={searchFocused ? "#4F46E5" : "#9CA3AF"} 
+             style={styles.searchIcon}
+           />
+           <TextInput
+             style={styles.searchInput}
+             placeholder="Rechercher un client..."
+             placeholderTextColor="#9CA3AF"
+             value={searchQuery}
+             onChangeText={setSearchQuery}
+             onFocus={() => setSearchFocused(true)}
+             onBlur={() => setSearchFocused(false)}
+             returnKeyType="search"
+             clearButtonMode="while-editing"
+           />
+           {searchQuery.length > 0 && (
+             <TouchableOpacity
+               style={styles.clearButton}
+               onPress={clearSearch}
+               accessibilityLabel="Effacer la recherche"
+             >
+               <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+             </TouchableOpacity>
+           )}
+         </View>
+       </View>
 
-      {/* Filtres */}
-      <View style={styles.filterContainer}>
-        <View style={styles.filterRow}>
-          <TouchableOpacity
-            style={[styles.filterButton, customerType === 'all' && styles.filterButtonActive]}
-            onPress={() => setCustomerType('all')}
-          >
-            <Text style={[styles.filterButtonText, customerType === 'all' && styles.filterButtonTextActive]}>
-              Tous
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.filterButton, customerType === 'particulier' && styles.filterButtonActive]}
-            onPress={() => setCustomerType('particulier')}
-          >
-            <Text style={[styles.filterButtonText, customerType === 'particulier' && styles.filterButtonTextActive]}>
-              Particuliers
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.filterButton, customerType === 'entreprise' && styles.filterButtonActive]}
-            onPress={() => setCustomerType('entreprise')}
-          >
-            <Text style={[styles.filterButtonText, customerType === 'entreprise' && styles.filterButtonTextActive]}>
-              Entreprises
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+       {/* Filtres */}
+       <View style={styles.filterContainer}>
+         <View style={styles.filterRow}>
+           <TouchableOpacity
+             style={[styles.filterButton, customerType === 'all' && styles.filterButtonActive]}
+             onPress={() => setCustomerType('all')}
+           >
+             <Text style={[styles.filterButtonText, customerType === 'all' && styles.filterButtonTextActive]}>
+               Tous
+             </Text>
+           </TouchableOpacity>
+           
+           <TouchableOpacity
+             style={[styles.filterButton, customerType === 'particulier' && styles.filterButtonActive]}
+             onPress={() => setCustomerType('particulier')}
+           >
+             <Text style={[styles.filterButtonText, customerType === 'particulier' && styles.filterButtonTextActive]}>
+               Particuliers
+             </Text>
+           </TouchableOpacity>
+           
+           <TouchableOpacity
+             style={[styles.filterButton, customerType === 'entreprise' && styles.filterButtonActive]}
+             onPress={() => setCustomerType('entreprise')}
+           >
+             <Text style={[styles.filterButtonText, customerType === 'entreprise' && styles.filterButtonTextActive]}>
+               Entreprises
+             </Text>
+           </TouchableOpacity>
+         </View>
+       </View>
 
-      {/* Liste des clients */}
-      {paginatedCustomers.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons 
-            name={searchQuery ? "search-outline" : "people-outline"} 
-            size={64} 
-            color="#9CA3AF" 
-          />
-          <Text style={styles.emptyText}>
-            {searchQuery || customerType !== 'all' 
-              ? "Aucun client ne correspond aux critères" 
-              : "Aucun client pour le moment"}
-          </Text>
-          <Text style={styles.emptySubtext}>
-            {searchQuery 
-              ? "Essayez avec d'autres mots-clés" 
-              : customerType !== 'all'
-                ? "Essayez de modifier vos filtres"
-                : "Ajoutez votre premier client en cliquant sur le bouton +"}
-          </Text>
-          {(searchQuery || customerType !== 'all') && (
-            <TouchableOpacity
-              style={styles.clearFiltersButton}
-              onPress={() => {
-                setSearchQuery("");
-                setCustomerType('all');
-              }}
-            >
-              <Text style={styles.clearFiltersButtonText}>Effacer les filtres</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      ) : (
-        <>
-          <FlatList
-            data={paginatedCustomers}
-            keyExtractor={(item) => item.identifiant.toString()} // Utiliser identifiant comme clé
-            renderItem={renderItem}
-            contentContainerStyle={styles.listContainer}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                colors={['#4F46E5']}
-                tintColor="#4F46E5"
-              />
-            }
-          />
-          
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <View style={styles.paginationContainer}>
-              <View style={styles.paginationInfo}>
-                <Text style={styles.paginationText}>
-                  Page {currentPage} sur {totalPages}
-                </Text>
-                <Text style={styles.paginationCount}>
-                  {startIndex + 1}-{Math.min(endIndex, filteredCustomers.length)} sur {filteredCustomers.length}
-                </Text>
-              </View>
-              
-              <View style={styles.paginationControls}>
-                <TouchableOpacity
-                  style={[styles.navButton, currentPage === 1 && styles.navButtonDisabled]}
-                  onPress={() => goToPage(currentPage - 1)}
-                  disabled={currentPage === 1}
-                >
-                  <Ionicons name="chevron-back" size={20} color={currentPage === 1 ? "#9CA3AF" : "#4F46E5"} />
-                </TouchableOpacity>
-                
-                <View style={styles.pageNumbersContainer}>
-                  {renderPageNumbers()}
-                </View>
-                
-                <TouchableOpacity
-                  style={[styles.navButton, currentPage === totalPages && styles.navButtonDisabled]}
-                  onPress={() => goToPage(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                >
-                  <Ionicons name="chevron-forward" size={20} color={currentPage === totalPages ? "#9CA3AF" : "#4F46E5"} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        </>
-      )}
-      
-      {/* FAB */}
-      <TouchableOpacity
-        style={[productStyles.fab, { bottom: 92 }]}
-        activeOpacity={0.85}
-        onPress={() => navigation.navigate('CreateCustomer')}
-      >
-        <Ionicons name="add" size={26} color="#fff" />
-      </TouchableOpacity>
-      
-      <FloatingBottomBarCustomer active="client" />
-    </View>
+       {/* Liste des clients */}
+       {paginatedCustomers.length === 0 ? (
+         <View style={styles.emptyContainer}>
+           <Ionicons 
+             name={searchQuery ? "search-outline" : "people-outline"} 
+             size={64} 
+             color="#9CA3AF" 
+           />
+           <Text style={styles.emptyText}>
+             {searchQuery || customerType !== 'all' 
+               ? "Aucun client ne correspond aux critères" 
+               : "Aucun client pour le moment"}
+           </Text>
+           <Text style={styles.emptySubtext}>
+             {searchQuery 
+               ? "Essayez avec d'autres mots-clés" 
+               : customerType !== 'all'
+                 ? "Essayez de modifier vos filtres"
+                 : "Ajoutez votre premier client en cliquant sur le bouton +"}
+           </Text>
+           {(searchQuery || customerType !== 'all') && (
+             <TouchableOpacity
+               style={styles.clearFiltersButton}
+               onPress={() => {
+                 setSearchQuery("");
+                 setCustomerType('all');
+               }}
+             >
+               <Text style={styles.clearFiltersButtonText}>Effacer les filtres</Text>
+             </TouchableOpacity>
+           )}
+         </View>
+       ) : (
+         <>
+           <FlatList
+             data={paginatedCustomers}
+             keyExtractor={(item) => item.identifiant.toString()} // Utiliser identifiant comme clé
+             renderItem={renderItem}
+             contentContainerStyle={styles.listContainer}
+             showsVerticalScrollIndicator={false}
+             refreshControl={
+               <RefreshControl
+                 refreshing={refreshing}
+                 onRefresh={onRefresh}
+                 colors={['#4F46E5']}
+                 tintColor="#4F46E5"
+               />
+             }
+             keyboardShouldPersistTaps='handled'
+             keyboardDismissMode='on-drag'
+           />
+           
+           {/* Pagination */}
+           {totalPages > 1 && (
+             <View style={styles.paginationContainer}>
+               <View style={styles.paginationInfo}>
+                 <Text style={styles.paginationText}>
+                   Page {currentPage} sur {totalPages}
+                 </Text>
+                 <Text style={styles.paginationCount}>
+                   {startIndex + 1}-{Math.min(endIndex, filteredCustomers.length)} sur {filteredCustomers.length}
+                 </Text>
+               </View>
+               
+               <View style={styles.paginationControls}>
+                 <TouchableOpacity
+                   style={[styles.navButton, currentPage === 1 && styles.navButtonDisabled]}
+                   onPress={() => goToPage(currentPage - 1)}
+                   disabled={currentPage === 1}
+                 >
+                   <Ionicons name="chevron-back" size={20} color={currentPage === 1 ? "#9CA3AF" : "#4F46E5"} />
+                 </TouchableOpacity>
+                 
+                 <View style={styles.pageNumbersContainer}>
+                   {renderPageNumbers()}
+                 </View>
+                 
+                 <TouchableOpacity
+                   style={[styles.navButton, currentPage === totalPages && styles.navButtonDisabled]}
+                   onPress={() => goToPage(currentPage + 1)}
+                   disabled={currentPage === totalPages}
+                 >
+                   <Ionicons name="chevron-forward" size={20} color={currentPage === totalPages ? "#9CA3AF" : "#4F46E5"} />
+                 </TouchableOpacity>
+               </View>
+             </View>
+           )}
+         </>
+       )}
+       
+       {/* FAB */}
+       <TouchableOpacity
+         style={[productStyles.fab, { bottom: 92 }]}
+         activeOpacity={0.85}
+         onPress={() => navigation.navigate('CreateCustomer')}
+       >
+         <Ionicons name="add" size={26} color="#fff" />
+       </TouchableOpacity>
+       
+       <FloatingBottomBarCustomer active="client" />
+     </View>
+    </KeyboardAvoidingView>
   );
 }

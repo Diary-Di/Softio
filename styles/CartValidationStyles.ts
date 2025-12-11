@@ -366,10 +366,11 @@ export const validationStyles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E5E5EA',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    minHeight: 80,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -1055,6 +1056,21 @@ export const validationStyles = StyleSheet.create({
   successToastClose: {
     padding: 4,
   },
+
+  previewButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: '#007AFF',
+  paddingHorizontal: 14,
+  paddingVertical: 10,
+  borderRadius: 8,
+  marginRight: 8,
+},
+previewButtonText: {
+  color: '#fff',
+  marginLeft: 6,
+  fontWeight: '600',
+},
 });
 
 // Styles spécifiques pour Proforma
@@ -1153,4 +1169,6 @@ export const proformaValidationStyles = StyleSheet.create({
   stockIndicatorTextCritical: {
     color: '#DC2626',
   },
+
+  
 });

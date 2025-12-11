@@ -1,22 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useRef, useEffect } from 'react';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { useEffect, useRef, useState } from 'react';
 import {
+    ActivityIndicator // Ajouter ActivityIndicator
+    ,
+    Animated,
     KeyboardAvoidingView,
-    Modal,
     Platform,
-    ScrollView,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
     TouchableWithoutFeedback,
-    Alert,
-    Animated,
-    ActivityIndicator // Ajouter ActivityIndicator
+    View
 } from 'react-native';
-import styles from '../styles/CreateCustomerStyles';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { customerService, UpdateCustomerData } from '../services/customerService';
+import styles from '../styles/CreateCustomerStyles';
 
 // Définir le type des paramètres
 type EditCustomerParams = {
@@ -317,11 +316,10 @@ export default function EditCustomerScreen() {
                 </Animated.View>
             ) : null}
 
-            <ScrollView
-                contentContainerStyle={[
-                    styles.scrollContainer,
-                    message ? { paddingTop: Platform.OS === 'ios' ? 90 : 70 } : {}
-                ]}
+            <KeyboardAwareScrollView
+                enableOnAndroid
+                extraScrollHeight={Platform.OS === 'ios' ? 20 : 120}
+                contentContainerStyle={styles.scrollContainer}
                 keyboardShouldPersistTaps="handled"
             >
                 {/* HEADER */}
@@ -568,7 +566,7 @@ export default function EditCustomerScreen() {
                         <Text style={styles.buttonText}>Mettre à jour</Text>
                     )}
                 </TouchableOpacity>
-            </ScrollView>
+            </KeyboardAwareScrollView>
         </KeyboardAvoidingView>
     );
 }
