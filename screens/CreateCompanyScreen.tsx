@@ -2,21 +2,22 @@ import { useAuth } from '@/hooks/useAuth';
 import { companyService } from '@/services/companyService';
 import { CreateCompanyStyles } from '@/styles/CreateCompanyStyles';
 import { Entypo, Feather, FontAwesome, Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native'; // ← import
+import { useFocusEffect, useNavigation } from '@react-navigation/native'; // ← import
 import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { useHiddenMenu } from '../contexts/HiddenMenuContext'; // ← existing
 
 interface CompanyForm {
   companyName: string;
@@ -38,6 +39,8 @@ interface FormErrors {
 
 export default function CreateCompanyScreen() {
   const { user } = useAuth();
+  const navigation = useNavigation<any>();
+  const { hiddenMode, setHiddenMode } = useHiddenMenu(); // ← use the context
   const [formData, setFormData] = useState<CompanyForm>({
     companyName: '',
     address: '',
@@ -81,8 +84,8 @@ export default function CreateCompanyScreen() {
           stat: userCompany.stat || '',
           rcs: userCompany.rcs || '',
           logo: userCompany.logo
-            ? `https://palpebral-unsolemnized-caitlin.ngrok-free.dev/SOFTIO/backend/public/uploads/logos/${userCompany.logo}`
-            //? `http://localhost/SOFTIO/backend/public/uploads/logos/${userCompany.logo}`
+            //? `https://palpebral-unsolemnized-caitlin.ngrok-free.dev/SOFTIO/backend/public/uploads/logos/${userCompany.logo}`
+            ? `http://localhost/SOFTIO/backend/public/uploads/logos/${userCompany.logo}`
             : null,
         });
         setExistingId(userCompany.id);
@@ -103,6 +106,15 @@ export default function CreateCompanyScreen() {
     useCallback(() => {
       fetchCompanyByUserEmail();
     }, [])
+  );
+
+  // --- NEW: enable hidden menu mode when this screen is focused ---
+  useFocusEffect(
+    useCallback(() => {
+      setHiddenMode(true);
+      // no cleanup: do NOT disable hidden mode on blur
+      // hiddenMode will be disabled only when the user clicks "Retour" in the drawer
+    }, [setHiddenMode])
   );
 
   const handleInputChange = (field: keyof CompanyForm, value: string) => {
