@@ -11,7 +11,7 @@ export default StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 24,
   },
   title: {
     fontSize: 20,
@@ -23,12 +23,40 @@ export default StyleSheet.create({
   form: {
     flex: 1,
   },
-  input: {
-    marginBottom: 15,
+  label: {
+    marginBottom: 4,
+    fontSize: 14,
+    color: '#333',
   },
-  row: {
+  input: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#bbb',
+    borderRadius: 12,
+    marginBottom: 16,
+    height: 48,
+    paddingHorizontal: 12,
+  },
+  inputWithIcon: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 15,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#bbb',
+    borderRadius: 12,
+    marginBottom: 16,
+    paddingRight: 12,
+    height: 48,
+  },
+  flexInput: {
+    flex: 1,
+    backgroundColor: '#fff',
+    height: 48,
+    paddingHorizontal: 12,
+  },
+  button: {
+    marginTop: 8,
+    backgroundColor: '#1976d2',
+    borderRadius: 12,
   },
 });

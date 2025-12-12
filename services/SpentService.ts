@@ -36,7 +36,9 @@ export const spentService = {
   /** ✔ CREATE SPENT */
   createSpent: async (data: CreateSpentData) => {
     try {
+      console.log("🚀 Envoi API createSpent avec data :", data);
       const response = await axios.post(SPENT_URL, data);
+      console.log("🚀 Envoi API createSpent avec data :", data);
       return response.data;
     } catch (error: any) {
       console.log("❌ Erreur API createSpent :", error.response?.data);
@@ -112,3 +114,5 @@ export const spentService = {
     }
   },
 };
+
+export const getSpent = spentService.getSpentById;

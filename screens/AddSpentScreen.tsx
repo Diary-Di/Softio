@@ -1,12 +1,11 @@
-// screens/AddSpentScreen.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Button, TextInput } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import styles from '../styles/AddSpentStyles';
 import { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { spentService, CreateSpentData } from '../services/SpentService';
+import { spentService, CreateSpentData, Spent } from '../services/SpentService';
 
 /* -------------------------------------------------------------------------- */
 /*                               UTILS / FORMAT                               */
@@ -16,20 +15,36 @@ const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
 const formatDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const formatTime = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
+const parseDateTime = (dateStr?: string, timeStr?: string): Date => {
+  if (!dateStr || !timeStr) return new Date();          // ← sécurité
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [h, min, s] = timeStr.split(':').map(Number);
+  return new Date(y, m - 1, d, h, min, s || 0);
+};
+
 /* -------------------------------------------------------------------------- */
 /*                              SCREEN COMPONENT                              */
 /* -------------------------------------------------------------------------- */
-export default function AddSpentScreen({ navigation }: any) {
+export default function AddSpentScreen({ route, navigation }: any) {
+  const spent = route.params?.spent as Spent | undefined;
+  const isEdit = !!spent;
+
   /* ----------------------------- FORM STATE -------------------------------- */
-  const [raison, setRaison] = useState('');
-  const [montant, setMontant] = useState('');
-  const [date, setDate] = useState(new Date());
-  const [heure, setHeure] = useState(new Date());
+  const [raison, setRaison] = useState(spent?.raison ?? '');
+  const [montant, setMontant] = useState(
+    spent ? String(spent.montant).replace('.', ',') : ''
+  );
+  const [date, setDate] = useState(
+  spent?.date_depense && spent?.heur_depense
+    ? parseDateTime(spent.date_depense, spent.heur_depense)
+    : new Date()
+);
+const [heure, setHeure] = useState(date);
   const [showDate, setShowDate] = useState(false);
   const [showHeure, setShowHeure] = useState(false);
 
   /* ----------------------------- UI STATE ---------------------------------- */
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   /* ----------------------------- HANDLERS ---------------------------------- */
   const onChangeDate = (_: DateTimePickerEvent, selected?: Date) => {
@@ -42,7 +57,7 @@ export default function AddSpentScreen({ navigation }: any) {
     if (selected) setHeure(selected);
   };
 
-  const handleValider = async () => {
+  const handleSubmit = async () => {
     if (!raison.trim() || !montant.trim()) {
       Alert.alert('Champs requis', 'Veuillez remplir la raison et le montant.');
       return;
@@ -55,16 +70,22 @@ export default function AddSpentScreen({ navigation }: any) {
       heur_depense: formatTime(heure),
     };
 
-    setLoading(true);
+    setSubmitting(true);
     try {
-      await spentService.createSpent(payload);
-      Alert.alert('Succès', 'Dépense enregistrée.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      if (isEdit)
+        await spentService.updateSpent(spent!.numero, payload);
+      else
+        await spentService.createSpent(payload);
+
+      Alert.alert(
+        'Succès',
+        isEdit ? 'Dépense mise à jour.' : 'Dépense créée.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
     } catch (err: any) {
       Alert.alert('Erreur', err.message || 'Échec de la sauvegarde.');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -76,7 +97,7 @@ export default function AddSpentScreen({ navigation }: any) {
         <TouchableOpacity onPress={navigation.goBack}>
           <Icon name="arrow-back" size={24} style={styles.icon} />
         </TouchableOpacity>
-        <Text style={styles.title}>Dépense</Text>
+        <Text style={styles.title}>{isEdit ? 'Modifier' : 'Nouvelle'} dépense</Text>
         <TouchableOpacity onPress={navigation.goBack}>
           <Icon name="close" size={24} style={styles.icon} />
         </TouchableOpacity>
@@ -84,18 +105,51 @@ export default function AddSpentScreen({ navigation }: any) {
 
       {/* FORM */}
       <View style={styles.form}>
-        <TextInput label="Raison" value={raison} onChangeText={setRaison} style={styles.input} />
+        <Text style={styles.label}>Raison</Text>
         <TextInput
-          label="Montant"
+          value={raison}
+          onChangeText={setRaison}
+          style={styles.input}
+          underlineColor="transparent"
+          activeUnderlineColor="transparent"
+        />
+
+        <Text style={styles.label}>Montant</Text>
+        <TextInput
           value={montant}
           onChangeText={setMontant}
           keyboardType="numeric"
           style={styles.input}
+          underlineColor="transparent"
+          activeUnderlineColor="transparent"
         />
 
-        <View style={styles.row}>
-          <Button onPress={() => setShowDate(true)}>Choisir la date</Button>
-          <Button onPress={() => setShowHeure(true)}>Choisir l'heure</Button>
+        <Text style={styles.label}>Date</Text>
+        <View style={styles.inputWithIcon}>
+          <TextInput
+            value={formatDate(date)}
+            editable={false}
+            style={styles.flexInput}
+            underlineColor="transparent"
+            activeUnderlineColor="transparent"
+          />
+          <TouchableOpacity onPress={() => setShowDate(true)}>
+            <Icon name="event" size={22} color="#666" style={{ marginLeft: 8 }} />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.label}>Heure</Text>
+        <View style={styles.inputWithIcon}>
+          <TextInput
+            value={formatTime(heure)}
+            editable={false}
+            style={styles.flexInput}
+            underlineColor="transparent"
+            activeUnderlineColor="transparent"
+          />
+          <TouchableOpacity onPress={() => setShowHeure(true)}>
+            <Icon name="schedule" size={22} color="#666" style={{ marginLeft: 8 }} />
+          </TouchableOpacity>
         </View>
 
         {showDate && (
@@ -105,8 +159,14 @@ export default function AddSpentScreen({ navigation }: any) {
           <DateTimePicker value={heure} mode="time" display="default" onChange={onChangeHeure} />
         )}
 
-        <Button mode="contained" onPress={handleValider} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : 'Valider'}
+        <Button
+          mode="contained"
+          onPress={handleSubmit}
+          disabled={submitting}
+          style={styles.button}
+          labelStyle={{ color: '#fff' }}
+        >
+          {submitting ? <ActivityIndicator color="#fff" /> : isEdit ? 'Enregistrer' : 'Valider'}
         </Button>
       </View>
     </View>
