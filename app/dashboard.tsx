@@ -10,6 +10,7 @@ import { HiddenMenuProvider, useHiddenMenu } from '../contexts/HiddenMenuContext
 import { useAuth } from '../hooks/useAuth';
 import CustomerStackNavigator from '../navigation/CustomerStackNavigator';
 import ProductStackNavigator from '../navigation/ProductStackNavigator';
+import ProfileStackNavigator from '@/navigation/ProfileStackNavigator';
 import SalesStackNavigator from '../navigation/SalesStackNavigator';
 import SecurityStackNavigator from '../navigation/SecurityStackNavigator';
 import CreateCompanyScreen from '../screens/CreateCompanyScreen';
@@ -192,7 +193,7 @@ export default function Dashboard() {
 
         {/* Hidden menu screens (registered so navigation can target them) */}
         <Drawer.Screen name="Information" component={CreateCompanyScreen} options={{ drawerItemStyle: { height: 0 } }} />
-        <Drawer.Screen name="Depenses" component={SpentScreen} options={{ drawerItemStyle: { height: 0 } }} />
+        <Drawer.Screen name="Depenses" component={ProfileStackNavigator} options={{ drawerItemStyle: { height: 0 } }} />
         <Drawer.Screen name="Etats" component={StateScreen} options={{ drawerItemStyle: { height: 0 } }} />
         <Drawer.Screen name="Retour" component={HomeScreen} options={{ drawerItemStyle: { height: 0 } }} />
       </Drawer.Navigator>

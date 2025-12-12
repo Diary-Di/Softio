@@ -27,4 +27,16 @@ export default StyleSheet.create({
     elevation: 6,
   },
   fabText: { color: '#fff', fontSize: 24, lineHeight: 24 },
+
+  filterBar: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  paddingHorizontal: 16,
+  paddingVertical: 8,
+},
+filterBtn: {
+  backgroundColor: '#eee',
+  padding: 10,
+  borderRadius: 6,
+},
 });
