@@ -139,30 +139,28 @@ export default function CustomerScreen() {
   };
 
   const initiateCall = async (phone?: string) => {
-    if (!phone) {
-      Alert.alert("Numéro invalide", "Aucun numéro de téléphone disponible pour cet utilisateur.");
-      return;
-    }
+  if (!phone) {
+    Alert.alert('Numéro invalide', 'Aucun numéro de téléphone disponible.');
+    return;
+  }
 
-    const cleaned = cleanPhone(phone);
-    if (!cleaned) {
-      Alert.alert("Numéro invalide", "Le numéro de téléphone n'est pas valide.");
-      return;
-    }
+  const cleaned = phone.replace(/[^0-9+]/g, '');   // + et chiffres uniquement
+  if (!cleaned) {
+    Alert.alert('Numéro invalide', 'Le numéro ne contient aucun chiffre.');
+    return;
+  }
 
-    const url = `tel:${cleaned}`;
-    try {
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        await Linking.openURL(url);
-      } else {
-        Alert.alert("Appel impossible", "Votre appareil ne peut pas passer d'appels.");
-      }
-    } catch (err: any) {
-      console.error("Erreur appel:", err);
-      Alert.alert("Erreur", "Impossible de lancer l'appel. Vérifiez votre appareil.");
-    }
-  };
+  const url = `tel:${cleaned}`;
+  try {
+    await Linking.openURL(url);      // on tente directement
+  } catch (err: any) {
+    console.error('Erreur appel :', err);
+    Alert.alert(
+      'Appel impossible',
+      'Aucune application téléphonique disponible ou numéro incorrect.'
+    );
+  }
+};
 
   const renderField = (label: string, value: string | undefined) => (
     <View style={styles.fieldRow}>
