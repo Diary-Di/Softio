@@ -11,8 +11,9 @@ import { styles } from '../styles/StateScreenStyles';
 import { salesService, Sale } from '../services/salesService';
 import { spentService, Spent } from '../services/SpentService';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useNavigation } from '@react-navigation/native';
 
-export default function StateScreen() {
+export default function StateScreen({ navigation }: any) {
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
   const [openStart, setOpenStart] = useState(false);
@@ -25,6 +26,7 @@ export default function StateScreen() {
   const [totalOut, setTotalOut] = useState(0);
   const [profit, setProfit] = useState(0);
   const [margin, setMargin] = useState(0);
+  const nav = useNavigation();
 
   useEffect(() => {
     fetchData();
@@ -95,6 +97,10 @@ export default function StateScreen() {
     },
   ];
 
+  // 10 derniers
+  const last10Sales = sales.slice(-10).reverse();
+  const last10Spents = spents.slice(-10).reverse();
+
   return (
     <ScrollView style={styles.container}>
       {/* Header avec filtres date */}
@@ -164,12 +170,17 @@ export default function StateScreen() {
         ))}
       </View>
 
-      {/* Liste des entrées */}
+      {/* 10 dernières entrées */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Entrées (Ventes)</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Entrées récentes</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('SalesScreen')}>
+            <Text style={styles.seeAllText}>Voir plus</Text>
+          </TouchableOpacity>
+        </View>
         <View style={styles.listCard}>
-          {sales.length === 0 && <Text style={styles.emptyText}>Aucune vente dans cette période</Text>}
-          {sales.map((s) => (
+          {last10Sales.length === 0 && <Text style={styles.emptyText}>Aucune vente récente</Text>}
+          {last10Sales.map((s) => (
             <View key={s.ref_facture} style={styles.listRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.listLabel}>{s.ref_facture}</Text>
@@ -181,12 +192,17 @@ export default function StateScreen() {
         </View>
       </View>
 
-      {/* Liste des sorties */}
+      {/* 10 dernières sorties */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Sorties (Dépenses)</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Sorties récentes</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('SpentScreen')}>
+            <Text style={styles.seeAllText}>Voir plus</Text>
+          </TouchableOpacity>
+        </View>
         <View style={styles.listCard}>
-          {spents.length === 0 && <Text style={styles.emptyText}>Aucune dépense dans cette période</Text>}
-          {spents.map((s) => (
+          {last10Spents.length === 0 && <Text style={styles.emptyText}>Aucune dépense récente</Text>}
+          {last10Spents.map((s) => (
             <View key={s.numero} style={styles.listRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.listLabel}>{s.raison}</Text>

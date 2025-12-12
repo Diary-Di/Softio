@@ -93,16 +93,17 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1e293b',
   },
-  subLabel: {
-    fontSize: 12,
-    color: '#94a3b8',
-    marginTop: 2,
-  },
+  
   emptyText: {
     fontSize: 14,
     color: '#94a3b8',
     textAlign: 'center',
     paddingVertical: 20,
+  },
+  subLabel: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 2,
   },
 
   statHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
