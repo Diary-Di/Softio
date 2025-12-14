@@ -429,7 +429,7 @@ export const formatDiscount = (remise: string): string => {
   
   if (remise.includes('%')) {
     return remise;
-  } else if (remise.includes('€')) {
+  } else if (remise.includes('ar')) {
     return remise;
   } else {
     return `${remise}%`;
@@ -504,8 +504,8 @@ export const calculateAmountAfterDiscount = (originalAmount: number, discount: s
   if (discount.includes('%')) {
     const discountPercent = parseFloat(discount.replace('%', ''));
     return originalAmount * (1 - discountPercent / 100);
-  } else if (discount.includes('€')) {
-    const discountAmount = parseFloat(discount.replace('€', '').replace(',', '.'));
+  } else if (discount.includes('ar')) {
+    const discountAmount = parseFloat(discount.replace('ar', '').replace(',', '.'));
     return Math.max(0, originalAmount - discountAmount);
   }
   

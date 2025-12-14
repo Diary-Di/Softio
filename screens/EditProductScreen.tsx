@@ -1,31 +1,31 @@
 /******************************************************************
  *  ModifyProductScreen.tsx  –  Modification d'un produit existant
  ******************************************************************/
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  Image,
-  Alert,
-  Modal,
-  FlatList,
-  ActivityIndicator,
-  RefreshControl,
-  Animated,
-  StyleSheet,
-} from 'react-native';
-import Icon from '@expo/vector-icons/MaterialIcons';
-import * as ImagePicker from 'expo-image-picker';
-import { 
-  styles 
-} from '../styles/CreateProductStyles';
-import { productService } from '../services/productService';
-import { categoryService } from '../services/categoryService';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from '@expo/vector-icons/MaterialIcons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Animated,
+    FlatList,
+    Image,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { categoryService } from '../services/categoryService';
+import { productService } from '../services/productService';
+import {
+    styles
+} from '../styles/CreateProductStyles';
 
 // Interface pour les catégories
 interface Categorie {
@@ -824,7 +824,7 @@ const EditProductScreen: React.FC = () => {
 
         {/* Prix actuel */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Prix actuel (€) *</Text>
+          <Text style={styles.label}>Prix actuel (ar) *</Text>
           <View style={styles.prixContainer}>
             <TextInput
               style={[styles.input, styles.prixInput, isLoading && { opacity: 0.5 }]}
@@ -836,11 +836,11 @@ const EditProductScreen: React.FC = () => {
               returnKeyType="next"
               editable={!isLoading}
             />
-            <Text style={styles.currency}>€</Text>
+            <Text style={styles.currency}>ar</Text>
           </View>
           {product.prix_actuel && (
             <Text style={styles.hint}>
-              Prix original: {product.prix_actuel.toFixed(2).replace('.', ',')} €
+              Prix original: {product.prix_actuel.toFixed(2).replace('.', ',')} ar
             </Text>
           )}
         </View>

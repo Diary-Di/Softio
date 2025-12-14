@@ -1,25 +1,24 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
   ActivityIndicator,
   Alert,
-  RefreshControl,
   Animated,
-  Platform,
-  UIManager,
+  FlatList,
   LayoutAnimation,
-  StyleSheet,
+  Platform,
+  RefreshControl,
+  Text,
+  TouchableOpacity,
+  UIManager,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 
-import { spentService, Spent } from '../services/SpentService';
+import { Spent, spentService } from '../services/SpentService';
 import { spentScreenStyles as styles } from '../styles/SpentScreenStyles';
 
 /* -------------------------------------------------------------------------- */
@@ -192,7 +191,7 @@ const renderHeader = useCallback(() => {
         {/* Bloc total */}
         <View style={styles.totalBox}>
           <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalAmount}>{formatAmount(total)} €</Text>
+          <Text style={styles.totalAmount}>{formatAmount(total)} ar</Text>
         </View>
       </View>
     </View>
@@ -238,7 +237,7 @@ const renderHeader = useCallback(() => {
           </View>
 
           <View style={styles.priceTag}>
-            <Text style={styles.price}>{formatAmount(amount)} €</Text>
+            <Text style={styles.price}>{formatAmount(amount)} ar</Text>
           </View>
 
           <Ionicons
@@ -256,7 +255,7 @@ const renderHeader = useCallback(() => {
               <View style={styles.detailItem}>
                 <Text style={styles.detailLabel}>Montant</Text>
                 <Text style={[styles.detailValue, styles.priceValue]}>
-                  {formatAmount(amount)} €
+                  {formatAmount(amount)} ar
                 </Text>
               </View>
               <View style={styles.detailItem}>

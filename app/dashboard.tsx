@@ -63,7 +63,7 @@ function ModernDrawer(props: any) {
 
   const visibleNames = hiddenMode
     ? ['Information', 'Depenses', 'Etats', 'Retour']
-    : ['Accueil', 'Clients', 'Produits', 'Ventes', 'Profil'];
+    : ['Accueil', 'Clients', 'Produits', 'Ventes'];
 
   return (
     <View style={{ flex: 1 }}>
@@ -191,7 +191,7 @@ headerTintColor: '#000',
         <Drawer.Screen name="SecurityStack" component={SecurityStackNavigator} options={{ drawerItemStyle: { height: 0 } }} />
         <Drawer.Screen name="Information" component={CreateCompanyScreen} options={{ drawerItemStyle: { height: 0 } }} />
         <Drawer.Screen name="Depenses" component={ProfileStackNavigator} options={{ drawerItemStyle: { height: 0 } }} />
-        <Drawer.Screen name="Etats" component={StateStackNavigator} options={{ drawerItemStyle: { height: 0 } }} />
+        <Drawer.Screen name="Etats" component={StateScreen} options={{ drawerItemStyle: { height: 0 } }} />
         <Drawer.Screen name="Retour" component={HomeScreen} options={{ drawerItemStyle: { height: 0 } }} />
       </Drawer.Navigator>
     </HiddenMenuProvider>

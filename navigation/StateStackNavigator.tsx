@@ -19,8 +19,8 @@ export default function ProfileStackNavigator() {
         headerShown: false, // tu gères le header toi-même dans chaque écran
       }}
     >
-    <Stack.Screen name="SpentList" component={SpentScreen} />
     <Stack.Screen name="States" component={StateScreen} />
+    <Stack.Screen name="SpentList" component={SpentScreen} />
     <Stack.Screen name="SalesSlist" component={SalesScreen} />
     </Stack.Navigator>
   );

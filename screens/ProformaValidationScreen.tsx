@@ -1,28 +1,27 @@
 // screens/ProformaValidationScreen.tsx
-import * as Haptics from 'expo-haptics';
-import { useCallback, useState, useEffect, useRef } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  SafeAreaView,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  Modal,
-  Animated,
-} from 'react-native';
-import { validationStyles } from '../styles/CartValidationStyles';
 import { Ionicons } from '@expo/vector-icons';
-import { 
-  proformaCartService, 
-  ProformaItem, 
-  ProformaCreationData 
-} from '../services/proformaCartService';
-import { customerService } from '../services/customerService';
+import * as Haptics from 'expo-haptics';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Animated,
+    SafeAreaView,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
 import CustomerCreateModal from '../components/CustomerCreateModal';
 import CustomerSearchModal from '../components/customerSearchModal';
+import { customerService } from '../services/customerService';
+import {
+    proformaCartService,
+    ProformaCreationData,
+    ProformaItem
+} from '../services/proformaCartService';
+import { validationStyles } from '../styles/CartValidationStyles';
 
 // Types
 type Customer = {
@@ -42,7 +41,7 @@ const formatPrice = (price: number | undefined): string => {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
-  return `€ ${formattedValue}`;
+  return `ar ${formattedValue}`;
 };
 
 // Formater l'entrée numérique avec séparateurs
@@ -526,7 +525,7 @@ export default function ProformaValidationScreen({ route, navigation }: any) {
                       <Text style={[validationStyles.discountTypeButtonText, discountType === 'percent' && validationStyles.discountTypeButtonTextActive]}>%</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[validationStyles.discountTypeButton, discountType === 'amount' && validationStyles.discountTypeButtonActive]} onPress={() => handleDiscountTypeChange('amount')}>
-                      <Text style={[validationStyles.discountTypeButtonText, discountType === 'amount' && validationStyles.discountTypeButtonTextActive]}>€</Text>
+                      <Text style={[validationStyles.discountTypeButtonText, discountType === 'amount' && validationStyles.discountTypeButtonTextActive]}>ar</Text>
                     </TouchableOpacity>
                   </View>
                   <TextInput

@@ -1,5 +1,7 @@
 // StateScreen.tsx
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useNavigation } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import {
   ScrollView,
@@ -7,11 +9,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Sale, salesService } from '../services/salesService';
+import { Spent, spentService } from '../services/SpentService';
 import { styles } from '../styles/StateScreenStyles';
-import { salesService, Sale } from '../services/salesService';
-import { spentService, Spent } from '../services/SpentService';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { useNavigation } from '@react-navigation/native';
 
 export default function StateScreen({ navigation }: any) {
   const [startDate, setStartDate] = useState(new Date());
@@ -65,7 +65,7 @@ export default function StateScreen({ navigation }: any) {
   const stats = [
     {
       title: 'Entrées',
-      value: `${totalIn.toLocaleString()} FCFA`,
+      value: `${totalIn.toLocaleString()} ar`,
       change: '+100%',
       isPositive: true,
       icon: 'trending-up-outline',
@@ -73,7 +73,7 @@ export default function StateScreen({ navigation }: any) {
     },
     {
       title: 'Sorties',
-      value: `${totalOut.toLocaleString()} FCFA`,
+      value: `${totalOut.toLocaleString()} ar`,
       change: '-100%',
       isPositive: false,
       icon: 'trending-down-outline',
@@ -81,7 +81,7 @@ export default function StateScreen({ navigation }: any) {
     },
     {
       title: 'Bénéfice',
-      value: `${profit.toLocaleString()} FCFA`,
+      value: `${profit.toLocaleString()} ar`,
       change: '+100%',
       isPositive: profit >= 0,
       icon: 'cash-outline',
@@ -186,7 +186,7 @@ export default function StateScreen({ navigation }: any) {
                 <Text style={styles.listLabel}>{s.ref_facture}</Text>
                 <Text style={styles.subLabel}>{s.email}</Text>
               </View>
-              <Text style={styles.listValue}>{s.montant_paye.toLocaleString()} FCFA</Text>
+              <Text style={styles.listValue}>{s.montant_paye.toLocaleString()} ar</Text>
             </View>
           ))}
         </View>
@@ -208,7 +208,7 @@ export default function StateScreen({ navigation }: any) {
                 <Text style={styles.listLabel}>{s.raison}</Text>
                 <Text style={styles.subLabel}>{s.date_depense}</Text>
               </View>
-              <Text style={styles.listValue}>{s.montant.toLocaleString()} FCFA</Text>
+              <Text style={styles.listValue}>{s.montant.toLocaleString()} ar</Text>
             </View>
           ))}
         </View>

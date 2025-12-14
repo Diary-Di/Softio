@@ -5,18 +5,18 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { KeyboardAccessoryView } from 'react-native-keyboard-accessory';
 import CustomerCreateModal from '../components/CustomerCreateModal';
@@ -33,7 +33,7 @@ type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 // Types & helpers
 const formatPrice = (price: number | undefined): string => {
   const value = price || 0;
-  return `€ ${value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `ar ${value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 const formatNumberInput = (value: string): string => {
   if (!value) return '';
@@ -157,7 +157,7 @@ const TogglePercentEuro = ({ value, onChange }: any) => (
       <Text style={[stylesLocal.toggleTxt, value === 'percent' && stylesLocal.toggleTxtActive]}>%</Text>
     </TouchableOpacity>
     <TouchableOpacity style={[stylesLocal.toggleBtn, value === 'amount' && stylesLocal.toggleActive]} onPress={() => onChange('amount')}>
-      <Text style={[stylesLocal.toggleTxt, value === 'amount' && stylesLocal.toggleTxtActive]}>€</Text>
+      <Text style={[stylesLocal.toggleTxt, value === 'amount' && stylesLocal.toggleTxtActive]}>ar</Text>
     </TouchableOpacity>
   </View>
 );
@@ -183,7 +183,7 @@ const PaymentCompact = ({ method, amountPaid, onMethod, onAmount, change, remain
 
     <Text style={[stylesLocal.greyLabel, { marginTop: 12 }]}>Montant reçu</Text>
     <View style={stylesLocal.amountWrap}>
-      <Text style={stylesLocal.euroSym}>€</Text>
+      <Text style={stylesLocal.euroSym}>ar</Text>
       <TextInput
         style={stylesLocal.amountInput}
         keyboardType="decimal-pad"

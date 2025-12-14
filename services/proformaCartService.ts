@@ -31,7 +31,7 @@ export interface DatabaseProforma {
   ref_produit: string; // Format: "pdt1, pdt2, ..., pdtn"
   qte_a_acheter: string; // Format: "qte1, qte2, ..., qten"
   email: string;
-  remise: string; // Peut être "%" ou "€"
+  remise: string; // Peut être "%" ou "ar"
   date_facture: string;
 }
 
@@ -109,7 +109,7 @@ export const formatCartForDatabase = (data: ProformaCreationData): any => {
     email: data.clientEmail || '',
     remise: data.discountInfo.discount_type === 'percent' 
       ? `${data.discountInfo.discount_amount}%`
-      : `€${data.discountInfo.discount_amount.toFixed(2)}`,
+      : `ar${data.discountInfo.discount_amount.toFixed(2)}`,
     date_facture: new Date().toISOString()
   };
 };
@@ -435,7 +435,7 @@ export const proformaCartService = {
   /** Formater un montant pour affichage */
   formatAmount: (amount: number | undefined): string => {
     const value = amount || 0;
-    return `€ ${value.toFixed(2)}`;
+    return `ar ${value.toFixed(2)}`;
   },
 
   /** Parser un proforma de la base de données pour l'affichage */

@@ -1,30 +1,30 @@
 /******************************************************************
  *  ProductScreen.tsx  –  Liste des produits avec filtres de stock
  ******************************************************************/
-import React, { useState, useEffect, useCallback, useRef } from 'react'; // Ajout de useRef
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import * as Haptics from 'expo-haptics';
+import { useCallback, useEffect, useRef, useState } from 'react'; // Ajout de useRef
 import {
-  View,
-  Text,
-  FlatList,
-  ActivityIndicator,
-  TouchableOpacity,
-  Alert,
-  RefreshControl,
-  Image,
-  TextInput,
-  Pressable,
-  LayoutAnimation,
-  Platform,
-  UIManager,
-  Animated, // Ajout de Animated
+    ActivityIndicator,
+    Alert,
+    Animated,
+    FlatList,
+    Image,
+    LayoutAnimation,
+    Platform,
+    Pressable,
+    RefreshControl,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    UIManager,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { Product as ApiProduct, productService } from '../services/productService';
 import { productScreenStyles as styles } from '../styles/productScreenStyles';
-import { useFocusEffect } from '@react-navigation/native';
-import { productService, Product as ApiProduct } from '../services/productService';
 
 /* --------------------  TYPES  -------------------- */
 type Product = {
@@ -81,6 +81,8 @@ export default function ProductScreen({ navigation }: Props) {
   const isScrolling = useRef(false);
   const scrollTimeout = useRef<any>(null); // Changé de NodeJS.Timeout à any
   const flatListRef = useRef<FlatList>(null);
+
+  const FAB_SAFE_AREA = 88; // 56 (hauteur classique du FAB) + 16*2 (marges)
 
   const fetchProducts = useCallback(async (isRefreshing = false) => {
     if (!isRefreshing) {
@@ -413,116 +415,114 @@ export default function ProductScreen({ navigation }: Props) {
 
   // Rendu du composant de pagination
   const renderPagination = useCallback(() => {
-    if (filteredProducts.length <= itemsPerPage) {
-      return null;
-    }
-    
-    const startItem = (currentPage - 1) * itemsPerPage + 1;
-    const endItem = Math.min(currentPage * itemsPerPage, filteredProducts.length);
-    
-    return (
-      <View style={styles.paginationContainer}>
-        <View style={styles.paginationInfo}>
-          <Text style={styles.paginationText}>
-            {startItem}-{endItem} sur {filteredProducts.length} produits
-          </Text>
-          <Text style={styles.paginationPageText}>
-            Page {currentPage} sur {totalPages}
-          </Text>
-        </View>
-        
-        <View style={styles.paginationButtons}>
-          <TouchableOpacity
-            style={[
-              styles.paginationButton,
-              currentPage === 1 && styles.paginationButtonDisabled
-            ]}
-            onPress={goToPrevPage}
-            disabled={currentPage === 1}
-          >
-            <Ionicons 
-              name="chevron-back" 
-              size={20} 
-              color={currentPage === 1 ? "#9CA3AF" : "#4F46E5"} 
-            />
-            <Text style={[
-              styles.paginationButtonText,
-              currentPage === 1 && styles.paginationButtonTextDisabled
-            ]}>
-              Précédent
-            </Text>
-          </TouchableOpacity>
-          
-          {/* Indicateurs de page */}
-          <View style={styles.pageIndicators}>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let pageNum;
-              if (totalPages <= 5) {
-                pageNum = i + 1;
-              } else if (currentPage <= 3) {
-                pageNum = i + 1;
-              } else if (currentPage >= totalPages - 2) {
-                pageNum = totalPages - 4 + i;
-              } else {
-                pageNum = currentPage - 2 + i;
-              }
-              
-              return (
-                <TouchableOpacity
-                  key={`page-${pageNum}`}
+  if (filteredProducts.length <= itemsPerPage) return null;
+
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, filteredProducts.length);
+
+  return (
+    <View style={[styles.paginationContainer, { marginBottom: FAB_SAFE_AREA }]}>
+      <View style={styles.paginationInfo}>
+        <Text style={styles.paginationText}>
+          {startItem}-{endItem} sur {filteredProducts.length} produits
+        </Text>
+        <Text style={styles.paginationPageText}>
+          Page {currentPage} sur {totalPages}
+        </Text>
+      </View>
+
+      <View style={styles.paginationButtons}>
+        {/* Bouton Précédent (icone seulement) */}
+        <TouchableOpacity
+          style={[
+            styles.paginationButton,
+            currentPage === 1 && styles.paginationButtonDisabled
+          ]}
+          onPress={goToPrevPage}
+          disabled={currentPage === 1}
+        >
+          <Ionicons
+            name="chevron-back"
+            size={24}
+            color={currentPage === 1 ? "#9CA3AF" : "#4F46E5"}
+          />
+        </TouchableOpacity>
+
+        {/* Indicateurs de page */}
+        <View style={styles.pageIndicators}>
+          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+            let pageNum;
+            if (totalPages <= 5) {
+              pageNum = i + 1;
+            } else if (currentPage <= 3) {
+              pageNum = i + 1;
+            } else if (currentPage >= totalPages - 2) {
+              pageNum = totalPages - 4 + i;
+            } else {
+              pageNum = currentPage - 2 + i;
+            }
+
+            return (
+              <TouchableOpacity
+                key={`page-${pageNum}`}
+                style={[
+                  styles.pageIndicator,
+                  currentPage === pageNum && styles.pageIndicatorActive
+                ]}
+                onPress={() => goToPage(pageNum)}
+              >
+                <Text
                   style={[
-                    styles.pageIndicator,
-                    currentPage === pageNum && styles.pageIndicatorActive
-                  ]}
-                  onPress={() => goToPage(pageNum)}
-                >
-                  <Text style={[
                     styles.pageIndicatorText,
                     currentPage === pageNum && styles.pageIndicatorTextActive
-                  ]}>
-                    {pageNum}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-            
-            {totalPages > 5 && currentPage < totalPages - 2 && (
-              <>
-                <Text style={styles.pageDots}>...</Text>
-                <TouchableOpacity
-                  style={styles.pageIndicator}
-                  onPress={() => goToPage(totalPages)}
+                  ]}
                 >
-                  <Text style={styles.pageIndicatorText}>{totalPages}</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-          
-          <TouchableOpacity
-            style={[
-              styles.paginationButton,
-              currentPage === totalPages && styles.paginationButtonDisabled
-            ]}
-            onPress={goToNextPage}
-            disabled={currentPage === totalPages}
-          >
-            <Text style={[
-              styles.paginationButtonText,
-              currentPage === totalPages && styles.paginationButtonTextDisabled
-            ]}>
-              Suivant
-            </Text>
-            <Ionicons 
-              name="chevron-forward" 
-              size={20} 
-              color={currentPage === totalPages ? "#9CA3AF" : "#4F46E5"} 
-            />
-          </TouchableOpacity>
+                  {pageNum}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+
+          {totalPages > 5 && currentPage < totalPages - 2 && (
+            <>
+              <Text style={styles.pageDots}>...</Text>
+              <TouchableOpacity
+                style={styles.pageIndicator}
+                onPress={() => goToPage(totalPages)}
+              >
+                <Text style={styles.pageIndicatorText}>{totalPages}</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
+
+        {/* Bouton Suivant (icone seulement) */}
+        <TouchableOpacity
+          style={[
+            styles.paginationButton,
+            currentPage === totalPages && styles.paginationButtonDisabled
+          ]}
+          onPress={goToNextPage}
+          disabled={currentPage === totalPages}
+        >
+          <Ionicons
+            name="chevron-forward"
+            size={24}
+            color={currentPage === totalPages ? "#9CA3AF" : "#4F46E5"}
+          />
+        </TouchableOpacity>
       </View>
-    );
-  }, [currentPage, totalPages, filteredProducts.length, itemsPerPage, goToPrevPage, goToNextPage, goToPage]);
+    </View>
+  );
+}, [
+  currentPage,
+  totalPages,
+  filteredProducts.length,
+  itemsPerPage,
+  goToPrevPage,
+  goToNextPage,
+  goToPage,
+]);
 
   /* --------------------  RENDER ITEM  -------------------- */
   const renderProductItem = useCallback(
@@ -576,7 +576,7 @@ export default function ProductScreen({ navigation }: Props) {
               
               <View style={styles.brandRow}>
                 <View style={styles.priceContainer}>
-                  <Text style={styles.price}>{formattedPrice} €</Text>
+                  <Text style={styles.price}>{formattedPrice} ar</Text>
                 </View>
                 <View style={[styles.stockContainer, { marginTop: 0 }]}>
                   <View style={[
@@ -623,7 +623,7 @@ export default function ProductScreen({ navigation }: Props) {
                 </View>
                 <View style={styles.detailItem}>
                   <Text style={styles.detailLabel}>Prix actuel</Text>
-                  <Text style={[styles.detailValue, styles.priceValue]}>{formattedPrice} €</Text>
+                  <Text style={[styles.detailValue, styles.priceValue]}>{formattedPrice} ar</Text>
                 </View>
                 <View style={styles.detailItem}>
                   <Text style={styles.detailLabel}>État du stock</Text>
@@ -877,8 +877,10 @@ export default function ProductScreen({ navigation }: Props) {
         renderItem={renderProductItem}
         keyExtractor={(item) => item.ref_produit}
         contentContainerStyle={
-          displayedProducts.length ? styles.listContainer : styles.listContainerCenter
-        }
+        displayedProducts.length
+          ? [styles.listContainer, { paddingBottom: FAB_SAFE_AREA }]
+          : [styles.listContainerCenter, { paddingBottom: FAB_SAFE_AREA }]
+          }
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl

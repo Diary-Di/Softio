@@ -1,29 +1,29 @@
-import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { useState, useEffect, useCallback } from "react";
-import {
-  FlatList,
-  LayoutAnimation,
-  Platform,
-  Pressable,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  UIManager,
-  View,
-  Modal,
-  ScrollView,
-  Alert
-} from "react-native";
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { SalesStackParamList } from '../navigation/SalesStackNavigator';
-import { salesService, Sale, formatSaleDate } from '../services/salesService';
-import styles from "../styles/SalesScreenStyles";
-import { productScreenStyles as productStyles } from '../styles/productScreenStyles';
 import { useSaleCustomers } from "@/hooks/useSaleCustomers";
 import { getCustomerInitials } from "@/utils/customerInitials";
 import { formatAmount } from '@/utils/formatAmount';
+import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { useCallback, useEffect, useState } from "react";
+import {
+    Alert,
+    FlatList,
+    LayoutAnimation,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    UIManager,
+    View
+} from "react-native";
+import { SalesStackParamList } from '../navigation/SalesStackNavigator';
+import { Sale, formatSaleDate, salesService } from '../services/salesService';
+import styles from "../styles/SalesScreenStyles";
+import { productScreenStyles as productStyles } from '../styles/productScreenStyles';
 
 type SalesScreenNavigationProp = StackNavigationProp<SalesStackParamList, 'SalesList'>;
 
@@ -229,7 +229,7 @@ export default function SalesScreen() {
               <Text style={styles.filterSectionTitle}>Montant</Text>
               <View style={styles.amountFilterRow}>
                 <View style={styles.amountFilterItem}>
-                  <Text style={styles.filterLabel}>Min (€)</Text>
+                  <Text style={styles.filterLabel}>Min (ar)</Text>
                   <TextInput
                     style={styles.amountInput}
                     value={filters.minAmount}
@@ -241,7 +241,7 @@ export default function SalesScreen() {
                   <Text style={styles.hint}>{filters.minAmount ? formatAmount(filters.minAmount) : ''}</Text>
                 </View>
                 <View style={styles.amountFilterItem}>
-                  <Text style={styles.filterLabel}>Max (€)</Text>
+                  <Text style={styles.filterLabel}>Max (ar)</Text>
                   <TextInput
                     style={styles.amountInput}
                     value={filters.maxAmount}

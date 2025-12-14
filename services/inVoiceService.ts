@@ -30,8 +30,8 @@ export const buildInvoiceHtml = (
       <tr>
         <td>${i.qty}</td>
         <td>${i.designation}</td>
-        <td class="right">${fmt(i.unitPrice)} €</td>
-        <td class="right">${fmt(i.total)} €</td>
+        <td class="right">${fmt(i.unitPrice)} ar</td>
+        <td class="right">${fmt(i.total)} ar</td>
       </tr>`
     )
     .join('');
@@ -81,28 +81,28 @@ export const buildInvoiceHtml = (
 
         <div class="right mt">
           <div class="flex" style="max-width:260px;margin-left:auto">
-            <span>Sous-total :</span><span>${fmt(data.subtotal)} €</span>
+            <span>Sous-total :</span><span>${fmt(data.subtotal)} ar</span>
           </div>
           <div class="flex" style="max-width:260px;margin-left:auto">
-            <span>Remise :</span><span>-${fmt(data.discountAmount)} €</span>
+            <span>Remise :</span><span>-${fmt(data.discountAmount)} ar</span>
           </div>
           <div class="flex total" style="max-width:260px;margin-left:auto">
-            <span>Net à payer :</span><span>${fmt(data.netAmount)} €</span>
+            <span>Net à payer :</span><span>${fmt(data.netAmount)} ar</span>
           </div>
           <div class="flex" style="max-width:260px;margin-left:auto">
-            <span>Payé :</span><span>${fmt(data.paidAmount)} €</span>
+            <span>Payé :</span><span>${fmt(data.paidAmount)} ar</span>
           </div>
           ${
             data.changeAmount > 0
               ? `<div class="flex" style="max-width:260px;margin-left:auto">
-                   <span>Monnaie rendue :</span><span>${fmt(data.changeAmount)} €</span>
+                   <span>Monnaie rendue :</span><span>${fmt(data.changeAmount)} ar</span>
                  </div>`
               : ''
           }
           ${
             data.remainingAmount > 0
               ? `<div class="flex" style="max-width:260px;margin-left:auto;color:#d32f2f">
-                   <span>Reste dû :</span><span>${fmt(data.remainingAmount)} €</span>
+                   <span>Reste dû :</span><span>${fmt(data.remainingAmount)} ar</span>
                  </div>`
               : ''
           }

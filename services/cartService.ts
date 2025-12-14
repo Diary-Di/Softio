@@ -31,7 +31,7 @@ export interface DatabaseSale {
   ref_produit: string; // Format: "pdt1, pdt2, ..., pdtn"
   qte_vendu: string;   // Format: "qte1, qte2, ..., qten"
   identifiant: number;
-  remise: string;      // Peut être "%" ou "€"
+  remise: string;      // Peut être "%" ou "ar"
   mode_paiement: PaymentMethod;
   montant_paye: number;
   condition: string;
@@ -118,7 +118,7 @@ export const formatCartForDatabase = (data: SaleCreationData): any => {
     identifiant: data.clientId || '',
     remise: data.paymentInfo.discount_type === 'percent' 
       ? `${data.paymentInfo.discount_amount}%`
-      : `€${data.paymentInfo.discount_amount.toFixed(2)}`,
+      : `ar${data.paymentInfo.discount_amount.toFixed(2)}`,
     mode_paiement: data.paymentInfo.method,
     montant_paye: data.paymentInfo.amount_paid,
     condition_paiement: data.paymentInfo.condition || 'Payé comptant'
@@ -473,7 +473,7 @@ export const cartService = {
   /** Formater un montant pour affichage */
   formatAmount: (amount: number | undefined): string => {
     const value = amount || 0;
-    return `€ ${value.toFixed(2)}`;
+    return `ar ${value.toFixed(2)}`;
   },
 
   /** Obtenir le nom de la méthode de paiement */

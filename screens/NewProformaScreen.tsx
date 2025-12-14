@@ -1,23 +1,22 @@
 // screens/CartProformaScreen.tsx
-import * as Haptics from 'expo-haptics';
-import { useCallback, useState, useEffect, useRef } from 'react';
-import {
-  Alert,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  Keyboard,
-  ActivityIndicator,
-} from 'react-native';
-import { cartSalesStyles } from '../styles/NewSalesStyles'; // Utiliser le même style pour l'instant
 import { Ionicons } from '@expo/vector-icons';
-import { productService, Product as ApiProduct } from '../services/productService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Keyboard,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { Product as ApiProduct, productService } from '../services/productService';
+import { cartSalesStyles } from '../styles/NewSalesStyles'; // Utiliser le même style pour l'instant
 
 // Types
 type Product = {
@@ -56,9 +55,9 @@ const getProductQuantity = (product: Product): number => {
 // Fonction utilitaire pour formater le prix
 const formatPrice = (price: number | undefined): string => {
   if (price === undefined || price === null || isNaN(price)) {
-    return '€ 0.00';
+    return 'ar 0.00';
   }
-  return `€ ${price.toFixed(2)}`;
+  return `ar ${price.toFixed(2)}`;
 };
 
 // Fonction pour normaliser un produit API vers le format local
@@ -795,7 +794,7 @@ const goToProformaValidation = useCallback(() => {
                 <View style={cartSalesStyles.totalSeparator} />
                 <View style={cartSalesStyles.totalRow}>
                   <Text style={cartSalesStyles.totalMainLabel}>MONTANT TOTAL ESTIMÉ</Text>
-                  <Text style={cartSalesStyles.totalMainValue}>€ {totalAmount.toFixed(2)}</Text>
+                  <Text style={cartSalesStyles.totalMainValue}>ar {totalAmount.toFixed(2)}</Text>
                 </View>
               </View>
 
@@ -819,7 +818,7 @@ const goToProformaValidation = useCallback(() => {
         <View style={cartSalesStyles.footer}>
           <View style={cartSalesStyles.footerTotal}>
             <Text style={cartSalesStyles.footerTotalLabel}>Total estimé</Text>
-            <Text style={cartSalesStyles.footerTotalAmount}>€ {totalAmount.toFixed(2)}</Text>
+            <Text style={cartSalesStyles.footerTotalAmount}>ar {totalAmount.toFixed(2)}</Text>
           </View>
           <TouchableOpacity
             style={[cartSalesStyles.continueButton, { backgroundColor: '#6B7280' }]}

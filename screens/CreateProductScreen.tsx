@@ -4,26 +4,26 @@ import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  FlatList,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Animated,
+    FlatList,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { categoryService } from '../services/categoryService';
 import { productService } from '../services/productService';
 import {
-  styles
+    styles
 } from '../styles/CreateProductStyles';
 
 // Interface pour les catégories
@@ -631,7 +631,7 @@ const CreateProductScreen: React.FC = () => {
 
           {/* Prix actuel */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Prix actuel (€) *</Text>
+            <Text style={styles.label}>Prix actuel (ar) *</Text>
             <View style={styles.prixContainer}>
               <TextInput
                 style={[styles.input, styles.prixInput, isLoading && { opacity: 0.5 }]}
@@ -643,7 +643,7 @@ const CreateProductScreen: React.FC = () => {
                 returnKeyType="next"
                 editable={!isLoading}
               />
-               <Text style={styles.currency}>€</Text>
+               <Text style={styles.currency}>ar</Text>
              </View>
              <Text style={styles.hint}>Utilisez le point ou la virgule pour les décimales</Text>
            </View>

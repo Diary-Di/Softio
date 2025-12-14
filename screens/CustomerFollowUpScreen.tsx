@@ -1,24 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     FlatList,
     LayoutAnimation,
     Platform,
     Pressable,
+    RefreshControl,
     SafeAreaView,
     Text,
     UIManager,
-    View,
-    ActivityIndicator,
-    RefreshControl
+    View
 } from 'react-native';
 import FloatingBottomBarCustomer from '../components/FloatingBottomBarCustomer';
+import { customerService } from '../services/customerService';
+import { Sale, salesService } from '../services/salesService';
 import stylesHeader from '../styles/CreateCustomerStyles';
 import styles from '../styles/CustomerScreenStyles';
-import { salesService, Sale } from '../services/salesService';
-import { customerService } from '../services/customerService';
 
 // Interface pour les données combinées
 type FollowCustomer = {
@@ -214,7 +214,7 @@ export default function CustomerFollowUpScreen() {
   // Formatter le montant (version sécurisée)
   const formatCurrency = (amount: any) => {
     const num = toNumber(amount);
-    return `€${num.toFixed(2)}`;
+    return `ar${num.toFixed(2)}`;
   };
 
   const renderItem = ({ item }: { item: FollowCustomer }) => {
