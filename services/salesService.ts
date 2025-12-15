@@ -13,6 +13,7 @@ export interface Sale {
   email: string;
   client_id: number;
   mode_paiement: string;
+  montant_a_payer: number; // ← Nouvelle colonne ajoutée
   montant_paye: number;
   condition_paiement: string;
   date_achat: string;
@@ -59,11 +60,11 @@ export const salesService = {
         params
       });
       return response.data.data.map((raw: any) => ({
-      ...raw,
-      client_id: raw.identifiant, // ← mapping clé
-      montant_paye: Number(raw.montant_paye),
-    }));
-    
+        ...raw,
+        client_id: raw.identifiant, // ← mapping clé
+        montant_a_payer: Number(raw.montant_a_payer), // ← Nouveau mapping
+        montant_paye: Number(raw.montant_paye),
+      }));
     } catch (error: any) {
       throw {
         message: error.response?.data?.message || "Erreur chargement des ventes",
@@ -184,6 +185,7 @@ export const formatSaleForAPI = (sale: Partial<Sale>): any => {
     qte_vendu: sale.qte_vendu || '',
     email: sale.email || '',
     mode_paiement: sale.mode_paiement || 'cash',
+    montant_a_payer: sale.montant_a_payer || 0, // ← Nouveau champ
     montant_paye: sale.montant_paye || 0,
     condition_paiement: sale.condition_paiement || '',
     date_achat: sale.date_achat || new Date().toISOString().slice(0, 19).replace('T', ' '),
@@ -208,6 +210,11 @@ export const generateInvoiceRef = (): string => {
 /** Calculer le montant total d'une liste de ventes */
 export const calculateTotalSales = (sales: Sale[]): number => {
   return sales.reduce((total, sale) => total + (sale.montant_paye || 0), 0);
+};
+
+/** Calculer le montant total à payer d'une liste de ventes */
+export const calculateTotalAmountToPay = (sales: Sale[]): number => {
+  return sales.reduce((total, sale) => total + (sale.montant_a_payer || 0), 0);
 };
 
 /** Formater la date pour l'affichage */

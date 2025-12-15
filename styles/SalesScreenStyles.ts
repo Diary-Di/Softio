@@ -439,4 +439,30 @@ hint: {
   alignSelf: 'flex-end',
 },
 
+paginationFooter: {
+  paddingVertical: 20,
+  paddingHorizontal: 16,
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+
+loadMoreButton: {
+  backgroundColor: '#4F46E5',
+  paddingHorizontal: 24,
+  paddingVertical: 12,
+  borderRadius: 8,
+},
+
+loadMoreText: {
+  color: '#FFFFFF',
+  fontSize: 16,
+  fontWeight: '600',
+},
+
+paginationText: {
+  fontSize: 14,
+  color: '#6B7280',
+  textAlign: 'center',
+},
+
 });

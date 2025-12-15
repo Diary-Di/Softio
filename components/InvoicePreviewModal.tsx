@@ -17,12 +17,12 @@ interface Props {
 }
 
 const DEFAULT_FORMATS: { id: PaperFormat; label: string }[] = [
-  { id: 'A4', label: 'Facture A4' },
-  { id: 'A5', label: 'Facture A5' },
-  { id: 'BL-A4', label: 'Bon liv. A4' },
+  { id: 'A4', label: 'A4' },
+  { id: 'A5', label: 'A5' },
+  { id: 'BL-A4', label: 'Bon livraison' },
   { id: 'BL-A5', label: 'Bon liv. A5' },
-  { id: 'T80', label: 'Ticket 80 mm' },
-  { id: 'T58', label: 'Ticket 58 mm' },
+  { id: 'T80', label: 'Ticket 80mm' },
+  { id: 'T58', label: 'Ticket 58mm' },
 ];
 
 export default function InvoicePreviewModal({
@@ -45,110 +45,207 @@ export default function InvoicePreviewModal({
       statusBarTranslucent={true}
     >
       <SafeAreaView style={styles.container}>
-        {/* Header */}
+        {/* Header moderne */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose}>
-            <Ionicons name="close" size={26} color="#007AFF" />
+          <TouchableOpacity 
+            onPress={onClose} 
+            style={styles.closeButton}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close" size={24} color="#1C1C1E" />
           </TouchableOpacity>
-          <Text style={styles.title}>Aperçu facture</Text>
-          <View style={{ width: 26 }} />
+          <Text style={styles.title}>Aperçu</Text>
+          <TouchableOpacity 
+            onPress={() => {
+              onClose();
+              onDone?.();
+            }}
+            style={styles.doneButton}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.doneText}>Terminer</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Sélecteur format */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.formatBar}>
+        {/* Sélecteur format - design pilule */}
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          style={styles.formatBar}
+          contentContainerStyle={styles.formatBarContent}
+        >
           {formats.map(f => (
             <TouchableOpacity
               key={f.id}
               onPress={() => onChangeFormat?.(f.id)}
-              style={[styles.formatChip, selectedFormat === f.id && styles.chipActive]}>
-              <Text style={[styles.chipText, selectedFormat === f.id && styles.chipTextActive]}>
+              style={[
+                styles.formatChip, 
+                selectedFormat === f.id && styles.chipActive
+              ]}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.chipText, 
+                selectedFormat === f.id && styles.chipTextActive
+              ]}>
                 {f.label}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
-        {/* WebView aperçu */}
-        <View style={styles.webviewWrap}>
-          <WebView originWhitelist={['*']} style={styles.webview} source={{ html }} />
+        {/* WebView aperçu avec bordure moderne */}
+        <View style={styles.webviewContainer}>
+          <WebView 
+            originWhitelist={['*']} 
+            style={styles.webview} 
+            source={{ html }} 
+          />
         </View>
 
-        {/* Actions */}
-        <View style={styles.actions}>
-          <TouchableOpacity style={[styles.button, styles.print]} onPress={onPrint}>
-            <Ionicons name="print-outline" size={20} color="#FFF" />
-            <Text style={styles.buttonText}>Imprimer</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.button, styles.share]} onPress={onShare}>
-            <Ionicons name="share-outline" size={20} color="#FFF" />
-            <Text style={styles.buttonText}>Partager</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.button, styles.done]}
-            onPress={() => {
-              onClose();
-              onDone?.();
-            }}>
-            <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
-            <Text style={styles.buttonText}>Terminer</Text>
-          </TouchableOpacity>
+        {/* Actions - design bottom sheet */}
+        <View style={styles.actionsContainer}>
+          <View style={styles.actions}>
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.printButton]} 
+              onPress={onPrint}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="print-outline" size={22} color="#FFFFFF" />
+              <Text style={styles.actionButtonText}>Imprimer</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.shareButton]} 
+              onPress={onShare}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="share-outline" size={22} color="#FFFFFF" />
+              <Text style={styles.actionButtonText}>Partager</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     </Modal>
   );
 }
 
-/* ---------------- Styles ---------------- */
+/* ---------------- Styles Modernes ---------------- */
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: {
+    flex: 1,
+    backgroundColor: '#F2F2F7',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderColor: '#ddd',
+    borderBottomColor: '#E5E5EA',
   },
-  done: {
-    backgroundColor: '#34C759',
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F2F2F7',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  title: { fontSize: 18, fontWeight: '600' },
-  formatBar: { paddingVertical: 10, paddingHorizontal: 12 },
+  title: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#1C1C1E',
+  },
+  doneButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#007AFF',
+  },
+  doneText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  formatBar: {
+    maxHeight: 60,
+    backgroundColor: '#FFFFFF',
+  },
+  formatBarContent: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
   formatChip: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     marginRight: 8,
-    borderRadius: 6,
-    backgroundColor: '#eee',
-  },
-  chipActive: { backgroundColor: '#007AFF' },
-  chipText: { color: '#000' },
-  chipTextActive: { color: '#fff' },
-  webviewWrap: {
-    flex: 1,
-    margin: 12,
+    borderRadius: 20,
+    backgroundColor: '#F2F2F7',
     borderWidth: 1,
-    borderColor: '#ccc',
-    backgroundColor: '#fff',
+    borderColor: 'transparent',
   },
-  webview: { flex: 1 },
+  chipActive: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  chipText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#8E8E93',
+  },
+  chipTextActive: {
+    color: '#FFFFFF',
+  },
+  webviewContainer: {
+    flex: 1,
+    margin: 16,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  webview: {
+    flex: 1,
+  },
+  actionsContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingTop: 16,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5EA',
+  },
   actions: {
     flexDirection: 'row',
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-    gap: 8,
+    gap: 12,
   },
-  button: {
+  actionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 6,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
   },
-  print: { backgroundColor: '#34C759' },
-  share: { backgroundColor: '#5856D6' },
-  buttonText: { color: '#fff', fontWeight: '600' },
+  printButton: {
+    backgroundColor: '#34C759',
+  },
+  shareButton: {
+    backgroundColor: '#5856D6',
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
 });

@@ -1,6 +1,7 @@
-import { StyleSheet } from 'react-native';
+import { Dimensions, StyleSheet } from 'react-native';
 
 export const styles = StyleSheet.create({
+  
   container: { flex: 1, backgroundColor: '#f8fafc' },
 
   /* Header */
@@ -100,6 +101,111 @@ export const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 20,
   },
+
+  placeholderText: {
+  color: '#9CA3AF',
+  fontStyle: 'italic',
+},
+
+modalOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: Dimensions.get('window').height * 0.85, // M
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  
+  modalHandleContainer: {
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 20,
+  },
+  
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#D1D5DB',
+    borderRadius: 2,
+  },
+  
+  modalContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  
+  modalScroll: {
+    flex: 1,
+  },
+  
+  modalListRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  
+  modalListLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#111827',
+  },
+  
+  modalSubLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  
+  modalListValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  
+  modalEmptyText: {
+    textAlign: 'center',
+    color: '#6B7280',
+    fontSize: 14,
+    marginTop: 40,
+  },
+  
+  modalCloseButton: {
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  
+  modalCloseText: {
+    color: '#374151',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+
   subLabel: {
     fontSize: 12,
     color: '#94a3b8',

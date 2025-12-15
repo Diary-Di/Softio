@@ -33,6 +33,7 @@ export interface DatabaseSale {
   identifiant: number;
   remise: string;      // Peut être "%" ou "ar"
   mode_paiement: PaymentMethod;
+  montant_a_payer: number; // ← Nouveau champ ajouté
   montant_paye: number;
   condition: string;
   montant_total: number;
@@ -99,6 +100,7 @@ export interface SaleCreationData {
     condition: string;
     change_amount?: number;
     remaining_amount?: number;
+    montant_a_payer: number; // ← Nouveau champ ajouté
   };
   notes?: string;
   subtotal: number;
@@ -120,6 +122,7 @@ export const formatCartForDatabase = (data: SaleCreationData): any => {
       ? `${data.paymentInfo.discount_amount}%`
       : `ar${data.paymentInfo.discount_amount.toFixed(2)}`,
     mode_paiement: data.paymentInfo.method,
+    montant_a_payer: data.paymentInfo.montant_a_payer, // ← Nouveau champ ajouté
     montant_paye: data.paymentInfo.amount_paid,
     condition_paiement: data.paymentInfo.condition || 'Payé comptant'
   };
@@ -156,7 +159,8 @@ export const cartService = {
           discount_amount: 0,
           discount_type: 'amount',
           condition: 'Payé comptant',
-          change_amount: 0
+          change_amount: 0,
+          montant_a_payer: subtotal // ← Nouveau champ ajouté
         },
         notes,
         subtotal,
@@ -498,6 +502,7 @@ export const cartService = {
     }>;
     remise: string;
     mode_paiement: PaymentMethod;
+    montant_a_payer: number; // ← Nouveau champ ajouté
     montant_paye: number;
     condition: string;
     montant_total: number;
@@ -521,6 +526,7 @@ export const cartService = {
       products,
       remise: dbSale.remise,
       mode_paiement: dbSale.mode_paiement,
+      montant_a_payer: dbSale.montant_a_payer, // ← Nouveau champ ajouté
       montant_paye: dbSale.montant_paye,
       condition: dbSale.condition,
       montant_total: dbSale.montant_total,

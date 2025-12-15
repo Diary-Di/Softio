@@ -59,4 +59,19 @@ export default StyleSheet.create({
     backgroundColor: '#1976d2',
     borderRadius: 12,
   },
+  // Style pour le snackbar de confirmation
+  // Style pour le snackbar de confirmation
+snackbar: {
+  backgroundColor: '#4CAF50', // Vert pour le succès
+  borderRadius: 8,
+  marginHorizontal: 20,
+},
+snackbarWrapper: {
+  position: 'absolute',
+  top: 60, // Positionné en haut de l'écran
+  left: 0,
+  right: 0,
+  alignItems: 'center', // Centre horizontalement
+  zIndex: 1000,
+},
 });

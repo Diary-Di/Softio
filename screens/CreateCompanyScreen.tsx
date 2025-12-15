@@ -84,7 +84,7 @@ export default function CreateCompanyScreen() {
           stat: userCompany.stat || '',
           rcs: userCompany.rcs || '',
           logo: userCompany.logo
-            ? `https://palpebral-unsolemnized-caitlin.ngrok-free.dev/SOFTIO/backend/public/uploads/logos/${userCompany.logo}`
+            ? `https://softio-app-mobile.tuto-info.com/public/uploads/logos/${userCompany.logo}`
             //? `http://localhost/SOFTIO/backend/public/uploads/logos/${userCompany.logo}`
             : null,
         });

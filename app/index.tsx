@@ -5,7 +5,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '../hooks/useAuth';
 
 export default function Index() {
-  useKeepAwake();
+  useKeepAwake;
   
   const { token, loading } = useAuth();
 

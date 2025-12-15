@@ -265,6 +265,11 @@ headerRow: {
   alignItems: 'center',
 },
 
+placeholderText: {
+  color: '#9CA3AF',
+  fontStyle: 'italic',
+},
+
 totalBox: {
   alignItems: 'flex-end',
   borderWidth: 1.5,

@@ -2,7 +2,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { 
   FlatList, 
   LayoutAnimation, 
@@ -17,6 +17,7 @@ import {
   ScrollView,
   Alert
 } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { SalesStackParamList } from '../navigation/SalesStackNavigator';
 import { 
@@ -28,6 +29,7 @@ import {
 } from '../services/proformaService';
 import styles from "../styles/ProformaScreenStyles";
 import { productScreenStyles as productStyles } from '../styles/productScreenStyles';
+import Pagination, { usePagination } from '../components/Pagination';
 
 type ProformaScreenNavigationProp = StackNavigationProp<SalesStackParamList, 'ProformaList'>;
 
@@ -62,13 +64,18 @@ export default function ProformaScreen() {
     endDate: null,
   });
 
+  // Ajout du hook de pagination
+  const { currentPage, itemsPerPage, paginateData, goToPage, resetPage } = usePagination(10);
+  const flatListRef = useRef<FlatList>(null);
+
   useEffect(() => {
     loadProformas();
   }, []);
 
   useEffect(() => {
     filterProformas();
-  }, [proformas, filters]);
+    resetPage(); // Réinitialiser la pagination quand les filtres changent
+  }, [proformas, filters, resetPage]);
 
   const loadProformas = async () => {
     try {
@@ -216,54 +223,9 @@ export default function ProformaScreen() {
     return date.toLocaleDateString('fr-FR');
   };
 
-  const handleConvertToSale = async (ref_facture: string) => {
-    Alert.alert(
-      "Convertir en vente",
-      "Voulez-vous convertir ce proforma en vente?",
-      [
-        { text: "Annuler", style: "cancel" },
-        { 
-          text: "Convertir", 
-          style: "default",
-          onPress: async () => {
-            try {
-              // Navigation vers l'écran de paiement avec les données du proforma
-              navigation.navigate('NewSales', { 
-                proformaRef: ref_facture
-              } as any);
-            } catch (error) {
-              console.error("Erreur conversion:", error);
-              Alert.alert("Erreur", "Impossible de convertir le proforma");
-            }
-          }
-        }
-      ]
-    );
-  };
+  // Suppression complète des fonctions handleConvertToSale et handleViewProforma
+  // ainsi que handleProformaAction qui ne sont plus nécessaires
 
-  const handleViewProforma = (proforma: Proforma) => {
-    // Navigation vers l'écran de détail du proforma
-    navigation.navigate('ProformaDetail' as any, { 
-      ref_facture: proforma.ref_facture 
-    } as any);
-  };
-
-  const handleProformaAction = (proforma: Proforma, action: 'view' | 'convert' | 'edit') => {
-    switch (action) {
-      case 'view':
-        handleViewProforma(proforma);
-        break;
-      case 'convert':
-        handleConvertToSale(proforma.ref_facture);
-        break;
-      case 'edit':
-        // Navigation vers l'écran d'édition
-        navigation.navigate('EditProforma' as any, { 
-          ref_facture: proforma.ref_facture 
-        } as any);
-        break;
-    }
-  };
 
   const renderItem = ({ item }: { item: Proforma }) => {
     const isExpanded = expandedId === item.ref_facture;
@@ -310,44 +272,22 @@ export default function ProformaScreen() {
             </View>
           </View>
 
-          <View style={styles.headerActions}>
-            <Pressable
-              onPress={() => handleProformaAction(item, 'view')}
-              style={({ pressed }) => [
-                styles.actionButton,
-                { opacity: pressed ? 0.85 : 1 }
-              ]}
-              accessibilityLabel="Voir le proforma"
-            >
-              <Ionicons name="eye-outline" size={20} color="#4F46E5" />
-            </Pressable>
-            
-            <Pressable
-              onPress={() => handleProformaAction(item, 'convert')}
-              style={({ pressed }) => [
-                styles.actionButton,
-                { opacity: pressed ? 0.85 : 1 }
-              ]}
-              accessibilityLabel="Convertir en vente"
-            >
-              <Ionicons name="cart-outline" size={20} color="#10B981" />
-            </Pressable>
-
-            <Pressable
-              onPress={() => toggle(item.ref_facture || '')}
-              style={({ pressed }) => [
-                styles.chevronButton,
-                { opacity: pressed ? 0.85 : 1, transform: [{ rotate: isExpanded ? '180deg' : '0deg' }] },
-              ]}
-              accessibilityLabel={isExpanded ? 'Réduire les détails' : 'Développer les détails'}
-            >
-              <Ionicons name="chevron-down" size={20} color="#4F46E5" />
-            </Pressable>
-          </View>
+          {/* Suppression complète des boutons détails et acheter - uniquement le chevron reste */}
+          <Pressable
+            onPress={() => toggle(item.ref_facture || '')}
+            style={({ pressed }) => [
+              styles.chevronButton,
+              { opacity: pressed ? 0.85 : 1, transform: [{ rotate: isExpanded ? '180deg' : '0deg' }] },
+            ]}
+            accessibilityLabel={isExpanded ? 'Réduire les détails' : 'Développer les détails'}
+          >
+            <Ionicons name="chevron-down" size={20} color="#4F46E5" />
+          </Pressable>
         </View>
 
         {isExpanded && (
           <View style={styles.expanded}>
+            {/* Suppression complète des actions - uniquement les informations restent */}
             {item.ref_produit && renderField("Produits", item.ref_produit)}
             {item.qte_a_acheter && renderField("Quantités à acheter", item.qte_a_acheter)}
             {item.remise && renderField("Remise", item.remise)}
@@ -474,17 +414,17 @@ export default function ProformaScreen() {
 
   if (loading && (!Array.isArray(proformas) || proformas.length === 0)) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
         <Text style={styles.title}>Proformas</Text>
         <View style={styles.loadingContainer}>
           <Text>Chargement des proformas...</Text>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={[styles.container, { position: 'relative' }]}>
+    <SafeAreaView style={[styles.container, { position: 'relative' }]}>
       <Text style={styles.title}>Proformas</Text>
 
       {/* Barre de recherche */}
@@ -532,38 +472,57 @@ export default function ProformaScreen() {
 
       {/* Liste des proformas */}
       {!Array.isArray(filteredProformas) || filteredProformas.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="document-text-outline" size={64} color="#9CA3AF" />
-          <Text style={styles.emptyText}>
-            {filters.searchText || filters.startDate || filters.endDate
-              ? "Aucun proforma ne correspond aux critères"
-              : "Aucun proforma enregistré"}
-          </Text>
-          {(filters.searchText || filters.startDate || filters.endDate) && (
-            <Pressable onPress={clearFilters} style={styles.suggestClearButton}>
-              <Text style={styles.suggestClearText}>Effacer les filtres</Text>
-            </Pressable>
-          )}
-          <Pressable 
-            onPress={() => navigation.navigate('NewProforma' as any)}
-            style={styles.createFirstButton}
-          >
-            <Ionicons name="add" size={20} color="#4F46E5" />
-            <Text style={styles.createFirstButtonText}>Créer un premier proforma</Text>
-          </Pressable>
+  <View style={styles.emptyContainer}>
+    <Ionicons name="document-text-outline" size={64} color="#9CA3AF" />
+    <Text style={styles.emptyText}>
+      {filters.searchText || filters.startDate || filters.endDate
+        ? "Aucun proforma ne correspond aux critères"
+        : "Aucun proforma enregistré"}
+    </Text>
+    {(filters.searchText || filters.startDate || filters.endDate) && (
+      <Pressable onPress={clearFilters} style={styles.suggestClearButton}>
+        <Text style={styles.suggestClearText}>Effacer les filtres</Text>
+      </Pressable>
+    )}
+    <Pressable 
+      onPress={() => navigation.navigate('NewProforma' as any)}
+      style={styles.createFirstButton}
+    >
+      <Ionicons name="add" size={20} color="#4F46E5" />
+      <Text style={styles.createFirstButtonText}>Créer un premier proforma</Text>
+    </Pressable>
+  </View>
+) : (
+  <FlatList
+    ref={flatListRef}
+    data={paginateData(filteredProformas)} // Utilisation du hook de pagination
+    keyExtractor={(item) => item.ref_facture || Math.random().toString()}
+    renderItem={renderItem}
+    contentContainerStyle={styles.listContainer}
+    showsVerticalScrollIndicator={false}
+    scrollEnabled={true}
+    refreshing={loading}
+    onRefresh={loadProformas}
+    keyboardShouldPersistTaps="handled"
+    ListFooterComponent={() => {
+      if (filteredProformas.length <= itemsPerPage) return null;
+      
+      return (
+        <View style={{ paddingVertical: 20 }}>
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredProformas.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={goToPage}
+            variant="default"
+            showInfo={true}
+            hapticFeedback={true}
+          />
         </View>
-      ) : (
-        <FlatList
-          data={filteredProformas}
-          keyExtractor={(item) => item.ref_facture || Math.random().toString()}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          scrollEnabled={true}
-          refreshing={loading}
-          onRefresh={loadProformas}
-        />
-      )}
+      );
+    }}
+  />
+)}
 
       {/* Bouton FAB */}
       <TouchableOpacity
@@ -580,12 +539,12 @@ export default function ProformaScreen() {
       {/* DatePicker */}
       {showDatePicker && (
         <DateTimePicker
-          value={filters[showDatePicker === 'start' ? 'startDate' : 'endDate'] || new Date()}
+          value={filters.startDate || filters.endDate || new Date()}
           mode="date"
           display="default"
           onChange={(event, date) => handleDateChange(event, date, showDatePicker)}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }

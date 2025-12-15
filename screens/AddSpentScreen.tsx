@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import { Button, TextInput } from 'react-native-paper';
+import { Button, TextInput, Snackbar } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import styles from '../styles/AddSpentStyles';
@@ -45,6 +45,17 @@ const [heure, setHeure] = useState(date);
 
   /* ----------------------------- UI STATE ---------------------------------- */
   const [submitting, setSubmitting] = useState(false);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+
+  /* -------------------------- RESET FORM FUNCTION -------------------------- */
+  const resetForm = () => {
+    setRaison('');
+    setMontant('');
+    const now = new Date();
+    setDate(now);
+    setHeure(now);
+  };
 
   /* ----------------------------- HANDLERS ---------------------------------- */
   const onChangeDate = (_: DateTimePickerEvent, selected?: Date) => {
@@ -77,11 +88,15 @@ const [heure, setHeure] = useState(date);
       else
         await spentService.createSpent(payload);
 
-      Alert.alert(
-        'Succès',
-        isEdit ? 'Dépense mise à jour.' : 'Dépense créée.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      // Show success message
+      setSnackbarMessage(isEdit ? 'Dépense mise à jour avec succès!' : 'Dépense créée avec succès!');
+      setSnackbarVisible(true);
+
+      // Clear form only for new expense creation
+      if (!isEdit) {
+        resetForm();
+      }
+
     } catch (err: any) {
       Alert.alert('Erreur', err.message || 'Échec de la sauvegarde.');
     } finally {
@@ -92,6 +107,21 @@ const [heure, setHeure] = useState(date);
   /* ------------------------------- RENDER ---------------------------------- */
   return (
     <View style={styles.container}>
+      {/* SNACKBAR FOR CONFIRMATION MESSAGE */}
+      <Snackbar
+  visible={snackbarVisible}
+  onDismiss={() => setSnackbarVisible(false)}
+  duration={3000}
+  style={styles.snackbar}
+  wrapperStyle={styles.snackbarWrapper}
+  action={{
+    label: 'FERMER',
+    onPress: () => setSnackbarVisible(false),
+  }}
+>
+  {snackbarMessage}
+</Snackbar>
+
       {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={navigation.goBack}>

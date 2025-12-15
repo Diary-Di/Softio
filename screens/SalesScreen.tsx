@@ -1,3 +1,6 @@
+/******************************************************************
+ *  SalesScreen.tsx  –  Liste des ventes avec pagination
+ ******************************************************************/
 import { useSaleCustomers } from "@/hooks/useSaleCustomers";
 import { getCustomerInitials } from "@/utils/customerInitials";
 import { formatAmount } from '@/utils/formatAmount';
@@ -6,6 +9,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useCallback, useEffect, useState } from "react";
+import { useRef } from 'react';
 import {
     Alert,
     FlatList,
@@ -20,10 +24,12 @@ import {
     UIManager,
     View
 } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { SalesStackParamList } from '../navigation/SalesStackNavigator';
 import { Sale, formatSaleDate, salesService } from '../services/salesService';
 import styles from "../styles/SalesScreenStyles";
 import { productScreenStyles as productStyles } from '../styles/productScreenStyles';
+import Pagination, { usePagination } from '../components/Pagination';
 
 type SalesScreenNavigationProp = StackNavigationProp<SalesStackParamList, 'SalesList'>;
 
@@ -62,8 +68,20 @@ export default function SalesScreen() {
     modePaiement: ''
   });
 
+  // Utilisation du hook de pagination réutilisable
+  const { currentPage, itemsPerPage, paginateData, goToPage, resetPage } = usePagination(10);
+  const flatListRef = useRef<FlatList>(null);
+
+  const scrollToTop = () => {
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
+
   useEffect(() => { loadSales(); }, []);
-  useEffect(() => { filterSales(); }, [sales, filters]);
+  useEffect(() => { 
+    filterSales(); 
+    resetPage(); // Réinitialiser la pagination quand les filtres changent
+    scrollToTop();
+  }, [sales, filters, resetPage]);
 
   const loadSales = async () => {
     try {
@@ -145,6 +163,7 @@ export default function SalesScreen() {
   const formatDate = (date: Date | null) => (date ? date.toLocaleDateString('fr-FR') : 'Sélectionner');
 
   const customersMap = useSaleCustomers(sales);
+
 
   const renderItem = ({ item }: { item: Sale }) => {
     const isExpanded = expandedId === item.ref_facture;
@@ -290,17 +309,17 @@ export default function SalesScreen() {
   /* ---------------  RENDU PRINCIPAL  --------------- */
   if (loading && sales.length === 0) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
         <Text style={styles.title}>Ventes</Text>
         <View style={styles.loadingContainer}>
           <Text>Chargement des ventes...</Text>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={[styles.container, { position: 'relative' }]}>
+    <SafeAreaView style={[styles.container, { position: 'relative' }]}>
       <Text style={styles.title}>Ventes</Text>
 
       {/* Barre de recherche */}
@@ -330,7 +349,6 @@ export default function SalesScreen() {
 
       {/* Compteur de résultats */}
       <View style={styles.resultCounter}>
-        <Text style={styles.resultText}>{filteredSales.length} {filteredSales.length === 1 ? 'vente' : 'ventes'}</Text>
         {(filters.searchText || filters.startDate || filters.endDate || filters.minAmount || filters.maxAmount || filters.modePaiement) && (
           <Pressable onPress={clearFilters} style={styles.clearFilterButton}>
             <Text style={styles.clearFilterText}>Effacer filtres</Text>
@@ -341,31 +359,50 @@ export default function SalesScreen() {
 
       {/* Liste des ventes */}
       {filteredSales.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="receipt-outline" size={64} color="#9CA3AF" />
-          <Text style={styles.emptyText}>
-            {filters.searchText || filters.startDate || filters.endDate || filters.minAmount || filters.maxAmount || filters.modePaiement
-              ? "Aucune vente ne correspond aux critères"
-              : "Aucune vente enregistrée"}
-          </Text>
-          {(filters.searchText || filters.startDate || filters.endDate || filters.minAmount || filters.maxAmount || filters.modePaiement) && (
-            <Pressable onPress={clearFilters} style={styles.suggestClearButton}>
-              <Text style={styles.suggestClearText}>Effacer les filtres</Text>
-            </Pressable>
-          )}
+  <View style={styles.emptyContainer}>
+    <Ionicons name="receipt-outline" size={64} color="#9CA3AF" />
+    <Text style={styles.emptyText}>
+      {filters.searchText || filters.startDate || filters.endDate || filters.minAmount || filters.maxAmount || filters.modePaiement
+        ? "Aucune vente ne correspond aux critères"
+        : "Aucune vente enregistrée"}
+    </Text>
+    {(filters.searchText || filters.startDate || filters.endDate || filters.minAmount || filters.maxAmount || filters.modePaiement) && (
+      <Pressable onPress={clearFilters} style={styles.suggestClearButton}>
+        <Text style={styles.suggestClearText}>Effacer les filtres</Text>
+      </Pressable>
+    )}
+  </View>
+) : (
+  <FlatList
+    ref={flatListRef}
+    data={paginateData(filteredSales)} // Utilisation du hook de pagination
+    keyExtractor={item => item.ref_facture}
+    renderItem={renderItem}
+    contentContainerStyle={styles.listContainer}
+    showsVerticalScrollIndicator={false}
+    scrollEnabled
+    refreshing={loading}
+    onRefresh={loadSales}
+    keyboardShouldPersistTaps="handled"
+    ListFooterComponent={() => {
+      if (filteredSales.length <= itemsPerPage) return null;
+      
+      return (
+        <View style={{ paddingVertical: 20 }}>
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredSales.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={goToPage}
+            variant="default"
+            showInfo={true}
+            hapticFeedback={true}
+          />
         </View>
-      ) : (
-        <FlatList
-          data={filteredSales}
-          keyExtractor={item => item.ref_facture}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          scrollEnabled
-          refreshing={loading}
-          onRefresh={loadSales}
-        />
-      )}
+      );
+    }}
+  />
+)}
 
       {/* Bouton FAB */}
       <TouchableOpacity style={productStyles.fab} activeOpacity={0.85} onPress={() => navigation?.navigate('NewSales')}>
@@ -382,6 +419,6 @@ export default function SalesScreen() {
           onChange={(event, date) => handleDateChange(event, date, showDatePicker)}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }

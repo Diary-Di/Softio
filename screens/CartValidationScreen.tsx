@@ -509,21 +509,22 @@ export default function CartValidationScreen({ route, navigation }: any) {
          paidAmount >= netAmount ? `Monnaie: ${formatPrice(changeAmount)}` : `Reste dû: ${formatPrice(remainingAmount)}`,
        ];
        const saleData: SaleCreationData = {
-         cartItems: safeCart,
-         clientId: selectedCustomer!.identifiant,
-         paymentInfo: {
-           method: selectedPaymentMethod!,
-           amount_paid: paidAmount,
-           discount_amount: discountAmount,
-           discount_type: discountType,
-           condition,
-           change_amount: changeAmount,
-           remaining_amount: remainingAmount
-         },
-         notes: notes.join('\n'),
-         subtotal,
-         net_amount: netAmount
-       };
+  cartItems: safeCart,
+  clientId: selectedCustomer!.identifiant,
+  paymentInfo: {
+    method: selectedPaymentMethod!,
+    amount_paid: paidAmount,
+    discount_amount: discountAmount,
+    discount_type: discountType,
+    condition,
+    change_amount: changeAmount,
+    remaining_amount: remainingAmount,
+    montant_a_payer: netAmount // ← Ajoutez cette ligne
+  },
+  notes: notes.join('\n'),
+  subtotal,
+  net_amount: netAmount
+};
       await cartService.createSale(saleData);
       // clear persisted state after successful creation
       try { await AsyncStorage.removeItem(CART_VALIDATION_STATE_KEY); } catch (e) { console.warn('Unable to clear saved state', e); }

@@ -4,7 +4,7 @@
 export const API_BASE_URL = __DEV__ 
   //?'http://localhost/SOFTIO/backend/public'
   ? 'https://softio-app-mobile.tuto-info.com'  // Remplacez par votre IP locale
-  : 'https://votredomaine.com';
+  : 'https://softio-app-mobile.tuto-info.com';
 
 // Pour Ngrok (décommentez si vous utilisez Ngrok)
 // export const API_BASE_URL = __DEV__ 

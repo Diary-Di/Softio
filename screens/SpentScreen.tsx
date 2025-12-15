@@ -42,16 +42,10 @@ export default function SpentScreen() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   /* Filtres */
-  const [from, setFrom] = useState(
-    () => new Date(new Date().setMonth(new Date().getMonth() - 1))
-  );
-  const [to, setTo] = useState(new Date());
-  const [fromText, setFromText] = useState(
-    new Date(new Date().setMonth(new Date().getMonth() - 1)).toLocaleDateString('fr-FR')
-  );
-  const [toText, setToText] = useState(
-    new Date().toLocaleDateString('fr-FR')
-  );
+  const [from, setFrom] = useState<Date | null>(null);
+  const [to, setTo] = useState<Date | null>(null);
+  const [fromText, setFromText] = useState('jj/mm/aaaa');
+  const [toText, setToText] = useState('jj/mm/aaaa');
   const [showFrom, setShowFrom] = useState(false);
   const [showTo, setShowTo] = useState(false);
 
@@ -80,7 +74,7 @@ export default function SpentScreen() {
       const all = await spentService.getSpents({ limit: 500 });
       const filtered = all.filter((d) => {
         const day = new Date(d.date_depense);
-        return day >= from && day <= to;
+        return (!from || day >= from) && (!to || day <= to);
       });
       setExpenses(filtered);
     } catch (e: any) {
@@ -129,16 +123,23 @@ export default function SpentScreen() {
     if (selected) {
       setFrom(selected);
       setFromText(selected.toLocaleDateString('fr-FR'));
-      setCurrentPage(1);
+    } else {
+      setFrom(null);
+      setFromText('jj/mm/aaaa');
     }
+    setCurrentPage(1);
   };
+
   const onChangeTo = (_: any, selected?: Date) => {
     setShowTo(false);
     if (selected) {
       setTo(selected);
       setToText(selected.toLocaleDateString('fr-FR'));
-      setCurrentPage(1);
+    } else {
+      setTo(null);
+      setToText('jj/mm/aaaa');
     }
+    setCurrentPage(1);
   };
 
   /* --------------------------- ACTIONS CARTE ------------------------------ */
@@ -181,22 +182,22 @@ export default function SpentScreen() {
 
   /* --------------------------- RENDUS ------------------------------------- */
   /* --------------------------- RENDU HEADER -------------------------------- */
-const renderHeader = useCallback(() => {
-  const total = expenses.reduce((sum, item) => sum + Number(item.montant), 0);
-  return (
-    <View style={styles.headerContainer}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>Dépenses</Text>
+  const renderHeader = useCallback(() => {
+    const total = expenses.reduce((sum, item) => sum + Number(item.montant), 0);
+    return (
+      <View style={styles.headerContainer}>
+        <View style={styles.headerRow}>
+          <Text style={styles.title}>Dépenses</Text>
 
-        {/* Bloc total */}
-        <View style={styles.totalBox}>
-          <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalAmount}>{formatAmount(total)} ar</Text>
+          {/* Bloc total */}
+          <View style={styles.totalBox}>
+            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalAmount}>{formatAmount(total)} ar</Text>
+          </View>
         </View>
       </View>
-    </View>
-  );
-}, [expenses]);
+    );
+  }, [expenses]);
 
   const renderEmpty = useCallback(
     () => (
@@ -268,23 +269,23 @@ const renderHeader = useCallback(() => {
               </View>
             </View>
 
-            {/* Boutons d’action */}
+            {/* Boutons d'action */}
             <View style={styles.actionRow}>
               <TouchableOpacity
-  style={styles.actionButton}
-  onPress={() => handleEdit(item)}
->
-  <Ionicons name="create" size={24} color="#F59E0B" />
-  <Text style={styles.actionButtonText}>Modifier</Text>
-</TouchableOpacity>
+                style={styles.actionButton}
+                onPress={() => handleEdit(item)}
+              >
+                <Ionicons name="create" size={24} color="#F59E0B" />
+                <Text style={styles.actionButtonText}>Modifier</Text>
+              </TouchableOpacity>
 
-<TouchableOpacity
-  style={styles.actionButton}
-  onPress={() => handleDelete(item)}
->
-  <Ionicons name="trash" size={24} color="#DC2626" />
-  <Text style={styles.actionButtonText}>Supprimer</Text>
-</TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => handleDelete(item)}
+              >
+                <Ionicons name="trash" size={24} color="#DC2626" />
+                <Text style={styles.actionButtonText}>Supprimer</Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -435,7 +436,9 @@ const renderHeader = useCallback(() => {
             onPress={() => setShowFrom(true)}
             activeOpacity={0.8}
           >
-            <Text style={styles.dateInputText}>{fromText}</Text>
+            <Text style={[styles.dateInputText, !from && styles.placeholderText]}>
+              {fromText}
+            </Text>
             <Ionicons name="calendar" size={20} color="#4F46E5" />
           </TouchableOpacity>
         </View>
@@ -447,17 +450,27 @@ const renderHeader = useCallback(() => {
             onPress={() => setShowTo(true)}
             activeOpacity={0.8}
           >
-            <Text style={styles.dateInputText}>{toText}</Text>
+            <Text style={[styles.dateInputText, !to && styles.placeholderText]}>
+              {toText}
+            </Text>
             <Ionicons name="calendar" size={20} color="#4F46E5" />
           </TouchableOpacity>
         </View>
       </View>
 
       {showFrom && (
-        <DateTimePicker value={from} mode="date" onChange={onChangeFrom} />
+        <DateTimePicker 
+          value={from || new Date()} 
+          mode="date" 
+          onChange={onChangeFrom} 
+        />
       )}
       {showTo && (
-        <DateTimePicker value={to} mode="date" onChange={onChangeTo} />
+        <DateTimePicker 
+          value={to || new Date()} 
+          mode="date" 
+          onChange={onChangeTo} 
+        />
       )}
 
       {/* Liste */}

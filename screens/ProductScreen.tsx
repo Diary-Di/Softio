@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import * as Haptics from 'expo-haptics';
-import { useCallback, useEffect, useRef, useState } from 'react'; // Ajout de useRef
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -25,6 +25,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Product as ApiProduct, productService } from '../services/productService';
 import { productScreenStyles as styles } from '../styles/productScreenStyles';
+import Pagination, { usePagination } from '../components/Pagination';
 
 /* --------------------  TYPES  -------------------- */
 type Product = {
@@ -62,7 +63,7 @@ export default function ProductScreen({ navigation }: Props) {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [displayedProducts, setDisplayedProducts] = useState<Product[]>([]); // Nouveau: produits affichés
+  const [displayedProducts, setDisplayedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -71,18 +72,17 @@ export default function ProductScreen({ navigation }: Props) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // États pour la pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
+  // Utilisation du hook de pagination réutilisable
+  const { currentPage, itemsPerPage, paginateData, goToPage, resetPage } = usePagination(10);
   
   // Références pour les animations
   const fabAnimation = useRef(new Animated.Value(1)).current;
   const isScrolling = useRef(false);
-  const scrollTimeout = useRef<any>(null); // Changé de NodeJS.Timeout à any
+  const scrollTimeout = useRef<any>(null);
   const flatListRef = useRef<FlatList>(null);
 
-  const FAB_SAFE_AREA = 88; // 56 (hauteur classique du FAB) + 16*2 (marges)
+  const FAB_SAFE_AREA = 88;
+  const PAGINATION_FAB_SAFE_AREA = 100;
 
   const fetchProducts = useCallback(async (isRefreshing = false) => {
     if (!isRefreshing) {
@@ -129,32 +129,32 @@ export default function ProductScreen({ navigation }: Props) {
         
         return {
           ref_produit,
-          categorie,
-          designation,
-          prix_actuel,
-          qte_disponible,
-          image_url,
-        };
-      });
-      
-      setProducts(cleanedData);
-      
-      if (isRefreshing) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            categorie,
+            designation,
+            prix_actuel,
+            qte_disponible,
+            image_url,
+          };
+        });
+        
+        setProducts(cleanedData);
+        
+        if (isRefreshing) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      } catch (error: any) {
+        console.error('❌ Erreur chargement produits:', error);
+        const errorMessage = error.message || 'Impossible de charger les produits';
+        setError(errorMessage);
+        
+        if (isRefreshing) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          Alert.alert('Erreur', errorMessage);
+        }
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-    } catch (error: any) {
-      console.error('❌ Erreur chargement produits:', error);
-      const errorMessage = error.message || 'Impossible de charger les produits';
-      setError(errorMessage);
-      
-      if (isRefreshing) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert('Erreur', errorMessage);
-      }
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
   }, []);
 
   // Filter products
@@ -189,27 +189,19 @@ export default function ProductScreen({ navigation }: Props) {
     }
     
     setFilteredProducts(filtered);
-    setCurrentPage(1); // Réinitialiser à la première page quand les filtres changent
-  }, [products, searchQuery, stockFilter]);
+    resetPage(); // Réinitialiser à la première page quand les filtres changent
+  }, [products, searchQuery, stockFilter, resetPage]);
 
   // Mettre à jour les produits affichés (pagination)
   useEffect(() => {
-    // Calculer le nombre total de pages
-    const total = Math.ceil(filteredProducts.length / itemsPerPage);
-    setTotalPages(total || 1);
-    
-    // Extraire les produits pour la page courante
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
-    
+    const paginatedProducts = paginateData(filteredProducts);
     setDisplayedProducts(paginatedProducts);
     
     // Scroll vers le haut quand la page change
     if (flatListRef.current && currentPage > 1) {
       flatListRef.current.scrollToOffset({ offset: 0, animated: true });
     }
-  }, [filteredProducts, currentPage, itemsPerPage]);
+  }, [filteredProducts, currentPage, paginateData]);
 
   // Recharger quand l'écran obtient le focus
   useFocusEffect(
@@ -279,28 +271,6 @@ export default function ProductScreen({ navigation }: Props) {
   const clearSearch = useCallback(() => {
     setSearchQuery("");
   }, []);
-
-  // Navigation entre les pages
-  const goToPage = useCallback((page: number) => {
-    if (page >= 1 && page <= totalPages && page !== currentPage) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setCurrentPage(page);
-    }
-  }, [totalPages, currentPage]);
-
-  const goToNextPage = useCallback(() => {
-    if (currentPage < totalPages) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setCurrentPage(prev => prev + 1);
-    }
-  }, [currentPage, totalPages]);
-
-  const goToPrevPage = useCallback(() => {
-    if (currentPage > 1) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setCurrentPage(prev => prev - 1);
-    }
-  }, [currentPage]);
 
   // Gestion du scroll pour cacher/afficher le FAB
   const handleScrollBegin = useCallback(() => {
@@ -413,116 +383,24 @@ export default function ProductScreen({ navigation }: Props) {
     return null;
   }, []);
 
-  // Rendu du composant de pagination
+  // Rendu du composant de pagination réutilisable
   const renderPagination = useCallback(() => {
   if (filteredProducts.length <= itemsPerPage) return null;
 
-  const startItem = (currentPage - 1) * itemsPerPage + 1;
-  const endItem = Math.min(currentPage * itemsPerPage, filteredProducts.length);
-
   return (
-    <View style={[styles.paginationContainer, { marginBottom: FAB_SAFE_AREA }]}>
-      <View style={styles.paginationInfo}>
-        <Text style={styles.paginationText}>
-          {startItem}-{endItem} sur {filteredProducts.length} produits
-        </Text>
-        <Text style={styles.paginationPageText}>
-          Page {currentPage} sur {totalPages}
-        </Text>
-      </View>
-
-      <View style={styles.paginationButtons}>
-        {/* Bouton Précédent (icone seulement) */}
-        <TouchableOpacity
-          style={[
-            styles.paginationButton,
-            currentPage === 1 && styles.paginationButtonDisabled
-          ]}
-          onPress={goToPrevPage}
-          disabled={currentPage === 1}
-        >
-          <Ionicons
-            name="chevron-back"
-            size={24}
-            color={currentPage === 1 ? "#9CA3AF" : "#4F46E5"}
-          />
-        </TouchableOpacity>
-
-        {/* Indicateurs de page */}
-        <View style={styles.pageIndicators}>
-          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-            let pageNum;
-            if (totalPages <= 5) {
-              pageNum = i + 1;
-            } else if (currentPage <= 3) {
-              pageNum = i + 1;
-            } else if (currentPage >= totalPages - 2) {
-              pageNum = totalPages - 4 + i;
-            } else {
-              pageNum = currentPage - 2 + i;
-            }
-
-            return (
-              <TouchableOpacity
-                key={`page-${pageNum}`}
-                style={[
-                  styles.pageIndicator,
-                  currentPage === pageNum && styles.pageIndicatorActive
-                ]}
-                onPress={() => goToPage(pageNum)}
-              >
-                <Text
-                  style={[
-                    styles.pageIndicatorText,
-                    currentPage === pageNum && styles.pageIndicatorTextActive
-                  ]}
-                >
-                  {pageNum}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-
-          {totalPages > 5 && currentPage < totalPages - 2 && (
-            <>
-              <Text style={styles.pageDots}>...</Text>
-              <TouchableOpacity
-                style={styles.pageIndicator}
-                onPress={() => goToPage(totalPages)}
-              >
-                <Text style={styles.pageIndicatorText}>{totalPages}</Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-
-        {/* Bouton Suivant (icone seulement) */}
-        <TouchableOpacity
-          style={[
-            styles.paginationButton,
-            currentPage === totalPages && styles.paginationButtonDisabled
-          ]}
-          onPress={goToNextPage}
-          disabled={currentPage === totalPages}
-        >
-          <Ionicons
-            name="chevron-forward"
-            size={24}
-            color={currentPage === totalPages ? "#9CA3AF" : "#4F46E5"}
-          />
-        </TouchableOpacity>
-      </View>
+    <View style={{ marginBottom: PAGINATION_FAB_SAFE_AREA }}>
+      <Pagination
+        currentPage={currentPage}
+        totalItems={filteredProducts.length}
+        itemsPerPage={itemsPerPage}
+        onPageChange={goToPage}
+        variant="default"
+        showInfo={true}
+        hapticFeedback={true}
+      />
     </View>
   );
-}, [
-  currentPage,
-  totalPages,
-  filteredProducts.length,
-  itemsPerPage,
-  goToPrevPage,
-  goToNextPage,
-  goToPage,
-]);
+}, [currentPage, filteredProducts.length, itemsPerPage, goToPage]);
 
   /* --------------------  RENDER ITEM  -------------------- */
   const renderProductItem = useCallback(
@@ -873,14 +751,14 @@ export default function ProductScreen({ navigation }: Props) {
       {/* Product List */}
       <FlatList
         ref={flatListRef}
-        data={displayedProducts} // Utiliser displayedProducts au lieu de filteredProducts
+        data={displayedProducts}
         renderItem={renderProductItem}
         keyExtractor={(item) => item.ref_produit}
         contentContainerStyle={
-        displayedProducts.length
-          ? [styles.listContainer, { paddingBottom: FAB_SAFE_AREA }]
-          : [styles.listContainerCenter, { paddingBottom: FAB_SAFE_AREA }]
-          }
+          displayedProducts.length
+            ? [styles.listContainer, { paddingBottom: FAB_SAFE_AREA }]
+            : [styles.listContainerCenter, { paddingBottom: FAB_SAFE_AREA }]
+        }
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -891,7 +769,7 @@ export default function ProductScreen({ navigation }: Props) {
           />
         }
         ListEmptyComponent={renderEmptyList}
-        ListFooterComponent={renderPagination} // Ajout de la pagination en bas
+        ListFooterComponent={renderPagination}
         onScrollBeginDrag={handleScrollBegin}
         onScrollEndDrag={handleScrollEnd}
         onMomentumScrollEnd={handleScrollEnd}
