@@ -319,7 +319,7 @@ export default function SalesScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { position: 'relative' }]}>
+    <SafeAreaView style={[styles.container, { position: 'relative' }]} edges={['bottom', 'left', 'right']}>
       <Text style={styles.title}>Ventes</Text>
 
       {/* Barre de recherche */}

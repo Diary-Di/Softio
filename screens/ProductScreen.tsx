@@ -660,7 +660,7 @@ export default function ProductScreen({ navigation }: Props) {
 
   /* --------------------  MAIN RENDER  -------------------- */
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
       {renderHeader()}
 
       {/* Search Bar */}

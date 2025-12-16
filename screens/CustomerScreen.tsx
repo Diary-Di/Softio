@@ -355,7 +355,7 @@ export default function CustomerScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={80}
     >
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
         {/* En-tête avec titre */}
         <View style={styles.header}>
           <Text style={styles.title}>Clients</Text>
